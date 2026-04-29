@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Engine\My2DEngine.Engine.csproj" Id="f5d65533-8131-4f58-88a0-496c99677e39" />
+  <Project Path="Game\My2DEngine.Game.csproj" Id="a099e1ef-9dee-46f8-be35-f17539ee9182" />
+  <Project Path="My2DEngine.csproj" Id="2fc61b7d-bd32-4219-b85e-2a1ef121745f" />
+  <Project Path="My2DEngine.SmokeTests\My2DEngine.SmokeTests.csproj" Id="a3e828f6-cae8-4970-9952-2d2f6b163dc0" />
+</Solution>

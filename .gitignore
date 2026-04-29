@@ -1,0 +1,24 @@
+# Visual Studio and user-specific files
+.vs/
+*.user
+*.suo
+*.pfx
+
+# Build outputs
+bin/
+obj/
+Artifacts/
+
+# NuGet packages
+packages/
+packages-temp/
+
+# Local SDK/tooling state
+.dotnet/
+.dotnet-cli/
+.dotnet_cli/
+.dotnet-home/
+
+# Local assistant/tool metadata
+.agent/
+.claude/

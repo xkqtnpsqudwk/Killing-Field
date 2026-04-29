@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>My2DEngine.Engine</AssemblyName>
+    <RootNamespace>My2DEngine.Engine</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <SupportedOSPlatformVersion>6.1</SupportedOSPlatformVersion>
+    <NoWarn>$(NoWarn);CA1416;CA1822</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SharpGen.Runtime" Version="2.0.0-beta.9" />
+    <PackageReference Include="SharpGen.Runtime.COM" Version="2.0.0-beta.9" />
+    <PackageReference Include="Vortice.Direct3D11" Version="1.9.143" />
+    <PackageReference Include="Vortice.Direct2D1" Version="1.9.143" />
+    <PackageReference Include="Vortice.D3DCompiler" Version="1.9.143" />
+    <PackageReference Include="Vortice.DirectX" Version="1.9.143" />
+    <PackageReference Include="Vortice.DXGI" Version="1.9.143" />
+    <PackageReference Include="Vortice.Mathematics" Version="1.3.21" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>KF</AssemblyName>
+    <RootNamespace>My2DEngine</RootNamespace>
+    <ApplicationIcon>Game\Images\killing Field\icon.ico</ApplicationIcon>
+    <StartupObject>My2DEngine.Program</StartupObject>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <SupportedOSPlatformVersion>6.1</SupportedOSPlatformVersion>
+    <NoWarn>$(NoWarn);CA1416;CA1822</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 하위 프로젝트 소스는 ProjectReference로 참조하므로 직접 컴파일에서 제외 -->
+    <Compile Remove="Engine\**" />
+    <Compile Remove="Game\**" />
+    <Compile Remove="My2DEngine.SmokeTests\**" />
+    <Compile Remove="Tools\**" />
+    <EmbeddedResource Remove="Engine\**" />
+    <EmbeddedResource Remove="Game\**" />
+    <EmbeddedResource Remove="My2DEngine.SmokeTests\**" />
+    <EmbeddedResource Remove="Tools\**" />
+    <None Remove="Engine\**" />
+    <None Remove="Game\**" />
+    <None Remove="My2DEngine.SmokeTests\**" />
+    <None Remove="Tools\**" />
+    <!-- Settings.Designer.cs는 System.Configuration 의존성이 있어 제외 -->
+    <Compile Remove="Properties\Settings.Designer.cs" />
+    <None Include="Properties\Settings.settings" />
+    <EmbeddedResource Remove="Properties\Settings.settings" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Game\Images\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Game\Sound\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Engine\My2DEngine.Engine.csproj" />
+    <ProjectReference Include="Game\My2DEngine.Game.csproj" />
+  </ItemGroup>
+
+</Project>
