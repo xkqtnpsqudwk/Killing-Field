@@ -20,7 +20,6 @@ packages-temp/
 .dotnet-home/
 
 # Local assistant/tool metadata
-.agent/
 .claude/
 
 # WinForms designer can create resource files for partial Form1 classes; only Form1.resx is used.
