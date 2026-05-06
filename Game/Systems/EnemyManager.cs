@@ -129,6 +129,50 @@ namespace My2DEngine.Game.Systems
                 }
             }
 
+            if (room.ObjectiveKind == RoomObjectiveKind.KeyTarget && CountAliveObjectiveTargets(list) <= 0)
+            {
+                if (TrySpawnObjectiveTargetFallback(list, room, collision, playerPosition))
+                {
+                    spawned++;
+                }
+            }
+
+            CommitEnemyBuildBuffer();
+            RefreshBossCache();
+            return spawned;
+        }
+
+        public int SpawnStageReinforcements(StageRoom room, CollisionSystem collision, Vector2 playerPosition, int maxCount)
+        {
+            if (room == null || maxCount <= 0)
+            {
+                return 0;
+            }
+
+            StageSpawnPoint[] spawns = room.Blueprint.Spawns;
+            if (spawns == null || spawns.Length == 0)
+            {
+                return 0;
+            }
+
+            List<Enemy> list = PrepareEnemyBuildBuffer();
+            int spawned = 0;
+            int start = rng.Next(spawns.Length);
+            int attempts = spawns.Length * 2;
+            for (int i = 0; i < attempts && spawned < maxCount; i++)
+            {
+                StageSpawnPoint source = spawns[(start + i) % spawns.Length];
+                if (source == null || source.IsObjectiveTarget)
+                {
+                    continue;
+                }
+
+                if (TrySpawnStageEnemy(list, room, source, playerPosition, collision, allowNearPlayer: i >= spawns.Length))
+                {
+                    spawned++;
+                }
+            }
+
             CommitEnemyBuildBuffer();
             RefreshBossCache();
             return spawned;
@@ -232,6 +276,143 @@ namespace My2DEngine.Game.Systems
             }
 
             return count;
+        }
+
+        public int CountAliveObjectiveTargets()
+        {
+            if (enemies == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int i = 0; i < enemies.Length; i++)
+            {
+                Enemy enemy = enemies[i];
+                if (enemy != null && enemy.Alive && enemy.IsObjectiveTarget)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static int CountAliveObjectiveTargets(List<Enemy> list)
+        {
+            if (list == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int i = 0; i < list.Count; i++)
+            {
+                Enemy enemy = list[i];
+                if (enemy != null && enemy.Alive && enemy.IsObjectiveTarget)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private bool TrySpawnObjectiveTargetFallback(List<Enemy> list, StageRoom room, CollisionSystem collision, Vector2 playerPosition)
+        {
+            StageSpawnPoint source = FindObjectiveTargetSpawn(room) ?? FindFirstSpawn(room);
+            if (source == null)
+            {
+                return false;
+            }
+
+            StageSpawnPoint fallback = CloneSpawnPoint(source);
+            fallback.IsObjectiveTarget = true;
+            fallback.HealthMultiplier = Math.Max(fallback.HealthMultiplier, GameConfig.KeyTargetHealthMultiplier);
+            fallback.ScaleMultiplier = Math.Max(fallback.ScaleMultiplier, GameConfig.KeyTargetScaleMultiplier);
+            fallback.DisplayName = string.IsNullOrWhiteSpace(fallback.DisplayName) ? "Key Target" : fallback.DisplayName;
+
+            PointF[] fallbackPositions =
+            {
+                new PointF(room.Bounds.Left + room.Bounds.Width * 0.5f, room.Bounds.Top + room.Bounds.Height * 0.5f),
+                new PointF(room.Bounds.Left + 2.5f, room.Bounds.Top + 2.5f),
+                new PointF(room.Bounds.Right - 2.5f, room.Bounds.Top + 2.5f),
+                new PointF(room.Bounds.Left + 2.5f, room.Bounds.Bottom - 2.5f),
+                new PointF(room.Bounds.Right - 2.5f, room.Bounds.Bottom - 2.5f)
+            };
+
+            for (int i = 0; i < fallbackPositions.Length; i++)
+            {
+                fallback.X = fallbackPositions[i].X;
+                fallback.Y = fallbackPositions[i].Y;
+                if (TrySpawnStageEnemy(list, room, fallback, playerPosition, collision, allowNearPlayer: true))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static StageSpawnPoint FindObjectiveTargetSpawn(StageRoom room)
+        {
+            StageSpawnPoint[] spawns = room?.Blueprint.Spawns;
+            if (spawns == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < spawns.Length; i++)
+            {
+                if (spawns[i]?.IsObjectiveTarget == true)
+                {
+                    return spawns[i];
+                }
+            }
+
+            return null;
+        }
+
+        private static StageSpawnPoint FindFirstSpawn(StageRoom room)
+        {
+            StageSpawnPoint[] spawns = room?.Blueprint.Spawns;
+            if (spawns == null || spawns.Length == 0)
+            {
+                return null;
+            }
+
+            return spawns[0];
+        }
+
+        private static StageSpawnPoint CloneSpawnPoint(StageSpawnPoint source)
+        {
+            return new StageSpawnPoint
+            {
+                EnemyAssetId = source.EnemyAssetId,
+                Type = source.Type,
+                Rank = source.Rank,
+                BehaviorPattern = source.BehaviorPattern,
+                BehaviorPatternPool = source.BehaviorPatternPool == null ? null : (EnemyBehaviorPattern[])source.BehaviorPatternPool.Clone(),
+                X = source.X,
+                Y = source.Y,
+                HealthMultiplier = source.HealthMultiplier,
+                DamageMultiplier = source.DamageMultiplier,
+                MoveSpeedMultiplier = source.MoveSpeedMultiplier,
+                AttackRangeMultiplier = source.AttackRangeMultiplier,
+                ScaleMultiplier = source.ScaleMultiplier,
+                IsBoss = source.IsBoss,
+                DisplayName = source.DisplayName,
+                SpriteVariantKey = source.SpriteVariantKey,
+                IsObjectiveTarget = source.IsObjectiveTarget
+            };
+        }
+
+        public void ClearActiveEncounter()
+        {
+            enemies = Array.Empty<Enemy>();
+            enemyProjectiles.Clear();
+            playerSoundStimuli.Clear();
+            cachedBossEnemy = null;
         }
 
         private void UpdatePlayerSoundStimuli(float dt)

@@ -74,7 +74,10 @@ namespace My2DEngine.Game.Map
                 IsBossRoom = template.IsBossRoom,
                 IsMiniBossRoom = template.IsMiniBossRoom,
                 IsRestRoom = template.IsRestRoom,
-                LayoutVariant = template.LayoutVariant
+                LayoutVariant = template.LayoutVariant,
+                ObjectiveKind = template.ObjectiveKind,
+                ObjectiveDuration = template.ObjectiveDuration,
+                HazardKind = template.HazardKind
             };
 
             // 4. 레이아웃 구조물 배치 (EnsureRoomTraversal이 북쪽 벽을 비울 수 있으므로 먼저 실행)
@@ -138,7 +141,8 @@ namespace My2DEngine.Game.Map
                         ScaleMultiplier = s.ScaleMultiplier,
                         IsBoss = s.IsBoss,
                         DisplayName = s.DisplayName,
-                        SpriteVariantKey = s.SpriteVariantKey
+                        SpriteVariantKey = s.SpriteVariantKey,
+                        IsObjectiveTarget = s.IsObjectiveTarget
                     };
                 }
 

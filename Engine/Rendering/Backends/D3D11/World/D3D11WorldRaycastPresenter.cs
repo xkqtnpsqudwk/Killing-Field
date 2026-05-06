@@ -68,6 +68,9 @@ cbuffer WorldConstants : register(b0)
     float NearPlaneSoftness;
     float FloorBlend;
     float FogDensity;
+    float4 FogColor;
+    float FogTintStrength;
+    float3 FogPadding;
     float4 FloorColor;
     float4 CeilingColor;
     int CeilingTextureIndex;
@@ -87,6 +90,13 @@ float GetFogFactor(float distanceValue)
 {
     float fog = 1.0 / (1.0 + distanceValue * FogDensity);
     return max(0.2, fog);
+}
+
+float3 ApplyFog(float3 sourceColor, float fog)
+{
+    float3 dimmed = sourceColor * fog;
+    float mist = saturate((1.0 - fog) * FogTintStrength);
+    return lerp(dimmed, FogColor.rgb, mist);
 }
 
 float GetRenderDistance(float wallDistance)
@@ -137,7 +147,7 @@ float4 ComputeFloorOrCeiling(float screenX, float screenY)
         if (UseTexturedCeiling == 0)
         {
             float4 flatCeiling = CeilingColor;
-            flatCeiling.rgb *= fog;
+            flatCeiling.rgb = ApplyFog(flatCeiling.rgb, fog);
             flatCeiling.a = 1.0;
             return flatCeiling;
         }
@@ -148,7 +158,7 @@ float4 ComputeFloorOrCeiling(float screenX, float screenY)
         float2 fracPosC = frac(ceilPos);
         float4 sampledCeiling = SampleWallColor(CeilingTextureIndex, (int)(fracPosC.x * TextureSize), (int)(fracPosC.y * TextureSize));
         float4 blendedCeiling = lerp(sampledCeiling, CeilingColor, CeilingBlend);
-        blendedCeiling.rgb *= fog;
+        blendedCeiling.rgb = ApplyFog(blendedCeiling.rgb, fog);
         blendedCeiling.a = 1.0;
         return blendedCeiling;
     }
@@ -160,7 +170,7 @@ float4 ComputeFloorOrCeiling(float screenX, float screenY)
     if (UseTexturedFloor == 0)
     {
         float4 flatFloor = FloorColor;
-        flatFloor.rgb *= fog;
+        flatFloor.rgb = ApplyFog(flatFloor.rgb, fog);
         flatFloor.a = 1.0;
         return flatFloor;
     }
@@ -171,7 +181,7 @@ float4 ComputeFloorOrCeiling(float screenX, float screenY)
     float2 fracPos = frac(floorPos);
     float4 sampledFloor = SampleWallColor(FloorTextureIndex, (int)(fracPos.x * TextureSize), (int)(fracPos.y * TextureSize));
     float4 blendedFloor = lerp(sampledFloor, FloorColor, FloorBlend);
-    blendedFloor.rgb *= fog;
+    blendedFloor.rgb = ApplyFog(blendedFloor.rgb, fog);
     blendedFloor.a = 1.0;
     return blendedFloor;
 }
@@ -208,7 +218,7 @@ float4 PSMain(float4 position : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET
             int texY = clamp((int)(texPos * TextureSize), 0, TextureSize - 1);
 
             float4 color = SampleWallColor(FloorTextureIndex, texX, texY);
-            color.rgb *= GetFogFactor(stepDepth);
+            color.rgb = ApplyFog(color.rgb, GetFogFactor(stepDepth));
             color.a = 1.0;
             return color;
         }
@@ -226,7 +236,7 @@ float4 PSMain(float4 position : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET
                 int ftx = clamp((int)(fracPos.x * TextureSize), 0, TextureSize - 1);
                 int fty = clamp((int)(fracPos.y * TextureSize), 0, TextureSize - 1);
                 float4 color = SampleWallColor(FloorTextureIndex, ftx, fty);
-                color.rgb *= GetFogFactor(rowDist);
+                color.rgb = ApplyFog(color.rgb, GetFogFactor(rowDist));
                 color.a = 1.0;
                 return color;
             }
@@ -273,7 +283,7 @@ float4 PSMain(float4 position : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET
         color.rgb *= 0.7;
     }
 
-    color.rgb *= GetFogFactor(depth);
+    color.rgb = ApplyFog(color.rgb, GetFogFactor(depth));
     color.a = 1.0;
     return color;
 }";
@@ -353,6 +363,22 @@ float4 PSMain(float4 position : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET
             public float FloorBlend;
             /// <summary>거리에 따른 안개(Fog) 감쇠 밀도다. 값이 클수록 안개가 짙다.</summary>
             public float FogDensity;
+            /// <summary>거리 안개에 섞을 색상의 R 채널 값이다(0~1 범위).</summary>
+            public float FogColorR;
+            /// <summary>거리 안개에 섞을 색상의 G 채널 값이다(0~1 범위).</summary>
+            public float FogColorG;
+            /// <summary>거리 안개에 섞을 색상의 B 채널 값이다(0~1 범위).</summary>
+            public float FogColorB;
+            /// <summary>거리 안개에 섞을 색상의 A 채널 값이다(0~1 범위).</summary>
+            public float FogColorA;
+            /// <summary>거리 안개 색상 블렌딩 강도다.</summary>
+            public float FogTintStrength;
+            /// <summary>16바이트 정렬을 맞추기 위한 패딩 필드다.</summary>
+            public float FogPadding0;
+            /// <summary>16바이트 정렬을 맞추기 위한 패딩 필드다.</summary>
+            public float FogPadding1;
+            /// <summary>16바이트 정렬을 맞추기 위한 패딩 필드다.</summary>
+            public float FogPadding2;
             /// <summary>단색 바닥 색상의 R 채널 값이다(0~1 범위).</summary>
             public float FloorColorR;
             /// <summary>단색 바닥 색상의 G 채널 값이다(0~1 범위).</summary>
@@ -859,6 +885,14 @@ float4 PSMain(float4 position : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET
                 NearPlaneSoftness = command.NearPlaneSoftness,
                 FloorBlend = command.FloorBlend,
                 FogDensity = command.FogDensity,
+                FogColorR = command.FogColor.R / 255f,
+                FogColorG = command.FogColor.G / 255f,
+                FogColorB = command.FogColor.B / 255f,
+                FogColorA = command.FogColor.A / 255f,
+                FogTintStrength = command.FogTintStrength,
+                FogPadding0 = 0f,
+                FogPadding1 = 0f,
+                FogPadding2 = 0f,
                 FloorColorR = command.FloorColor.R / 255f,
                 FloorColorG = command.FloorColor.G / 255f,
                 FloorColorB = command.FloorColor.B / 255f,

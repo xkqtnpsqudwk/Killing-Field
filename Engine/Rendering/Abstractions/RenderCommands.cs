@@ -274,6 +274,10 @@ namespace My2DEngine.Engine.Rendering.Abstractions
         public float FloorBlend;
         /// <summary>거리 안개 밀도. 클수록 멀리 있는 물체가 빠르게 안개에 가려진다.</summary>
         public float FogDensity;
+        /// <summary>거리 안개가 섞일 색상. FogTintStrength가 0이면 사용되지 않는다.</summary>
+        public Color FogColor;
+        /// <summary>거리 안개 색상 블렌딩 강도. 0이면 기존 검은 거리 감쇠만 사용한다.</summary>
+        public float FogTintStrength;
         /// <summary>바닥 단색. UseTexturedFloor=false 또는 FloorBlend&lt;1일 때 사용된다.</summary>
         public Color FloorColor;
         /// <summary>천장 단색.</summary>

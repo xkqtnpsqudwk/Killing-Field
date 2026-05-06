@@ -3,6 +3,7 @@ using My2DEngine.Game.Config;
 using My2DEngine.Game.Core;
 using My2DEngine.Game.Rendering;
 using My2DEngine.Game;
+using My2DEngine.Game.Map;
 
 namespace My2DEngine.SmokeTests
 {
@@ -32,6 +33,8 @@ namespace My2DEngine.SmokeTests
                 RunRoguelikeStartSmokeCheck(GameLogic.DifficultyPreset.Easy, "roguelike start easy");
                 RunRoguelikeStartSmokeCheck(GameLogic.DifficultyPreset.Normal, "roguelike start normal");
                 RunRoguelikeStartSmokeCheck(GameLogic.DifficultyPreset.Hard, "roguelike start hard");
+                RunRoomObjectiveTemplateSmokeCheck();
+                RunAutoCannonProjectileSmokeCheck();
                 Console.WriteLine("Smoke checks passed.");
                 return 0;
             }
@@ -133,6 +136,125 @@ namespace My2DEngine.SmokeTests
             if (actualDoorCount != expectedDoorCount)
             {
                 throw new InvalidOperationException("Smoke check failed for " + scenarioName + ": expected " + expectedDoorCount + " doors, got " + actualDoorCount + ".");
+            }
+        }
+
+        /// <summary>
+        /// 로그라이크 전투 템플릿 풀에 생존/열쇠/위험 방이 실제로 포함되는지 검증한다.
+        /// </summary>
+        private static void RunRoomObjectiveTemplateSmokeCheck()
+        {
+            var rng = new Random(3817);
+            bool sawSurvival = false;
+            bool sawKeyTarget = false;
+            bool sawToxicMist = false;
+            bool sawSupplyShortage = false;
+
+            for (int i = 0; i < 600; i++)
+            {
+                RoomTemplate template = RoomTemplateLibrary.SelectForFloor(5 + i % 12, rng, bossClearGrowthCount: 1);
+                if (template.IsRestRoom || template.IsBossRoom)
+                {
+                    continue;
+                }
+
+                if (template.ObjectiveKind == RoomObjectiveKind.Survive)
+                {
+                    sawSurvival = true;
+                    if (template.ObjectiveDuration <= 0f)
+                    {
+                        throw new InvalidOperationException("Smoke check failed for room objectives: survival room has no duration.");
+                    }
+                }
+
+                if (template.ObjectiveKind == RoomObjectiveKind.KeyTarget)
+                {
+                    sawKeyTarget = true;
+                    if (!HasObjectiveTargetSpawn(template.Spawns))
+                    {
+                        throw new InvalidOperationException("Smoke check failed for room objectives: key room has no key target spawn.");
+                    }
+                }
+
+                if (template.HazardKind == RoomHazardKind.ToxicMist)
+                {
+                    sawToxicMist = true;
+                }
+
+                if (template.HazardKind == RoomHazardKind.SupplyShortage)
+                {
+                    sawSupplyShortage = true;
+                }
+            }
+
+            if (!sawSurvival || !sawKeyTarget || !sawToxicMist || !sawSupplyShortage)
+            {
+                throw new InvalidOperationException(
+                    "Smoke check failed for room objectives: expected survival, key target, toxic mist, and supply shortage rooms in generated templates.");
+            }
+
+            for (int i = 0; i < 80; i++)
+            {
+                RoomTemplate template = RoomTemplateLibrary.SelectForFloor(5 + i % 12, rng, bossClearGrowthCount: 1, allowRestRoom: false);
+                if (template.IsRestRoom)
+                {
+                    throw new InvalidOperationException("Smoke check failed for room objectives: rest room was selected while rest rooms were disallowed.");
+                }
+            }
+        }
+
+        private static bool HasObjectiveTargetSpawn(StageSpawnPoint[] spawns)
+        {
+            if (spawns == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < spawns.Length; i++)
+            {
+                if (spawns[i]?.IsObjectiveTarget == true)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// AutoCannon 기본 발사가 즉발 폭발이 아니라 플레이어 로켓 투사체를 생성하는지 검증한다.
+        /// </summary>
+        private static void RunAutoCannonProjectileSmokeCheck()
+        {
+            var world = new GameLogic();
+            world.StartRoguelikeRun();
+            world.SwitchWeapon(WeaponType.AutoCannon);
+            world.FireButtonDown();
+            world.Update();
+
+            GameLogicSmokeSnapshot snapshot = world.CreateSmokeSnapshot();
+            if (snapshot.PlayerProjectileCount != 1)
+            {
+                throw new InvalidOperationException(
+                    "Smoke check failed for autocannon projectile: expected 1 player projectile, got " +
+                    snapshot.PlayerProjectileCount + ".");
+            }
+
+            if (snapshot.FirstPlayerProjectileKind != EnemyProjectileKind.PlayerRocket)
+            {
+                throw new InvalidOperationException(
+                    "Smoke check failed for autocannon projectile: expected PlayerRocket, got " +
+                    snapshot.FirstPlayerProjectileKind + ".");
+            }
+
+            if (snapshot.FirstPlayerProjectileSpeedSquared <= 0f)
+            {
+                throw new InvalidOperationException("Smoke check failed for autocannon projectile: rocket velocity is zero.");
+            }
+
+            if (snapshot.FirstPlayerProjectileExplosionRadius <= GameConfig.RocketProjectileRadius)
+            {
+                throw new InvalidOperationException("Smoke check failed for autocannon projectile: explosion radius was not set.");
             }
         }
 

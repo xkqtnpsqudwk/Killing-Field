@@ -682,6 +682,14 @@ namespace My2DEngine.Game.Systems
                 enemy.MoveDirY = blendedY;
             }
 
+            if (enemy.HitReactTimer > 0f)
+            {
+                float hitReactSpeed = enemy.IsBoss
+                    ? GameConfig.BossHitReactMoveMultiplier
+                    : GameConfig.EnemyHitReactMoveMultiplier;
+                speed *= Math.Max(0.05f, hitReactSpeed);
+            }
+
             float step = speed * dt;
             float oldX = enemy.X;
             float oldY = enemy.Y;

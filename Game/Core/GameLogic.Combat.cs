@@ -9,14 +9,20 @@ namespace My2DEngine.Game.Core
     /// 발사 확정, 적 피격 판정, 플레이어 피격 이벤트 처리를 담당한다.
     ///
     /// 무기별 발사 방식:
-    ///   Pistol         - 단발 / 단일 타겟
-    ///   ShotGun        - 단발 / 다중 탄환(PelletCount개) / 넓은 퍼짐
-    ///   LMG            - 연사 / 단일 타겟 (Update에서 PendingShot 반복 세팅)
-    ///   RocketLauncher - 단발 / 즉발 고폭탄 / 착탄 지점 범위 폭발
-    ///   PlazmaGun      - 홀드 연사 / 단일 타겟
+    ///   AMPistol       - 단발 / 단일 타겟
+    ///   BearKiller     - 단발 / 다중 탄환(PelletCount개) / 넓은 퍼짐
+    ///   HChainGun      - 연사 / 단일 타겟 (Update에서 PendingShot 반복 세팅)
+    ///   AutoCannon     - 단발 / 플레이어 로켓 투사체 / 충돌 지점 범위 폭발
+    ///   DuelBerettas   - 홀드 연사 / 단일 타겟
     /// </summary>
     public partial class GameLogic
     {
+        private const float HitMarkerDuration = 0.16f;
+        private const float KillMarkerDuration = 0.34f;
+        private const float WeaponStatusDuration = 0.72f;
+        private const float WeaponStatusRepeatDelay = 0.24f;
+        private const float PickupToastDuration = 1.35f;
+
         /// <summary>
         /// 보류 중인 발사 요청을 실제 탄 소비·판정·반동·사운드·적 피격으로 확정한다.
         /// </summary>
@@ -36,6 +42,7 @@ namespace My2DEngine.Game.Core
 
             if (!weapon.CanFire())
             {
+                RegisterWeaponBlockedFeedback(force: true);
                 return;
             }
 
@@ -84,13 +91,13 @@ namespace My2DEngine.Game.Core
         // ─── 발사 방식별 구현 ─────────────────────────────────────────────
 
         /// <summary>
-        /// 단일 타겟 사격 (Pistol / LMG / Dual 92s 슬롯 공용).
+        /// 단일 타겟 사격 (AMPistol / HChainGun / DuelBerettas 공용).
         /// 시야각 콘 안의 가장 가까운 적에게 damage를 적용한다.
         /// </summary>
         private void FireSingleShot(float damage)
         {
             Enemy target = FindBestTarget(weapon.SpreadRadius, weapon.Range);
-            target?.TakeDamage(damage);
+            DamageEnemy(target, damage);
         }
 
         /// <summary>
@@ -117,26 +124,20 @@ namespace My2DEngine.Game.Core
                 if (target != null)
                 {
                     float pelletDamage = weapon.CurrentDamage * GetShotGunDamageMultiplier(hitDistance);
-                    target.TakeDamage(pelletDamage);
+                    DamageEnemy(target, pelletDamage);
                     pelletsLeft--;
                 }
             }
         }
 
         /// <summary>
-        /// Auto Cannon 즉발 포탄을 발사한다.
-        /// 전방의 가장 가까운 적을 즉시 타격하고 착탄 지점 주변에 범위 피해를 준다.
+        /// Auto Cannon 로켓을 플레이어 전방으로 발사한다.
+        /// 이동, 벽/적 충돌, 폭발 피해는 GameLogic.Projectiles에서 처리한다.
         /// </summary>
         private void FireAutoCannonShell()
         {
-            Enemy primaryTarget = FindBestTarget(weapon.SpreadRadius, weapon.Range);
-            if (primaryTarget == null)
-            {
-                return;
-            }
-
-            ApplyExplosionDamage(primaryTarget.X, primaryTarget.Y, weapon.CurrentDamage, weapon.SplashRadius);
-            EmitEnemyAlertSound(primaryTarget.X, primaryTarget.Y, 14f);
+            SpawnPlayerRocket(weapon.CurrentDamage, weapon.SplashRadius);
+            EmitEnemyAlertSound(player.Position.X, player.Position.Y, 14f, player.Direction.X, player.Direction.Y);
         }
 
         private void ApplyExplosionDamage(float centerX, float centerY, float damage, float radius)
@@ -178,8 +179,106 @@ namespace My2DEngine.Game.Core
                     falloff = 0.45f;
                 }
 
-                enemy.TakeDamage(damage * falloff);
+                DamageEnemy(enemy, damage * falloff);
             }
+        }
+
+        /// <summary>적에게 플레이어 피해를 적용하고 명중/처치 피드백을 기록한다.</summary>
+        private void DamageEnemy(Enemy enemy, float damage)
+        {
+            if (enemy == null || damage <= 0f || !enemy.Alive)
+            {
+                return;
+            }
+
+            enemy.TakeDamage(damage);
+            RegisterEnemyHitFeedback(!enemy.Alive);
+        }
+
+        /// <summary>명중이면 흰색 히트마커, 처치이면 강화 히트마커가 표시되도록 타이머를 갱신한다.</summary>
+        private void RegisterEnemyHitFeedback(bool killed)
+        {
+            hitMarkerTimer = Math.Max(hitMarkerTimer, HitMarkerDuration);
+            if (killed)
+            {
+                killMarkerTimer = KillMarkerDuration;
+            }
+        }
+
+        private float GetHitMarkerAlpha()
+        {
+            return HitMarkerDuration <= 0f ? 0f : Math.Min(1f, hitMarkerTimer / HitMarkerDuration);
+        }
+
+        private float GetKillMarkerAlpha()
+        {
+            return KillMarkerDuration <= 0f ? 0f : Math.Min(1f, killMarkerTimer / KillMarkerDuration);
+        }
+
+        /// <summary>발사 입력이 탄약 또는 쿨다운 때문에 막혔을 때 HUD 상태 문구를 등록한다.</summary>
+        private void RegisterWeaponBlockedFeedback(bool force = false)
+        {
+            string text = BuildWeaponBlockedText();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return;
+            }
+
+            if (!force && weaponStatusRepeatGate > 0f && string.Equals(weaponStatusText, text, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            weaponStatusText = text;
+            weaponStatusTimer = WeaponStatusDuration;
+            weaponStatusRepeatGate = WeaponStatusRepeatDelay;
+        }
+
+        private string BuildWeaponBlockedText()
+        {
+            if (weapon.CurrentAmmo <= 0)
+            {
+                return "NO AMMO";
+            }
+
+            if (weapon.ShotCooldown > 0.05f)
+            {
+                return "READY " + weapon.ShotCooldown.ToString("0.0") + "s";
+            }
+
+            return null;
+        }
+
+        private float GetWeaponStatusAlpha()
+        {
+            if (weaponStatusTimer <= 0f)
+            {
+                return 0f;
+            }
+
+            return Math.Min(1f, weaponStatusTimer / 0.18f);
+        }
+
+        /// <summary>보상 드롭/획득 토스트를 등록한다.</summary>
+        private void RegisterPickupToast(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return;
+            }
+
+            pickupToastText = text;
+            pickupToastTimer = PickupToastDuration;
+        }
+
+        private float GetPickupToastAlpha()
+        {
+            if (pickupToastTimer <= 0f)
+            {
+                return 0f;
+            }
+
+            return Math.Min(1f, pickupToastTimer / 0.24f);
         }
 
         // ─── 타겟 탐색 헬퍼 ───────────────────────────────────────────────

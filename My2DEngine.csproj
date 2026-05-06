@@ -33,6 +33,9 @@
     <Compile Remove="Properties\Settings.Designer.cs" />
     <None Include="Properties\Settings.settings" />
     <EmbeddedResource Remove="Properties\Settings.settings" />
+    <!-- Partial Form1 files do not own designer resources; including these causes duplicate Form1 resource output. -->
+    <EmbeddedResource Remove="Form1.DebugHud.resx" />
+    <EmbeddedResource Remove="Form1.Input.resx" />
   </ItemGroup>
 
   <ItemGroup>

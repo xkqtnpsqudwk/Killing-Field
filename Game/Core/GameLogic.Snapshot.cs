@@ -31,6 +31,18 @@ namespace My2DEngine.Game.Core
 
         /// <summary>스냅샷 생성 시점의 플레이어 시야각(도).</summary>
         public float PlayerFovDegrees { get; set; }
+
+        /// <summary>스냅샷 생성 시점의 활성 플레이어 투사체 수.</summary>
+        public int PlayerProjectileCount { get; set; }
+
+        /// <summary>첫 활성 플레이어 투사체의 종류. 투사체가 없으면 기본값이다.</summary>
+        public EnemyProjectileKind FirstPlayerProjectileKind { get; set; }
+
+        /// <summary>첫 활성 플레이어 투사체의 속도 제곱. 투사체가 없으면 0이다.</summary>
+        public float FirstPlayerProjectileSpeedSquared { get; set; }
+
+        /// <summary>첫 활성 플레이어 투사체의 폭발 반경. 투사체가 없으면 0이다.</summary>
+        public float FirstPlayerProjectileExplosionRadius { get; set; }
     }
 
     /// <summary>
@@ -47,7 +59,7 @@ namespace My2DEngine.Game.Core
         /// <returns>현재 상태를 담은 <see cref="GameLogicSmokeSnapshot"/> 인스턴스.</returns>
         internal GameLogicSmokeSnapshot CreateSmokeSnapshot()
         {
-            return new GameLogicSmokeSnapshot
+            GameLogicSmokeSnapshot snapshot = new GameLogicSmokeSnapshot
             {
                 Map = mapManager.Map,
                 CollisionInitialized = collision != null,
@@ -56,8 +68,24 @@ namespace My2DEngine.Game.Core
                 StageRoomCount = mapManager.StageRooms == null ? 0 : mapManager.StageRooms.Length,
                 PlayerPosition = player.Position,
                 PlayerDirection = player.Direction,
-                PlayerFovDegrees = player.FovDegrees
+                PlayerFovDegrees = player.FovDegrees,
+                PlayerProjectileCount = playerProjectiles == null ? 0 : playerProjectiles.Count
             };
+
+            if (playerProjectiles != null && playerProjectiles.Count > 0)
+            {
+                EnemyProjectile projectile = playerProjectiles[0];
+                if (projectile != null)
+                {
+                    snapshot.FirstPlayerProjectileKind = projectile.Kind;
+                    snapshot.FirstPlayerProjectileSpeedSquared =
+                        (projectile.VelocityX * projectile.VelocityX) +
+                        (projectile.VelocityY * projectile.VelocityY);
+                    snapshot.FirstPlayerProjectileExplosionRadius = projectile.ExplosionRadius;
+                }
+            }
+
+            return snapshot;
         }
     }
 }

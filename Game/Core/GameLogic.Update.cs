@@ -51,6 +51,7 @@ namespace My2DEngine.Game.Core
             UpdateStageMessage(dt);
             UpdateBossIntroTimer(dt);
             UpdatePlayerDamageFlash(dt);
+            UpdateCombatFeedback(dt);
             UpdateDeathPresentation(dt);
             UpdateEndingSequence(dt);
 
@@ -105,7 +106,7 @@ namespace My2DEngine.Game.Core
             HandlePendingShot();
             UpdateSpecialAbilities(dt);
             CollectRewardPickups();
-            UpdateStageProgression();
+            UpdateStageProgression(dt);
             UpdateBackgroundMusicState(dt);
             UpdateInteractPrompt();
         }
@@ -252,6 +253,25 @@ namespace My2DEngine.Game.Core
             }
         }
 
+        /// <summary>플레이어 공격 피드백 타이머를 프레임마다 감소시킨다.</summary>
+        private void UpdateCombatFeedback(float dt)
+        {
+            hitMarkerTimer = Math.Max(0f, hitMarkerTimer - dt);
+            killMarkerTimer = Math.Max(0f, killMarkerTimer - dt);
+            weaponStatusTimer = Math.Max(0f, weaponStatusTimer - dt);
+            weaponStatusRepeatGate = Math.Max(0f, weaponStatusRepeatGate - dt);
+            if (weaponStatusTimer <= 0f)
+            {
+                weaponStatusText = null;
+            }
+
+            pickupToastTimer = Math.Max(0f, pickupToastTimer - dt);
+            if (pickupToastTimer <= 0f)
+            {
+                pickupToastText = null;
+            }
+        }
+
         /// <summary>
         /// 사망 연출 진행도(<see cref="deathPresentationProgress"/>)를 매 프레임 갱신한다.
         /// 사망 상태가 아니면 즉시 0으로 초기화하고, 사망 상태면 1.25초에 걸쳐 0에서 1로 증가한다.
@@ -342,6 +362,7 @@ namespace My2DEngine.Game.Core
                 {
                     StopLmgFireLoop();
                 }
+                RegisterWeaponBlockedFeedback();
                 return;
             }
 

@@ -43,6 +43,9 @@ namespace My2DEngine.Game.Core
         /// <summary>카드 UI를 연 후 다음 층이 보스인지 여부. 완료 후 분기/E키 처리에 사용.</summary>
         private bool cardRewardNextFloorIsBoss;
 
+        /// <summary>이번 카드 보상에서 스탯 카드 등급을 올릴 단계 수.</summary>
+        private int cardRewardGradeBoost;
+
         /// <summary>현재 제시 중인 카드 3장. null이면 해당 슬롯 비어 있음.</summary>
         private readonly RewardCardOffer[] currentCardOffers = new RewardCardOffer[3];
 
@@ -79,10 +82,11 @@ namespace My2DEngine.Game.Core
         /// </summary>
         /// <param name="wasBossRoom">방금 클리어한 방이 보스 방이었는지.</param>
         /// <param name="nextFloorIsBoss">다음 층이 보스 층(% 20 == 0)인지.</param>
-        private void ShowCardReward(bool wasBossRoom, bool nextFloorIsBoss)
+        private void ShowCardReward(bool wasBossRoom, bool nextFloorIsBoss, int gradeBoost = 0)
         {
             cardRewardWasBossRoom = wasBossRoom;
             cardRewardNextFloorIsBoss = nextFloorIsBoss;
+            cardRewardGradeBoost = Math.Max(0, gradeBoost);
             currentCardOffers[0] = null;
             currentCardOffers[1] = null;
             currentCardOffers[2] = null;
@@ -183,6 +187,7 @@ namespace My2DEngine.Game.Core
             CardGrade offerGrade = availableGrades.Count > 0
                 ? RollStatOfferGrade(availableGrades)
                 : RollStatOfferGrade();
+            offerGrade = ApplyCardRewardGradeBoost(offerGrade, cardRewardGradeBoost, availableGrades);
 
             List<StatType> gradeCandidates = BuildAvailableStatOfferPoolForGrade(candidates, offerGrade, usedStatOfferKeys);
             if (gradeCandidates.Count <= 0)
@@ -200,6 +205,37 @@ namespace My2DEngine.Game.Core
                 Grade = offerGrade,
                 StatBonusValue = actualBonus
             };
+        }
+
+        private static CardGrade ApplyCardRewardGradeBoost(CardGrade grade, int boost, ICollection<CardGrade> allowedGrades)
+        {
+            if (boost <= 0 || (int)grade >= (int)CardGrade.Red)
+            {
+                return grade;
+            }
+
+            CardGrade result = grade;
+            for (int i = 0; i < boost && (int)result < (int)CardGrade.Red; i++)
+            {
+                CardGrade desired = (CardGrade)((int)result + 1);
+                if (allowedGrades == null || allowedGrades.Contains(desired))
+                {
+                    result = desired;
+                    continue;
+                }
+
+                for (int g = (int)desired + 1; g <= (int)CardGrade.Red; g++)
+                {
+                    CardGrade candidate = (CardGrade)g;
+                    if (allowedGrades.Contains(candidate))
+                    {
+                        result = candidate;
+                        break;
+                    }
+                }
+            }
+
+            return result;
         }
 
         private static void TrackStatOfferKey(RewardCardOffer offer, ISet<int> usedStatOfferKeys)
@@ -539,8 +575,6 @@ namespace My2DEngine.Game.Core
 
             weapon.PendingShot = false;
             weapon.FireButtonHeld = false;
-            weapon.PendingChargeFire = false;
-            weapon.CancelCharge();
             StopLoopingWeaponEffects();
             interactPromptText = null;
 
@@ -600,26 +634,10 @@ namespace My2DEngine.Game.Core
         /// <summary>마우스 자유 입력이 필요한 오버레이 UI가 열려 있는지 여부.</summary>
         public bool MouseSelectableOverlayActive => cardRewardActive || branchSelectionActive || permanentStatsUiActive;
 
-        /// <summary>카드 선택 대기 중 화면 상단 중앙에 스테이지 클리어 배너를 그린다.</summary>
+        /// <summary>카드 선택 대기 중 별도 상단 클리어 배너는 표시하지 않는다.</summary>
         private void DrawPendingCardRewardReveal(Renderer r)
         {
-            if (!CardRewardRevealPending || cardRewardActive)
-            {
-                return;
-            }
-
-            float fw = GameConfig.GpuWorldMaxRenderWidth;
-            float fh = GameConfig.GpuWorldMaxRenderHeight;
-            float panelW = 300f;
-            float panelH = 56f;
-            float panelX = (fw - panelW) * 0.5f;
-            float panelY = fh * 0.17f;
-
-            r.DrawRectangle(panelX, panelY, panelW, panelH, Color.FromArgb(170, 0, 0, 0));
-            r.DrawRectangle(panelX, panelY, panelW, 1f, Color.FromArgb(210, 255, 210, 125));
-            r.DrawRectangle(panelX, panelY + panelH - 1f, panelW, 1f, Color.FromArgb(210, 255, 210, 125));
-            r.DrawTextCenteredShadow("스테이지 클리어", fw * 0.5f, panelY + panelH * 0.5f,
-                Color.FromArgb(255, 255, 220, 130), 20f);
+            return;
         }
 
         private void ConfirmCardSelection(int index)
@@ -718,6 +736,7 @@ namespace My2DEngine.Game.Core
             cardRewardRevealTimer = 0f;
             cardRewardWasBossRoom = false;
             cardRewardNextFloorIsBoss = false;
+            cardRewardGradeBoost = 0;
             currentCardOffers[0] = null;
             currentCardOffers[1] = null;
             currentCardOffers[2] = null;

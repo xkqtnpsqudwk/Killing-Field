@@ -12,6 +12,65 @@ namespace My2DEngine.Game.Core
         private const float TrackingRocketRetargetRange = 12f;
 
         /// <summary>
+        /// 플레이어 전방으로 Auto Cannon 로켓 투사체를 생성한다.
+        /// </summary>
+        private void SpawnPlayerRocket(float damage, float splashRadius)
+        {
+            float dirX = player.Direction.X;
+            float dirY = player.Direction.Y;
+            float dirLength = (float)Math.Sqrt((dirX * dirX) + (dirY * dirY));
+            if (dirLength <= 0.001f)
+            {
+                return;
+            }
+
+            dirX /= dirLength;
+            dirY /= dirLength;
+
+            float radius = GameConfig.RocketProjectileRadius;
+            FindRocketSpawnPosition(dirX, dirY, radius, out float startX, out float startY);
+
+            float speed = Math.Max(0.1f, GameConfig.RocketProjectileSpeed);
+            playerProjectiles.Add(new EnemyProjectile
+            {
+                Kind = EnemyProjectileKind.PlayerRocket,
+                X = startX,
+                Y = startY,
+                VelocityX = dirX * speed,
+                VelocityY = dirY * speed,
+                Radius = radius,
+                ExplosionRadius = Math.Max(radius, splashRadius),
+                Damage = damage,
+                Lifetime = Math.Min(GameConfig.RocketProjectileLifetime, weapon.Range / speed),
+                Active = true
+            });
+
+            UpdateRocketFlyLoop();
+        }
+
+        /// <summary>
+        /// 로켓이 플레이어 몸이나 벽에 겹쳐 시작하지 않도록 전방 후보 위치를 고른다.
+        /// </summary>
+        private void FindRocketSpawnPosition(float dirX, float dirY, float radius, out float startX, out float startY)
+        {
+            float[] offsets = { 0.42f, 0.34f, 0.26f, 0.18f, 0.10f };
+            for (int i = 0; i < offsets.Length; i++)
+            {
+                float candidateX = player.Position.X + (dirX * offsets[i]);
+                float candidateY = player.Position.Y + (dirY * offsets[i]);
+                if (collision == null || !collision.IsWallRadius(candidateX, candidateY, radius, 0.02f))
+                {
+                    startX = candidateX;
+                    startY = candidateY;
+                    return;
+                }
+            }
+
+            startX = player.Position.X;
+            startY = player.Position.Y;
+        }
+
+        /// <summary>
         /// 활성 플레이어 로켓과 폭발 시각 효과를 한 프레임 갱신한다.
         /// </summary>
         /// <param name="dt">이번 프레임의 경과 시간(초).</param>
@@ -265,7 +324,7 @@ namespace My2DEngine.Game.Core
                     }
 
                     float falloff = 1f - ((effectiveDistance / Math.Max(0.001f, splashRadius)) * 0.7f);
-                    enemy.TakeDamage(projectile.Damage * falloff);
+                    DamageEnemy(enemy, projectile.Damage * falloff);
                 }
             }
 

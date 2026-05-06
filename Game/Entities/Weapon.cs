@@ -5,13 +5,12 @@ namespace My2DEngine.Game
 {
     /// <summary>
     /// 플레이어 무기의 상태를 관리하는 객체.
-    /// 5종 무기(Pistol/ShotGun/LMG/RocketLauncher/PlazmaGun)를 하나의 인스턴스로 관리하며,
+    /// 5종 무기(AMPistol/BearKiller/HChainGun/AutoCannon/DuelBerettas)를 하나의 인스턴스로 관리하며,
     /// 무기 전환 시 각 무기의 탄약은 독립적으로 보존된다.
     ///
     /// 발사 방식:
-    ///  - Pistol / ShotGun / RocketLauncher : 단발
-    ///  - LMG                               : 즉시 홀드 연사
-    ///  - PlazmaGun                         : 홀드 연사 (Dual 92s 슬롯)
+    ///  - AMPistol / BearKiller / AutoCannon : 단발
+    ///  - HChainGun / DuelBerettas           : 홀드 연사
     /// </summary>
     public class Weapon
     {
@@ -33,11 +32,8 @@ namespace My2DEngine.Game
         /// <summary>단발 발사 요청 플래그. HandlePendingShot()이 처리 후 false로 초기화.</summary>
         public bool PendingShot { get; set; }
 
-        /// <summary>홀드 연사형 무기(LMG, Dual 92s 슬롯)가 버튼이 눌린 동안 true를 유지한다.</summary>
+        /// <summary>홀드 연사형 무기(HChainGun, DuelBerettas)가 버튼이 눌린 동안 true를 유지한다.</summary>
         public bool FireButtonHeld { get; set; }
-
-        /// <summary>PlazmaGun 전용. 마우스 버튼을 뗐을 때 true. 차지 발사를 HandlePendingShot()에 전달.</summary>
-        public bool PendingChargeFire { get; set; }
 
         // ─── 타이머 ───────────────────────────────────────────────────
         /// <summary>발사 쿨다운 잔여 시간(초).</summary>
@@ -66,15 +62,8 @@ namespace My2DEngine.Game
         /// <summary>ShotGun 전용. 1회 사격 시 발사 탄환 수.</summary>
         public int PelletCount { get; private set; }
 
-        /// <summary>RocketLauncher 전용. 폭발 범위 반지름(타일).</summary>
+        /// <summary>AutoCannon 전용. 폭발 범위 반지름(타일).</summary>
         public float SplashRadius { get; private set; }
-
-        // ─── PlazmaGun 차지샷 ─────────────────────────────────────────
-        /// <summary>PlazmaGun 전용. 현재 차지 진행도 (0=없음, 1=만충전).</summary>
-        public float ChargeLevel { get; private set; }
-
-        /// <summary>PlazmaGun 전용. 현재 충전 중 여부.</summary>
-        public bool IsCharging { get; private set; }
 
         // ─── 스탯 카드 전역 배율 ──────────────────────────────────────
         /// <summary>스탯 카드 '데미지' 보너스 배율 (1.0 = 없음). 모든 무기에 공통 적용.</summary>
@@ -89,8 +78,6 @@ namespace My2DEngine.Game
 
         // ─── 내부 상태 ────────────────────────────────────────────────
         private float currentShotCooldownDuration;
-        /// <summary>PlazmaGun 충전 완료까지 걸리는 시간(초). 업그레이드로 감소한다.</summary>
-        private float currentChargeDuration;
         private float idleAnimationTimer;
 
         // ─── 생성자 ───────────────────────────────────────────────────
@@ -120,9 +107,6 @@ namespace My2DEngine.Game
             WeaponAnimTimer = 0f;
             idleAnimationTimer = 0f;
             FireButtonHeld = false;
-            PendingChargeFire = false;
-            ChargeLevel = 0f;
-            IsCharging = false;
 
             ApplyWeaponStats(WeaponType.AMPistol);
         }
@@ -201,12 +185,9 @@ namespace My2DEngine.Game
 
             PendingShot = false;
             FireButtonHeld = false;
-            PendingChargeFire = false;
             ShotCooldown = 0f;
             MuzzleFlashTimer = 0f;
             WeaponAnimTimer = 0f;
-            ChargeLevel = 0f;
-            IsCharging = false;
             SpecialCooldownTimer = 0f;
             LmgBurstRemaining = 0;
             PlazmaLaserActive = false;
@@ -273,23 +254,17 @@ namespace My2DEngine.Game
             }
         }
 
-        /// <summary>
-        /// 지정한 무기로 전환한다. 기존 발사·장전·차지 상태를 모두 취소한다.
-        /// 각 무기의 탄약은 독립 보존된다.
-        /// </summary>
+        /// <summary>지정한 무기로 전환한다. 기존 발사 상태를 취소하며 각 무기의 탄약은 독립 보존된다.</summary>
         public void SwitchTo(WeaponType type)
         {
             if (type == CurrentType) return;
 
             // 진행 중인 상태 전부 취소
-            IsCharging = false;
-            PendingChargeFire = false;
             FireButtonHeld = false;
             PendingShot = false;
             ShotCooldown = 0f;
             MuzzleFlashTimer = 0f;
             WeaponAnimTimer = 0f;
-            ChargeLevel = 0f;
 
             CurrentType = type;
             ApplyWeaponStats(type);
@@ -302,16 +277,16 @@ namespace My2DEngine.Game
         /// <summary>LMG 버스트 모드 잔여 탄약 수 (0이면 비활성).</summary>
         public int LmgBurstRemaining { get; private set; }
 
-        /// <summary>PlazmaGun 레이저 모드가 현재 활성인지 여부.</summary>
+        /// <summary>DuelBerettas 피버 모드가 현재 활성인지 여부.</summary>
         public bool PlazmaLaserActive { get; private set; }
 
-        /// <summary>보스 전 시작 전 1회용 특수기가 이미 사용됐는지 여부 (LMG·PlazmaGun 전용).</summary>
+        /// <summary>보스 전 시작 전 1회용 특수기가 이미 사용됐는지 여부 (HChainGun·DuelBerettas 전용).</summary>
         public bool SpecialUsedThisFloor { get; private set; }
 
-        /// <summary>Shotgun 갈고리/RocketLauncher 추적 전용 쿨타임 기본값(초).</summary>
+        /// <summary>BearKiller 갈고리/AutoCannon 포격 전용 쿨타임 기본값(초).</summary>
         private const float SpecialCooldownBase = 12f;
 
-        /// <summary>매 프레임 타이머를 갱신한다. PlazmaGun 차지도 여기서 진행된다.</summary>
+        /// <summary>매 프레임 무기 타이머와 특수기 쿨다운을 갱신한다.</summary>
         public void UpdateTimers(float dt)
         {
             if (ShotCooldown > 0f)
@@ -339,13 +314,6 @@ namespace My2DEngine.Game
                 idleAnimationTimer %= idleLoopDuration;
             }
 
-            // PlazmaGun 차지 진행
-            if (IsCharging && CurrentType == WeaponType.DuelBerettas)
-            {
-                float chargeTime = currentChargeDuration > 0f ? currentChargeDuration : GameConfig.PlazmaGunChargeTime;
-                ChargeLevel = Math.Min(1f, ChargeLevel + dt / chargeTime);
-            }
-
             // Red 특수기 쿨다운 감소
             if (SpecialCooldownTimer > 0f)
             {
@@ -362,7 +330,7 @@ namespace My2DEngine.Game
             if (!HasSpecialUpgrade(CurrentType)) return false;
             if (SpecialCooldownTimer > 0f) return false;
 
-            // 1회용 특수기 (LMG, PlazmaGun)
+            // 1회용 특수기 (HChainGun, DuelBerettas)
             if (CurrentType == WeaponType.HChainGun || CurrentType == WeaponType.DuelBerettas)
                 return !SpecialUsedThisFloor;
 
@@ -392,14 +360,14 @@ namespace My2DEngine.Game
             }
         }
 
-        /// <summary>PlazmaGun 레이저 모드를 활성화한다.</summary>
+        /// <summary>DuelBerettas 피버 모드를 활성화한다.</summary>
         public void StartPlazmaLaser()
         {
             PlazmaLaserActive = true;
             SpecialUsedThisFloor = true;
         }
 
-        /// <summary>PlazmaGun 레이저 모드를 비활성화한다.</summary>
+        /// <summary>DuelBerettas 피버 모드를 비활성화한다.</summary>
         public void StopPlazmaLaser()
         {
             PlazmaLaserActive = false;
@@ -447,64 +415,13 @@ namespace My2DEngine.Game
             return AddAmmo(CurrentType, amount);
         }
 
-        /// <summary>PlazmaGun 차지를 시작한다. 다른 무기이거나 발사 불가 상태면 무시.</summary>
-        public bool StartCharge()
-        {
-            if (CurrentType != WeaponType.DuelBerettas) return false;
-            if (CurrentAmmo <= 0) return false;
-            if (IsCharging) return false;
-            IsCharging = true;
-            ChargeLevel = 0f;
-            return true;
-        }
-
-        /// <summary>PlazmaGun 차지를 취소한다 (버튼을 빠르게 뗀 경우 등).</summary>
-        public void CancelCharge()
-        {
-            IsCharging = false;
-            ChargeLevel = 0f;
-            PendingChargeFire = false;
-        }
-
-        /// <summary>
-        /// PlazmaGun 차지 발사를 실행하고 실제 피해량을 반환한다.
-        /// 차지 비율에 따라 MinDamage~MaxDamage 사이의 값이 결정된다.
-        /// 반드시 CanFire()가 true인 상태에서 호출해야 한다.
-        /// </summary>
-        /// <returns>이번 발사의 실제 피해량.</returns>
-        public float FireCharged()
-        {
-            float savedCharge = ChargeLevel;
-            IsCharging = false;
-            ChargeLevel = 0f;
-            PendingChargeFire = false;
-
-            float actualDamage = GameConfig.PlazmaGunMinDamage
-                + (GameConfig.PlazmaGunMaxDamage - GameConfig.PlazmaGunMinDamage) * savedCharge;
-            actualDamage *= (1f + GetUpgradeMult(WeaponType.DuelBerettas, WeaponUpgradeCategory.Damage));
-            actualDamage *= StatDamageMult;
-
-            MuzzleFlashTimer = 0.08f + savedCharge * 0.12f;
-            WeaponAnimTimer = GameConfig.WeaponAnimDuration;
-            ShotCooldown = currentShotCooldownDuration;
-
-            int idx = (int)CurrentType;
-            ammoPerWeapon[idx]--;
-            if (ammoPerWeapon[idx] < 0) ammoPerWeapon[idx] = 0;
-            // PlazmaGun은 재장전 없음
-
-            return actualDamage;
-        }
-
         /// <summary>발사 가능 여부를 반환한다.</summary>
         public bool CanFire()
         {
             return ShotCooldown <= 0f && CurrentAmmo > 0;
         }
 
-        /// <summary>
-        /// 단발/연사 발사를 실행한다. PlazmaGun 차지 발사는 FireCharged()를 사용한다.
-        /// </summary>
+        /// <summary>단발/연사 발사를 실행한다.</summary>
         public void Fire()
         {
             if (!CanFire()) return;
@@ -580,7 +497,6 @@ namespace My2DEngine.Game
                     Range                       = GameConfig.PistolRange;
                     SpreadRadius                = GameConfig.PistolSpread;
                     currentShotCooldownDuration = GameConfig.PistolCooldown;
-                    currentChargeDuration       = 0f;
                     PelletCount                 = 1;
                     SplashRadius                = 0f;
                     break;
@@ -593,7 +509,6 @@ namespace My2DEngine.Game
                         * (1f + GetUpgradeMult(type, WeaponUpgradeCategory.Range));
                     SpreadRadius                = GameConfig.ShotGunSpread;
                     currentShotCooldownDuration = GameConfig.ShotGunCooldown;
-                    currentChargeDuration       = 0f;
                     PelletCount                 = GameConfig.ShotGunPelletCount
                         + (int)GetUpgradeMult(type, WeaponUpgradeCategory.Pellets);
                     SplashRadius                = 0f;
@@ -608,7 +523,6 @@ namespace My2DEngine.Game
                         * (1f - GetUpgradeMult(type, WeaponUpgradeCategory.Spread));
                     currentShotCooldownDuration = GameConfig.LMGCooldown
                         * (1f - GetUpgradeMult(type, WeaponUpgradeCategory.FireRate));
-                    currentChargeDuration       = 0f;
                     PelletCount                 = 1;
                     SplashRadius                = 0f;
                     break;
@@ -620,7 +534,6 @@ namespace My2DEngine.Game
                     Range                       = GameConfig.RocketRange;
                     SpreadRadius                = GameConfig.RocketSpread;
                     currentShotCooldownDuration = GameConfig.RocketCooldown;
-                    currentChargeDuration       = 0f;
                     PelletCount                 = 1;
                     SplashRadius                = GameConfig.RocketSplashRadius
                         * (1f + GetUpgradeMult(type, WeaponUpgradeCategory.Splash));
@@ -635,7 +548,6 @@ namespace My2DEngine.Game
                     SpreadRadius                = GameConfig.PlazmaGunSpread;
                     currentShotCooldownDuration = GameConfig.PlazmaGunCooldown
                         * (1f - GetUpgradeMult(type, WeaponUpgradeCategory.FireRate));
-                    currentChargeDuration       = 0f;
                     PelletCount                 = 1;
                     SplashRadius                = 0f;
                     break;

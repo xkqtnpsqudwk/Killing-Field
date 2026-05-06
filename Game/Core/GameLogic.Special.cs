@@ -183,12 +183,12 @@ namespace My2DEngine.Game.Core
             }
 
             float primaryDamage = Math.Max(PlazmaLaserDamagePerTick, weapon.CurrentDamage * 0.9f);
-            primary.TakeDamage(primaryDamage);
+            DamageEnemy(primary, primaryDamage);
 
             Enemy secondary = FindBestTargetWithSpread(targetSpread + 0.35f, targetRange, primary, out _);
             if (secondary != null)
             {
-                secondary.TakeDamage(primaryDamage * 0.75f);
+                DamageEnemy(secondary, primaryDamage * 0.75f);
             }
 
             PlayWeaponEffectSound(GameConfig.PlazmaGunFireSoundAlias, true);

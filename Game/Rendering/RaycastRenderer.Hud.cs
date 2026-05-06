@@ -673,6 +673,121 @@ namespace My2DEngine.Game.Rendering
         }
 
         /// <summary>
+        /// 명중/처치 피드백을 조준점 주변에 짧게 표시한다.
+        /// </summary>
+        private void DrawHitMarker(Renderer r, float hitMarkerAlpha, float killMarkerAlpha)
+        {
+            if (r == null)
+            {
+                return;
+            }
+
+            hitMarkerAlpha = Math.Max(0f, Math.Min(1f, hitMarkerAlpha));
+            killMarkerAlpha = Math.Max(0f, Math.Min(1f, killMarkerAlpha));
+            float alpha = Math.Max(hitMarkerAlpha, killMarkerAlpha);
+            if (alpha <= 0f)
+            {
+                return;
+            }
+
+            int cx = frameW / 2;
+            int cy = frameH / 2;
+            int baseAlpha = (int)(210f * alpha);
+            Color hitColor = Color.FromArgb(baseAlpha, 255, 255, 255);
+            DrawDottedHitMarker(r, cx, cy, 10f + (1f - alpha) * 4f, 2f, hitColor);
+
+            if (killMarkerAlpha > 0f)
+            {
+                int killAlpha = (int)(235f * killMarkerAlpha);
+                Color killColor = Color.FromArgb(killAlpha, 255, 92, 64);
+                DrawDottedHitMarker(r, cx, cy, 15f + (1f - killMarkerAlpha) * 6f, 3f, killColor);
+                r.DrawRectangle(cx - 3, cy - 3, 6, 6, Color.FromArgb((int)(120f * killMarkerAlpha), 255, 190, 95));
+            }
+        }
+
+        private static void DrawDottedHitMarker(Renderer r, int cx, int cy, float startOffset, float blockSize, Color color)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                float offset = startOffset + i * (blockSize + 1.5f);
+                r.DrawRectangle(cx - offset - blockSize, cy - offset - blockSize, blockSize, blockSize, color);
+                r.DrawRectangle(cx + offset, cy - offset - blockSize, blockSize, blockSize, color);
+                r.DrawRectangle(cx - offset - blockSize, cy + offset, blockSize, blockSize, color);
+                r.DrawRectangle(cx + offset, cy + offset, blockSize, blockSize, color);
+            }
+        }
+
+        /// <summary>발사 불가 상태를 조준점 아래에 짧게 표시한다.</summary>
+        private void DrawWeaponStatusFeedback(Renderer r, string statusText, float alpha)
+        {
+            if (r == null || string.IsNullOrWhiteSpace(statusText))
+            {
+                return;
+            }
+
+            alpha = Math.Max(0f, Math.Min(1f, alpha));
+            if (alpha <= 0f)
+            {
+                return;
+            }
+
+            Color color = statusText.IndexOf("AMMO", StringComparison.OrdinalIgnoreCase) >= 0
+                ? Color.FromArgb((int)(235f * alpha), 255, 84, 70)
+                : Color.FromArgb((int)(220f * alpha), 255, 205, 92);
+
+            r.DrawTextCenteredShadow(statusText, frameW * 0.5f, (frameH * 0.5f) + 34f, color, 10.5f);
+        }
+
+        /// <summary>보상 드롭/획득 토스트를 화면 오른쪽 하단 HUD 위에 표시한다.</summary>
+        private void DrawPickupToast(Renderer r, string toastText, float alpha)
+        {
+            if (r == null || string.IsNullOrWhiteSpace(toastText))
+            {
+                return;
+            }
+
+            alpha = Math.Max(0f, Math.Min(1f, alpha));
+            if (alpha <= 0f)
+            {
+                return;
+            }
+
+            float panelW = Math.Min(182f, Math.Max(92f, toastText.Length * 7.2f + 24f));
+            float panelH = 26f;
+            float panelX = frameW - panelW - 18f;
+            float panelY = frameH - 174f - ((1f - alpha) * 9f);
+            r.DrawRectangle(panelX, panelY, panelW, panelH, Color.FromArgb((int)(120f * alpha), 10, 10, 10));
+            r.DrawRectangle(panelX, panelY + panelH - 3f, panelW, 3f, GetPickupToastAccentColor(toastText, alpha));
+            r.DrawTextCenteredShadow(toastText, panelX + panelW * 0.5f, panelY + 13f, GetPickupToastTextColor(toastText, alpha), 9.5f);
+        }
+
+        private static Color GetPickupToastAccentColor(string text, float alpha)
+        {
+            if (text.IndexOf("COIN", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return Color.FromArgb((int)(220f * alpha), 255, 205, 82);
+            }
+
+            if (text.IndexOf("AMMO", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return Color.FromArgb((int)(210f * alpha), 108, 195, 255);
+            }
+
+            if (text.IndexOf("STIM", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return Color.FromArgb((int)(210f * alpha), 112, 255, 175);
+            }
+
+            return Color.FromArgb((int)(210f * alpha), 255, 105, 95);
+        }
+
+        private static Color GetPickupToastTextColor(string text, float alpha)
+        {
+            Color accent = GetPickupToastAccentColor(text, alpha);
+            return Color.FromArgb((int)(235f * alpha), accent.R, accent.G, accent.B);
+        }
+
+        /// <summary>
         /// GPU 경로에서 사망 연출 전체(붉은 색조, 비네트, "YOU DIED" 패널 및 텍스트)를
         /// 렌더러를 통해 그린다.
         /// </summary>

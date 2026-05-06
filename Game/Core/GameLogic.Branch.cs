@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
@@ -42,6 +43,11 @@ namespace My2DEngine.Game.Core
         /// </summary>
         private int senseLevel;
 
+        private const float BranchCardWidth = 230f;
+        private const float BranchCardHeight = 196f;
+        private const float BranchCardGap = 18f;
+        private const float BranchCardYRatio = 0.18f;
+
         /// <summary>
         /// 다음 층이 일반 층일 때 호출하여 분기 선택 UI를 활성화한다.
         /// 서로 다른 두 개의 룸 템플릿을 무작위로 선택하여 카드로 제시한다.
@@ -49,21 +55,62 @@ namespace My2DEngine.Game.Core
         private void ShowBranchSelection()
         {
             int nextFloor = currentFloor + 1;
-            branchOptionA = RoomTemplateLibrary.SelectForFloor(nextFloor, templateRandom, bossClearGrowthCount);
+            bool allowRestRoom = ShouldAllowRestRoomAfterCurrentFloor();
+            branchOptionA = SelectBranchOption(nextFloor, allowRestRoom, null);
+            bool allowSecondRestRoom = allowRestRoom && branchOptionA?.IsRestRoom != true;
 
-            // 두 번째 템플릿은 첫 번째와 다른 ID가 되도록 최대 8회 재시도한다.
-            for (int attempt = 0; attempt < 8; attempt++)
+            branchOptionB = SelectBranchOption(nextFloor, allowSecondRestRoom, branchOptionA);
+            if (branchOptionB == null)
             {
-                branchOptionB = RoomTemplateLibrary.SelectForFloor(nextFloor, templateRandom, bossClearGrowthCount);
-                if (branchOptionB.TemplateId != branchOptionA.TemplateId)
-                {
-                    break;
-                }
+                branchOptionB = SelectBranchOption(nextFloor, allowRestRoom, branchOptionA);
             }
 
             branchSelectionActive = true;
             pendingBranchClickX = -1f;
             pendingBranchClickY = -1f;
+        }
+
+        private RoomTemplate SelectBranchOption(int nextFloor, bool allowRestRoom, RoomTemplate otherOption)
+        {
+            RoomTemplate fallback = null;
+            for (int attempt = 0; attempt < 16; attempt++)
+            {
+                RoomTemplate candidate = RoomTemplateLibrary.SelectForFloor(nextFloor, templateRandom, bossClearGrowthCount, allowRestRoom);
+                if (fallback == null)
+                {
+                    fallback = candidate;
+                }
+
+                if (otherOption == null || AreBranchOptionsMeaningfullyDifferent(candidate, otherOption))
+                {
+                    return candidate;
+                }
+            }
+
+            return fallback;
+        }
+
+        private static bool AreBranchOptionsMeaningfullyDifferent(RoomTemplate a, RoomTemplate b)
+        {
+            if (a == null || b == null)
+            {
+                return true;
+            }
+
+            return a.IsRestRoom != b.IsRestRoom ||
+                a.IsBossRoom != b.IsBossRoom ||
+                a.IsMiniBossRoom != b.IsMiniBossRoom ||
+                a.ObjectiveKind != b.ObjectiveKind ||
+                a.HazardKind != b.HazardKind ||
+                a.LayoutVariant != b.LayoutVariant ||
+                a.Spawns?.Length != b.Spawns?.Length ||
+                !string.Equals(a.TemplateId, b.TemplateId, StringComparison.Ordinal);
+        }
+
+        private bool ShouldAllowRestRoomAfterCurrentFloor()
+        {
+            StageRoom encounterRoom = GetCurrentEncounterRoom();
+            return encounterRoom == null || !encounterRoom.IsRestRoom;
         }
 
         /// <summary>
@@ -88,10 +135,10 @@ namespace My2DEngine.Game.Core
 
                 float fw = GameConfig.GpuWorldMaxRenderWidth;
                 float fh = GameConfig.GpuWorldMaxRenderHeight;
-                float cardW = 205f;
-                float cardH = 165f;
-                float cardY = fh * 0.20f;
-                float gap = 18f;
+                float cardW = BranchCardWidth;
+                float cardH = BranchCardHeight;
+                float cardY = fh * BranchCardYRatio;
+                float gap = BranchCardGap;
                 float cardAx = fw * 0.5f - cardW - gap * 0.5f;
                 float cardBx = fw * 0.5f + gap * 0.5f;
 
@@ -179,10 +226,10 @@ namespace My2DEngine.Game.Core
                 Color.FromArgb(255, 255, 235, 150), 14f);
 
             // 카드 배치: 왼쪽 / 오른쪽
-            float cardW = 205f;
-            float cardH = 165f;
-            float cardY = fh * 0.20f;
-            float gap = 18f;
+            float cardW = BranchCardWidth;
+            float cardH = BranchCardHeight;
+            float cardY = fh * BranchCardYRatio;
+            float gap = BranchCardGap;
             float cardAx = fw * 0.5f - cardW - gap * 0.5f;
             float cardBx = fw * 0.5f + gap * 0.5f;
 
@@ -245,12 +292,12 @@ namespace My2DEngine.Game.Core
             r.DrawRectangle(x + 8f, y + 25f, w - 16f, 1f, Color.FromArgb(120, 180, 180, 180));
 
             // 적 정보 (감각 단계에 따라 공개 범위 결정)
-            string[] infoLines = BuildRoomInfoLines(template);
+            BranchInfoLine[] infoLines = BuildRoomInfoLines(template);
             float lineY = y + 38f;
-            foreach (string line in infoLines)
+            foreach (BranchInfoLine line in infoLines)
             {
-                r.DrawTextCenteredShadow(line, cx, lineY, Color.FromArgb(255, 205, 205, 205), 9f);
-                lineY += 16f;
+                r.DrawTextCenteredShadow(line.Text, cx, lineY, line.Color, 8.6f);
+                lineY += 14.5f;
             }
 
             // 구분선
@@ -264,16 +311,35 @@ namespace My2DEngine.Game.Core
         /// <summary>
         /// 감각(senseLevel) 단계에 따라 카드에 표시할 적 정보 문자열 배열을 생성한다.
         /// </summary>
-        private string[] BuildRoomInfoLines(RoomTemplate template)
+        private BranchInfoLine[] BuildRoomInfoLines(RoomTemplate template)
         {
             if (template.IsRestRoom)
             {
-                return new[] { "적: 없음", "보상: 코인 상점 (회복 / 스팀 / 탄약)" };
+                return new[]
+                {
+                    BranchInfoLine.Neutral("목표: 휴식"),
+                    BranchInfoLine.Safe("위험도: 없음"),
+                    BranchInfoLine.Reward("보상: 코인 상점"),
+                    BranchInfoLine.Neutral("선택지: 회복 / 스팀 / 탄약")
+                };
+            }
+
+            List<BranchInfoLine> lines = new List<BranchInfoLine>
+            {
+                BranchInfoLine.Neutral("목표: " + GetRoomObjectiveLabel(template)),
+                new BranchInfoLine("위험도: " + GetRoomRiskLabel(template), GetRoomRiskColor(template)),
+                BranchInfoLine.Reward("보상: " + GetRoomRewardLabel(template))
+            };
+
+            if (template.HazardKind != RoomHazardKind.None)
+            {
+                lines.Add(BranchInfoLine.Warning("변수: " + GetRoomHazardLabel(template)));
             }
 
             if (senseLevel == 0)
             {
-                return new[] { "적: ???", "보상: ???" };
+                lines.Add(BranchInfoLine.Hidden("적: ???"));
+                return lines.ToArray();
             }
 
             List<string> orderedLabels = new List<string>();
@@ -321,13 +387,141 @@ namespace My2DEngine.Game.Core
                 enemyLine = "적: " + (types.Count > 0 ? string.Join(", ", types) : "없음");
             }
 
+            lines.Add(BranchInfoLine.Neutral(enemyLine));
+
             if (senseLevel >= 3)
             {
-                string rewardLine = "보상: 스탯 카드";
-                return new[] { enemyLine, rewardLine };
+                lines.Add(BranchInfoLine.Detail("규모: " + template.Spawns.Length + "체 / " + template.RoomWidth + "x" + template.RoomHeight));
             }
 
-            return new[] { enemyLine, "보상: ???" };
+            return lines.ToArray();
+        }
+
+        private static string GetRoomObjectiveLabel(RoomTemplate template)
+        {
+            switch (template.ObjectiveKind)
+            {
+                case RoomObjectiveKind.Survive:
+                    return Math.Ceiling(Math.Max(1f, template.ObjectiveDuration)) + "초 생존";
+                case RoomObjectiveKind.KeyTarget:
+                    return "열쇠 표적 처치";
+                default:
+                    return "전멸";
+            }
+        }
+
+        private static string GetRoomHazardLabel(RoomTemplate template)
+        {
+            switch (template.HazardKind)
+            {
+                case RoomHazardKind.ToxicMist:
+                    return "독성 안개";
+                case RoomHazardKind.SupplyShortage:
+                    return "보급 없음 / 보상 +1";
+                default:
+                    return "없음";
+            }
+        }
+
+        private static string GetRoomRewardLabel(RoomTemplate template)
+        {
+            if (template.IsBossRoom)
+            {
+                return "무기 카드 + 영구 포인트";
+            }
+
+            if (template.HazardKind == RoomHazardKind.SupplyShortage)
+            {
+                return "스탯 카드 +1등급";
+            }
+
+            return template.IsMiniBossRoom ? "스탯 카드 (정예)" : "스탯 카드";
+        }
+
+        private static string GetRoomRiskLabel(RoomTemplate template)
+        {
+            int score = GetRoomRiskScore(template);
+            if (score >= 5) return "극한";
+            if (score >= 4) return "높음";
+            if (score >= 2) return "보통";
+            return "낮음";
+        }
+
+        private static Color GetRoomRiskColor(RoomTemplate template)
+        {
+            int score = GetRoomRiskScore(template);
+            if (score >= 5) return Color.FromArgb(255, 255, 105, 85);
+            if (score >= 4) return Color.FromArgb(255, 255, 165, 80);
+            if (score >= 2) return Color.FromArgb(255, 235, 210, 120);
+            return Color.FromArgb(255, 135, 230, 170);
+        }
+
+        private static int GetRoomRiskScore(RoomTemplate template)
+        {
+            if (template == null || template.IsRestRoom)
+            {
+                return 0;
+            }
+
+            int score = template.IsBossRoom ? 5 : template.IsMiniBossRoom ? 3 : 1;
+            if (template.ObjectiveKind == RoomObjectiveKind.Survive || template.ObjectiveKind == RoomObjectiveKind.KeyTarget)
+            {
+                score++;
+            }
+
+            if (template.HazardKind != RoomHazardKind.None)
+            {
+                score++;
+            }
+
+            if (template.Spawns != null && template.Spawns.Length >= 6)
+            {
+                score++;
+            }
+
+            return score;
+        }
+
+        private readonly struct BranchInfoLine
+        {
+            public readonly string Text;
+            public readonly Color Color;
+
+            public BranchInfoLine(string text, Color color)
+            {
+                Text = text;
+                Color = color;
+            }
+
+            public static BranchInfoLine Neutral(string text)
+            {
+                return new BranchInfoLine(text, Color.FromArgb(255, 205, 205, 205));
+            }
+
+            public static BranchInfoLine Safe(string text)
+            {
+                return new BranchInfoLine(text, Color.FromArgb(255, 135, 230, 170));
+            }
+
+            public static BranchInfoLine Reward(string text)
+            {
+                return new BranchInfoLine(text, Color.FromArgb(255, 255, 225, 115));
+            }
+
+            public static BranchInfoLine Warning(string text)
+            {
+                return new BranchInfoLine(text, Color.FromArgb(255, 255, 175, 95));
+            }
+
+            public static BranchInfoLine Hidden(string text)
+            {
+                return new BranchInfoLine(text, Color.FromArgb(255, 170, 170, 170));
+            }
+
+            public static BranchInfoLine Detail(string text)
+            {
+                return new BranchInfoLine(text, Color.FromArgb(255, 170, 205, 235));
+            }
         }
 
         private static string GetBranchEnemyLabel(StageSpawnPoint spawn)

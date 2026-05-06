@@ -29,7 +29,7 @@ namespace My2DEngine.Game.Core
         ///   <item>보스 방 클리어 시 모든 보스 방이 클리어됐는지 확인하여 승리 여부를 결정한다.</item>
         /// </list>
         /// </summary>
-        private void UpdateStageProgression()
+        private void UpdateStageProgression(float dt)
         {
             if (!mapManager.HasStageFlow || player.IsDead)
             {
@@ -99,14 +99,51 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            if (enemyManager.CountAliveEnemies() > 0)
+            UpdateActiveRoomHazard(activeRoom, activeState, dt);
+            if (player.IsDead)
             {
                 return;
+            }
+
+            UpdateSurvivalRoomReinforcements(activeRoom, activeState, dt);
+
+            if (!IsCombatObjectiveComplete(activeRoom, activeState, dt))
+            {
+                return;
+            }
+
+            CompleteCombatRoom(activeRoom, activeState, clearRemainingEnemies: activeRoom.ObjectiveKind != RoomObjectiveKind.EliminateAll);
+        }
+
+        private bool IsCombatObjectiveComplete(StageRoom activeRoom, StageRoomState activeState, float dt)
+        {
+            switch (activeRoom.ObjectiveKind)
+            {
+                case RoomObjectiveKind.Survive:
+                    activeState.ObjectiveTimer = Math.Max(0f, activeState.ObjectiveTimer - Math.Max(0f, dt));
+                    return activeState.ObjectiveTimer <= 0f;
+                case RoomObjectiveKind.KeyTarget:
+                    return enemyManager.CountAliveObjectiveTargets() <= 0;
+                default:
+                    return enemyManager.CountAliveEnemies() <= 0;
+            }
+        }
+
+        private void CompleteCombatRoom(StageRoom activeRoom, StageRoomState activeState, bool clearRemainingEnemies)
+        {
+            if (clearRemainingEnemies)
+            {
+                enemyManager.ClearActiveEncounter();
+                playerProjectiles.Clear();
+                StopLoopingWeaponEffects();
             }
 
             activeState.Cleared = true;
             activeState.Activated = false;
             activeState.RewardGranted = true;
+            activeState.ObjectiveTimer = 0f;
+            activeState.HazardTickTimer = 0f;
+            activeState.ReinforcementTimer = 0f;
             activeStageRoomIndex = -1;
 
             // 로그라이크 모드: 카드 보상 후 출구 문으로 다음 층으로 이동한다.
@@ -134,17 +171,10 @@ namespace My2DEngine.Game.Core
                 }
                 else
                 {
-                    if (activeRoom.IsMiniBossRoom)
-                    {
-                        // 정예 처치 → 스탯 카드만 제공
-                        SetStageStatus("정예 처치!", 2.4f);
-                    }
-                    else
-                    {
-                        SetStageStatus("방 클리어!", 2.2f);
-                    }
-
-                    ShowCardReward(wasBossRoom: false, nextFloorIsBoss: nextIsBoss);
+                    ShowCardReward(
+                        wasBossRoom: false,
+                        nextFloorIsBoss: nextIsBoss,
+                        gradeBoost: activeRoom.HazardKind == RoomHazardKind.SupplyShortage ? 1 : 0);
                 }
 
                 return;
@@ -167,7 +197,52 @@ namespace My2DEngine.Game.Core
             }
 
             SpawnRewardPickupForRoom(activeRoom);
-            SetStageStatus("방 클리어 - 연결된 문을 열 수 있습니다", 3.5f);
+        }
+
+        private void UpdateActiveRoomHazard(StageRoom activeRoom, StageRoomState activeState, float dt)
+        {
+            if (activeRoom.HazardKind != RoomHazardKind.ToxicMist || player.IsDead)
+            {
+                return;
+            }
+
+            activeState.HazardTickTimer -= Math.Max(0f, dt);
+            if (activeState.HazardTickTimer > 0f)
+            {
+                return;
+            }
+
+            activeState.HazardTickTimer = GameConfig.ToxicMistDamageInterval;
+            OnPlayerDamaged(GameConfig.ToxicMistDamage, activeRoom.Bounds.Left + activeRoom.Bounds.Width * 0.5f, activeRoom.Bounds.Top + activeRoom.Bounds.Height * 0.5f);
+        }
+
+        private void UpdateSurvivalRoomReinforcements(StageRoom activeRoom, StageRoomState activeState, float dt)
+        {
+            if (activeRoom.ObjectiveKind != RoomObjectiveKind.Survive)
+            {
+                return;
+            }
+
+            int targetAlive = GameConfig.SurvivalRoomTargetAliveEnemies +
+                (activeRoom.IsMiniBossRoom ? GameConfig.SurvivalRoomEliteTargetAliveBonus : 0);
+            int alive = enemyManager.CountAliveEnemies();
+            if (alive >= targetAlive)
+            {
+                activeState.ReinforcementTimer = Math.Min(activeState.ReinforcementTimer, GameConfig.SurvivalRoomReinforcementInterval);
+                return;
+            }
+
+            activeState.ReinforcementTimer -= Math.Max(0f, dt);
+            if (activeState.ReinforcementTimer > 0f)
+            {
+                return;
+            }
+
+            int spawnCount = Math.Min(GameConfig.SurvivalRoomReinforcementCount, targetAlive - alive);
+            int spawned = enemyManager.SpawnStageReinforcements(activeRoom, collision, player.Position, spawnCount);
+            activeState.ReinforcementTimer = spawned > 0
+                ? GameConfig.SurvivalRoomReinforcementInterval
+                : Math.Min(1.0f, GameConfig.SurvivalRoomReinforcementInterval * 0.35f);
         }
 
         /// <summary>
@@ -191,7 +266,7 @@ namespace My2DEngine.Game.Core
 
         private void TrySpawnAmmoDrop(Enemy enemy)
         {
-            if (enemy == null || !HasAnyOwnedWeaponNeedingAmmo())
+            if (enemy == null || IsSupplyShortageRoomDropBlocked(enemy) || !HasAnyOwnedWeaponNeedingAmmo())
             {
                 return;
             }
@@ -234,11 +309,12 @@ namespace My2DEngine.Game.Core
                 Active = true,
                 PulseTimer = 0f
             });
+            RegisterPickupToast("AMMO DROPPED");
         }
 
         private void TrySpawnCoinDrop(Enemy enemy)
         {
-            if (enemy == null || currentFloor <= 0)
+            if (enemy == null || currentFloor <= 0 || IsSupplyShortageRoomDropBlocked(enemy))
             {
                 return;
             }
@@ -271,6 +347,15 @@ namespace My2DEngine.Game.Core
                 PulseTimer = 0f,
                 Amount = coinAmount
             });
+            RegisterPickupToast(coinAmount > 1 ? "COIN x" + coinAmount + " DROPPED" : "COIN DROPPED");
+        }
+
+        private bool IsSupplyShortageRoomDropBlocked(Enemy enemy)
+        {
+            StageRoom room = enemy == null
+                ? FindCurrentStageRoom()
+                : FindStageRoomAtPosition(enemy.X, enemy.Y) ?? FindCurrentStageRoom();
+            return room != null && room.HazardKind == RoomHazardKind.SupplyShortage && room.State.Activated && !room.State.Cleared;
         }
 
         /// <summary>
@@ -336,6 +421,8 @@ namespace My2DEngine.Game.Core
             StageRoom room = mapManager.StageRooms[roomIndex];
             StageRoomState state = room.State;
             state.Activated = true;
+            state.ObjectiveTimer = 0f;
+            state.HazardTickTimer = 0f;
             activeStageRoomIndex = roomIndex;
 
             if (room.IsRestRoom)
@@ -379,19 +466,75 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
+            InitializeActiveRoomObjective(room, state);
+
             if (room.IsBossRoom)
             {
                 bossIntroTimer = GameConfig.BossIntroDuration;
-                SetStageStatus("보스전 시작", 3.5f);
+                SetStageStatus(BuildRoomStartMessage(room), 3.5f);
             }
             else if (room.IsMiniBossRoom)
             {
-                SetStageStatus("정예전 시작", 3f);
+                SetStageStatus(BuildRoomStartMessage(room), 3f);
             }
             else
             {
-                SetStageStatus("라운드 시작 - 적 제거", 2.8f);
+                SetStageStatus(BuildRoomStartMessage(room), 2.8f);
             }
+        }
+
+        private void InitializeActiveRoomObjective(StageRoom room, StageRoomState state)
+        {
+            if (room.ObjectiveKind == RoomObjectiveKind.Survive)
+            {
+                state.ObjectiveTimer = Math.Max(1f, room.ObjectiveDuration);
+                state.ReinforcementTimer = Math.Min(1.2f, GameConfig.SurvivalRoomReinforcementInterval);
+            }
+            else if (room.ObjectiveKind == RoomObjectiveKind.KeyTarget && enemyManager.CountAliveObjectiveTargets() <= 0)
+            {
+                room.ObjectiveKind = RoomObjectiveKind.EliminateAll;
+            }
+
+            if (room.HazardKind == RoomHazardKind.ToxicMist)
+            {
+                state.HazardTickTimer = GameConfig.ToxicMistDamageInterval;
+            }
+            else
+            {
+                state.HazardTickTimer = 0f;
+            }
+        }
+
+        private string BuildRoomStartMessage(StageRoom room)
+        {
+            string objectiveText;
+            switch (room.ObjectiveKind)
+            {
+                case RoomObjectiveKind.Survive:
+                    objectiveText = "생존전 시작 - " + Math.Ceiling(Math.Max(1f, room.ObjectiveDuration)) + "초 버티기";
+                    break;
+                case RoomObjectiveKind.KeyTarget:
+                    objectiveText = "열쇠 방 시작 - 표적 제거";
+                    break;
+                default:
+                    objectiveText = room.IsBossRoom
+                        ? "보스전 시작"
+                        : room.IsMiniBossRoom
+                            ? "정예전 시작"
+                            : "라운드 시작 - 적 제거";
+                    break;
+            }
+
+            if (room.HazardKind == RoomHazardKind.ToxicMist)
+            {
+                objectiveText += " / 독성 안개";
+            }
+            else if (room.HazardKind == RoomHazardKind.SupplyShortage)
+            {
+                objectiveText += " / 보급 부족";
+            }
+
+            return objectiveText;
         }
 
         /// <summary>
@@ -846,7 +989,6 @@ namespace My2DEngine.Game.Core
                 activeStageRoomIndex = -1;
             }
 
-            SetStageStatus(purchased ? "휴식 구매 완료 - 다음 룸 선택" : "휴식 종료 - 다음 룸 선택", 3f);
             ShowBranchSelection();
         }
 
@@ -881,12 +1023,10 @@ namespace My2DEngine.Game.Core
                         return false;
                     }
 
+                    float previousHealth = player.Health;
                     player.Health = Math.Min(player.MaxHealth, player.Health + GameConfig.HealthPickupAmount * effectMultiplier);
-                    SetStageStatus(
-                        pickup.IsRestChoice
-                            ? BuildRestShopPurchaseMessage(pickup, "회복 키트 구매")
-                            : BuildRewardPickupMessage(pickup, "의료 보급 확보"),
-                        2.4f);
+                    int healedAmount = Math.Max(1, (int)Math.Round(player.Health - previousHealth));
+                    RegisterPickupToast(pickup.IsRestChoice ? "HEALTH BOUGHT" : "HEALTH +" + healedAmount);
                     return true;
                 case RewardPickupKind.StimPack:
                     if (!TrySpendRestShopCost(pickup))
@@ -895,11 +1035,7 @@ namespace My2DEngine.Game.Core
                     }
 
                     player.AddStimPack(1);
-                    SetStageStatus(
-                        pickup.IsRestChoice
-                            ? BuildRestShopPurchaseMessage(pickup, "스팀팩 구매")
-                            : "스팀팩 획득",
-                        2.4f);
+                    RegisterPickupToast(pickup.IsRestChoice ? "STIM BOUGHT" : "STIM +1");
                     return true;
                 case RewardPickupKind.AmmoPack:
                     WeaponType currentWeaponType = weapon.CurrentType;
@@ -921,17 +1057,12 @@ namespace My2DEngine.Game.Core
                     }
 
                     weapon.AddAmmoToCurrentWeapon(ammoAmount);
-                    string weaponLabel = WeaponPresentation.GetDisplayName(currentWeaponType);
-                    SetStageStatus(
-                        pickup.IsRestChoice
-                            ? BuildRestShopPurchaseMessage(pickup, $"{weaponLabel} 탄약 +{addedAmmo}")
-                            : BuildRewardPickupMessage(pickup, $"{weaponLabel} 탄약 +{addedAmmo}"),
-                        2.2f);
+                    RegisterPickupToast(pickup.IsRestChoice ? "AMMO BOUGHT" : "AMMO +" + addedAmmo);
                     return true;
                 case RewardPickupKind.Coin:
                     int coinAmount = Math.Max(1, pickup.Amount);
                     player.AddCoins(coinAmount);
-                    SetStageStatus($"코인 +{coinAmount}", 1.8f);
+                    RegisterPickupToast("COIN +" + coinAmount);
                     return true;
                 default:
                     return false;

@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 using My2DEngine.Game.Config;
 using My2DEngine.Game.Map;
@@ -124,23 +125,13 @@ namespace My2DEngine.Game.Core
             StageRoom currentRoom = FindCurrentStageRoom();
             if (currentRoom != null && !currentRoom.State.Cleared && !currentRoom.State.Activated)
             {
-                if (currentRoom.IsRestRoom)
-                {
-                    interactPromptText = "중앙 진입 시 휴식 상점";
-                }
-                else if (currentRoom.IsBossRoom)
-                {
-                    interactPromptText = "중앙 진입 시 보스전 시작";
-                }
-                else if (currentRoom.IsMiniBossRoom)
-                {
-                    interactPromptText = "중앙 진입 시 정예전 시작";
-                }
-                else
-                {
-                    interactPromptText = "중앙 진입 시 라운드 시작";
-                }
+                interactPromptText = BuildRoomEntryPrompt(currentRoom);
+                return;
+            }
 
+            if (currentRoom != null && currentRoom.State.Activated && !currentRoom.State.Cleared && !currentRoom.IsRestRoom)
+            {
+                interactPromptText = BuildActiveRoomObjectivePrompt(currentRoom);
                 return;
             }
 
@@ -155,6 +146,94 @@ namespace My2DEngine.Game.Core
             interactPromptText = TryGetInteractableDoor(out _, out _)
                 ? "E : 연결된 문 열기"
                 : null;
+        }
+
+        private string BuildRoomEntryPrompt(StageRoom room)
+        {
+            if (room.IsRestRoom)
+            {
+                return "중앙 진입 시 휴식 상점";
+            }
+
+            string prompt;
+            switch (room.ObjectiveKind)
+            {
+                case RoomObjectiveKind.Survive:
+                    prompt = "중앙 진입 시 생존전 시작";
+                    break;
+                case RoomObjectiveKind.KeyTarget:
+                    prompt = "중앙 진입 시 열쇠 방 시작";
+                    break;
+                default:
+                    prompt = room.IsBossRoom
+                        ? "중앙 진입 시 보스전 시작"
+                        : room.IsMiniBossRoom
+                            ? "중앙 진입 시 정예전 시작"
+                            : "중앙 진입 시 라운드 시작";
+                    break;
+            }
+
+            if (room.HazardKind == RoomHazardKind.ToxicMist)
+            {
+                prompt += " / 독성 안개";
+            }
+            else if (room.HazardKind == RoomHazardKind.SupplyShortage)
+            {
+                prompt += " / 보급 부족";
+            }
+
+            return prompt;
+        }
+
+        private string BuildActiveRoomObjectivePrompt(StageRoom room)
+        {
+            string prompt;
+            switch (room.ObjectiveKind)
+            {
+                case RoomObjectiveKind.Survive:
+                    prompt = "목표: " + Math.Ceiling(Math.Max(0f, room.State.ObjectiveTimer)) + "초 버티기";
+                    break;
+                case RoomObjectiveKind.KeyTarget:
+                    prompt = "목표: 열쇠 표적 처치";
+                    break;
+                default:
+                    prompt = "목표: 적 제거 (" + enemyManager.CountAliveEnemies() + " 남음)";
+                    break;
+            }
+
+            if (room.HazardKind == RoomHazardKind.ToxicMist)
+            {
+                prompt += " / 위험: 독성 안개";
+            }
+            else if (room.HazardKind == RoomHazardKind.SupplyShortage)
+            {
+                prompt += " / 보급 없음, 보상 +1";
+            }
+
+            return prompt;
+        }
+
+        private float GetToxicMistOverlayAlpha()
+        {
+            if (activeStageRoomIndex < 0 ||
+                mapManager.StageRooms == null ||
+                activeStageRoomIndex >= mapManager.StageRooms.Length)
+            {
+                return 0f;
+            }
+
+            StageRoom room = mapManager.StageRooms[activeStageRoomIndex];
+            if (room == null ||
+                room.HazardKind != RoomHazardKind.ToxicMist ||
+                !room.State.Activated ||
+                room.State.Cleared)
+            {
+                return 0f;
+            }
+
+            float interval = Math.Max(0.001f, GameConfig.ToxicMistDamageInterval);
+            float tickPulse = 1f - Math.Max(0f, Math.Min(1f, room.State.HazardTickTimer / interval));
+            return Math.Min(1f, 0.18f + tickPulse * 0.10f);
         }
 
         /// <summary>
@@ -284,6 +363,13 @@ namespace My2DEngine.Game.Core
             playerDamageShakePower = 0f;
             playerRecoilShakeTimer = 0f;
             playerRecoilShakePower = 0f;
+            hitMarkerTimer = 0f;
+            killMarkerTimer = 0f;
+            weaponStatusText = null;
+            weaponStatusTimer = 0f;
+            weaponStatusRepeatGate = 0f;
+            pickupToastText = null;
+            pickupToastTimer = 0f;
             deathPresentationProgress = 0f;
             deathRollDirection = 1f;
             interactKeyHeld = false;

@@ -27,8 +27,9 @@ namespace My2DEngine.Game.Rendering
         /// <param name="compositeRotationDegrees">최종 합성 시 적용할 화면 회전 각도(도).</param>
         /// <param name="compositeScale">최종 합성 시 적용할 화면 스케일 배율.</param>
         /// <param name="compositeOffsetY">최종 합성 시 적용할 수직 오프셋(픽셀).</param>
+        /// <param name="toxicMistAlpha">독성 안개 방의 월드 안개 강도. 0이면 기본 월드 안개를 사용한다.</param>
         /// <returns>GPU 월드 렌더링에 성공하면 true, 그렇지 않으면 false.</returns>
-        private bool TryRenderWorld(Renderer renderer, Player player, IList<RewardPickup> rewardPickups, IList<EnemyProjectile> playerProjectiles, float compositeRotationDegrees, float compositeScale, float compositeOffsetY)
+        private bool TryRenderWorld(Renderer renderer, Player player, IList<RewardPickup> rewardPickups, IList<EnemyProjectile> playerProjectiles, float compositeRotationDegrees, float compositeScale, float compositeOffsetY, float toxicMistAlpha)
         {
             if (renderer == null ||
                 player == null ||
@@ -60,6 +61,7 @@ namespace My2DEngine.Game.Rendering
             command.CompositeRotationDegrees = compositeRotationDegrees;
             command.CompositeScale = compositeScale;
             command.CompositeOffsetY = compositeOffsetY;
+            ApplyToxicMistWorldFog(ref command, toxicMistAlpha);
 
             bool drewWorld = renderer.TryDrawWorld(command);
             if (drewWorld)
@@ -72,6 +74,31 @@ namespace My2DEngine.Game.Rendering
             }
 
             return drewWorld;
+        }
+
+        private static void ApplyToxicMistWorldFog(ref RenderWorldCommand command, float toxicMistAlpha)
+        {
+            if (toxicMistAlpha <= 0f)
+            {
+                return;
+            }
+
+            float intensity = toxicMistAlpha / 0.28f;
+            if (intensity < 0f)
+            {
+                intensity = 0f;
+            }
+            else if (intensity > 1f)
+            {
+                intensity = 1f;
+            }
+
+            command.FogDensity = Math.Max(command.FogDensity, 0.18f + (0.06f * intensity));
+            command.FogColor = Color.FromArgb(255, 72, 130, 64);
+            command.FogTintStrength = 0.18f + (0.14f * intensity);
+
+            command.EnemySpritePass.FogDensity = command.FogDensity;
+            command.MiscSpritePass.FogDensity = command.FogDensity;
         }
 
         /// <summary>

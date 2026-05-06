@@ -47,6 +47,57 @@ namespace My2DEngine.Game.Config
         /// <summary>보스 1회 클리어당 이후 적 이동 속도에 더해지는 성장 배율이다.</summary>
         public const float EnemyMoveSpeedGrowthPerBossClear = 0.015f;
 
+        /// <summary>적 피격 플래시가 유지되는 시간(초).</summary>
+        public const float EnemyHitFlashDuration = 0.18f;
+
+        /// <summary>적이 피격 직후 움찔거리는 반응이 유지되는 시간(초).</summary>
+        public const float EnemyHitReactDuration = 0.16f;
+
+        /// <summary>일반 적이 피격 반응 중 이동 속도에 곱하는 배율.</summary>
+        public const float EnemyHitReactMoveMultiplier = 0.42f;
+
+        /// <summary>보스급 적이 피격 반응 중 이동 속도에 곱하는 배율.</summary>
+        public const float BossHitReactMoveMultiplier = 0.72f;
+
+        /// <summary>적 피격 반응 중 렌더 스케일에 더하는 최대 펄스 배율.</summary>
+        public const float EnemyHitReactScalePulse = 0.08f;
+
+        /// <summary>생존 방의 기본 생존 목표 시간(초).</summary>
+        public const float SurvivalRoomBaseDuration = 18f;
+
+        /// <summary>생존 방 목표 시간이 층마다 늘어나는 양(초).</summary>
+        public const float SurvivalRoomDurationPerFloor = 0.08f;
+
+        /// <summary>정예 생존 방에 추가되는 목표 시간(초).</summary>
+        public const float SurvivalRoomEliteExtraDuration = 4f;
+
+        /// <summary>생존 방 목표 시간 상한(초).</summary>
+        public const float SurvivalRoomMaxDuration = 32f;
+
+        /// <summary>생존 방 증원 생성 간격(초).</summary>
+        public const float SurvivalRoomReinforcementInterval = 3.4f;
+
+        /// <summary>생존 방에서 유지하려는 일반 활성 적 수.</summary>
+        public const int SurvivalRoomTargetAliveEnemies = 4;
+
+        /// <summary>정예 생존 방에서 추가로 유지하려는 활성 적 수.</summary>
+        public const int SurvivalRoomEliteTargetAliveBonus = 1;
+
+        /// <summary>생존 방 증원 1회당 최대 생성 수.</summary>
+        public const int SurvivalRoomReinforcementCount = 2;
+
+        /// <summary>열쇠 방 표적 적의 체력 배율.</summary>
+        public const float KeyTargetHealthMultiplier = 1.65f;
+
+        /// <summary>열쇠 방 표적 적의 스케일 배율.</summary>
+        public const float KeyTargetScaleMultiplier = 1.12f;
+
+        /// <summary>독성 안개 위험 방의 피해 간격(초).</summary>
+        public const float ToxicMistDamageInterval = 1.15f;
+
+        /// <summary>독성 안개가 한 번에 주는 피해량.</summary>
+        public const float ToxicMistDamage = 4f;
+
         /// <summary>플레이어 기본 이동 속도(타일/초).</summary>
         public const float MoveSpeed = 2.5f;
 
@@ -149,9 +200,6 @@ namespace My2DEngine.Game.Config
         public const float WeaponIdleAnimFrameDuration = 0.18f;
         /// <summary>발사/보조 애니메이션 종료 후 사운드를 조금 더 유지하는 tail 시간(초).</summary>
         public const float WeaponSoundTailGrace = 0.14f;
-        /// <summary>차지 해제 후 사운드를 조금 더 유지하는 tail 시간(초).</summary>
-        public const float WeaponChargeSoundTailGrace = 0.16f;
-
         /// <summary>스팀팩 사용 시 이동 속도에 곱하는 배율.</summary>
         public const float StimSpeedMultiplier = 2.0f;
 
@@ -242,10 +290,6 @@ namespace My2DEngine.Game.Config
         /// <summary>레거시 추적탄 비행 사운드 상대 경로.</summary>
         public const string RocketFlySoundPath = @"Gun\RocketLauncher\Fly.wav";
 
-        /// <summary>Dual 92s 보조 사운드 별칭(레거시 슬롯 유지용).</summary>
-        public const string PlazmaGunChargeSoundAlias = "kf_plazma_charge";
-        /// <summary>Dual 92s 보조 사운드 상대 경로(레거시 슬롯 유지용).</summary>
-        public const string PlazmaGunChargeSoundPath = @"Gun\PlazmaGun\Charge.wav";
         /// <summary>Dual 92s 발사 사운드 별칭.</summary>
         public const string PlazmaGunFireSoundAlias = "kf_plazma_fire";
         /// <summary>Dual 92s 발사 사운드 상대 경로.</summary>
@@ -304,7 +348,7 @@ namespace My2DEngine.Game.Config
         // ─────────────────────────── RocketLauncher ───────────────────
         /// <summary>Auto Cannon 최대 보유 탄약 수 (재장전 없음).</summary>
         public const int RocketMaxAmmo = 18;
-        /// <summary>Auto Cannon 발사 쿨다운(초). 투사체 대신 즉발 고폭탄 느낌으로 재조정했다.</summary>
+        /// <summary>Auto Cannon 발사 쿨다운(초). 플레이어 로켓 투사체를 발사한다.</summary>
         public const float RocketCooldown = 0.62f;
         /// <summary>Auto Cannon 기본 피해량.</summary>
         public const float RocketDamage = 78f;
@@ -330,10 +374,6 @@ namespace My2DEngine.Game.Config
         public const float PlazmaGunCooldown = 0.12f;
         /// <summary>Dual 92s 기본 피해량. 레거시 슬롯명을 유지해 MinDamage 상수를 재사용한다.</summary>
         public const float PlazmaGunMinDamage = 18f;
-        /// <summary>Dual 92s 레거시 최대 피해량 상수. 차지샷 제거 후 현재는 기본 피해와 동일하게 유지한다.</summary>
-        public const float PlazmaGunMaxDamage = 18f;
-        /// <summary>Dual 92s 레거시 차지 상수. 슬롯 호환을 위해 0에 가깝게 유지한다.</summary>
-        public const float PlazmaGunChargeTime = 0.12f;
         /// <summary>Dual 92s 최대 사거리(타일).</summary>
         public const float PlazmaGunRange = 24f;
         /// <summary>Dual 92s 탄 퍼짐 반지름(타일).</summary>

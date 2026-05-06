@@ -33,6 +33,15 @@ namespace My2DEngine.Game.Map
         /// <summary>휴식 방 여부. 전투 대신 아이템 3개 중 하나를 고르는 룸이다.</summary>
         public bool IsRestRoom { get; set; }
 
+        /// <summary>전투 방의 클리어 목표 종류다.</summary>
+        public RoomObjectiveKind ObjectiveKind { get; set; } = RoomObjectiveKind.EliminateAll;
+
+        /// <summary>시간 목표가 있을 때 사용하는 목표 지속 시간(초).</summary>
+        public float ObjectiveDuration { get; set; }
+
+        /// <summary>전투 방에 적용되는 위험 modifier 종류다.</summary>
+        public RoomHazardKind HazardKind { get; set; } = RoomHazardKind.None;
+
         /// <summary>
         /// 적 스폰 포인트 배열. X/Y는 방 중심(MapCenter)을 원점으로 하는 타일 오프셋.
         /// <see cref="MapManager.LoadRoomFromTemplate"/>이 절대 좌표로 변환한다.
@@ -55,6 +64,10 @@ namespace My2DEngine.Game.Map
         private const float RestRoomChance = 0.15f;
         private const float EliteRoomChance = 0.25f;
         private const float EliteStatMultiplier = 1.5f;
+        private const float SurvivalRoomChance = 0.25f;
+        private const float KeyTargetRoomChance = 0.25f;
+        private const float ToxicMistRoomChance = 0.24f;
+        private const float SupplyShortageRoomChance = 0.20f;
 
         private const int NormalRoomMinSize = 16;
         private const int NormalRoomMaxSize = 22;
@@ -105,7 +118,8 @@ namespace My2DEngine.Game.Map
         /// <param name="floor">현재 층 번호.</param>
         /// <param name="rng">무작위 선택에 사용할 난수 생성기.</param>
         /// <param name="bossClearGrowthCount">누적 보스 클리어 수. 스폰 상한을 높이는 데 사용된다.</param>
-        public static RoomTemplate SelectForFloor(int floor, Random rng, int bossClearGrowthCount = 0)
+        /// <param name="allowRestRoom">false이면 휴식 방을 선택 풀에서 제외한다.</param>
+        public static RoomTemplate SelectForFloor(int floor, Random rng, int bossClearGrowthCount = 0, bool allowRestRoom = true)
         {
             // 보스 방: 20층마다, 크기만 소폭 랜덤
             if (floor > 0 && floor % 20 == 0)
@@ -119,6 +133,8 @@ namespace My2DEngine.Game.Map
                     RoomHeight = bossSize,
                     IsBossRoom = true,
                     LayoutVariant = RoomLayoutVariant.Open,
+                    ObjectiveKind = RoomObjectiveKind.EliminateAll,
+                    HazardKind = RoomHazardKind.None,
                     Spawns = bossBase.Spawns
                 };
             }
@@ -126,12 +142,14 @@ namespace My2DEngine.Game.Map
             double roll = rng.NextDouble();
 
             // 휴식 방: 크기 고정 (3종 중 랜덤 선택)
-            if (roll < RestRoomChance)
+            if (allowRestRoom && roll < RestRoomChance)
             {
                 return s_restTemplates[rng.Next(s_restTemplates.Length)];
             }
 
-            bool isElite = roll < RestRoomChance + EliteRoomChance;
+            bool isElite = allowRestRoom
+                ? roll < RestRoomChance + EliteRoomChance
+                : rng.NextDouble() < EliteRoomChance;
 
             // 방 크기 랜덤 (16~22)
             int roomW = NormalRoomMinSize + rng.Next(NormalRoomMaxSize - NormalRoomMinSize + 1);
@@ -141,16 +159,88 @@ namespace My2DEngine.Game.Map
             RoomLayoutVariant layout = s_combatLayouts[rng.Next(s_combatLayouts.Length)];
 
             int spawnCap = Math.Min(MaxSpawnCap, BaseSpawnCap + bossClearGrowthCount);
+            RoomObjectiveKind objective = RollCombatObjective(rng);
+            RoomHazardKind hazard = RollCombatHazard(rng);
+            float objectiveDuration = objective == RoomObjectiveKind.Survive
+                ? GetSurvivalDuration(floor, isElite)
+                : 0f;
+            StageSpawnPoint[] spawns = GenerateRandomSpawns(floor, isElite, roomW, roomH, spawnCap, rng);
+            if (objective == RoomObjectiveKind.KeyTarget)
+            {
+                MarkKeyTargetSpawn(spawns, rng);
+            }
 
             return new RoomTemplate
             {
-                TemplateId = isElite ? "Elite-Random" : "Normal-Random",
+                TemplateId = BuildCombatTemplateId(isElite, objective, hazard),
                 RoomWidth = roomW,
                 RoomHeight = roomH,
                 LayoutVariant = layout,
                 IsMiniBossRoom = isElite,
-                Spawns = GenerateRandomSpawns(floor, isElite, roomW, roomH, spawnCap, rng)
+                ObjectiveKind = objective,
+                ObjectiveDuration = objectiveDuration,
+                HazardKind = hazard,
+                Spawns = spawns
             };
+        }
+
+        private static RoomObjectiveKind RollCombatObjective(Random rng)
+        {
+            double roll = rng.NextDouble();
+            if (roll < SurvivalRoomChance)
+            {
+                return RoomObjectiveKind.Survive;
+            }
+
+            if (roll < SurvivalRoomChance + KeyTargetRoomChance)
+            {
+                return RoomObjectiveKind.KeyTarget;
+            }
+
+            return RoomObjectiveKind.EliminateAll;
+        }
+
+        private static RoomHazardKind RollCombatHazard(Random rng)
+        {
+            double roll = rng.NextDouble();
+            if (roll < ToxicMistRoomChance)
+            {
+                return RoomHazardKind.ToxicMist;
+            }
+
+            if (roll < ToxicMistRoomChance + SupplyShortageRoomChance)
+            {
+                return RoomHazardKind.SupplyShortage;
+            }
+
+            return RoomHazardKind.None;
+        }
+
+        private static float GetSurvivalDuration(int floor, bool isElite)
+        {
+            float duration = GameConfig.SurvivalRoomBaseDuration + Math.Max(0, floor - 1) * GameConfig.SurvivalRoomDurationPerFloor;
+            if (isElite)
+            {
+                duration += GameConfig.SurvivalRoomEliteExtraDuration;
+            }
+
+            return Math.Min(GameConfig.SurvivalRoomMaxDuration, duration);
+        }
+
+        private static string BuildCombatTemplateId(bool isElite, RoomObjectiveKind objective, RoomHazardKind hazard)
+        {
+            string prefix = isElite ? "Elite" : "Normal";
+            string objectiveId = objective == RoomObjectiveKind.Survive
+                ? "Survive"
+                : objective == RoomObjectiveKind.KeyTarget
+                    ? "Key"
+                    : "Eliminate";
+            string hazardId = hazard == RoomHazardKind.ToxicMist
+                ? "-Toxic"
+                : hazard == RoomHazardKind.SupplyShortage
+                    ? "-LowSupply"
+                    : string.Empty;
+            return prefix + "-" + objectiveId + hazardId + "-Random";
         }
 
         /// <summary>
@@ -186,6 +276,25 @@ namespace My2DEngine.Game.Map
             }
 
             return spawns;
+        }
+
+        private static void MarkKeyTargetSpawn(StageSpawnPoint[] spawns, Random rng)
+        {
+            if (spawns == null || spawns.Length == 0)
+            {
+                return;
+            }
+
+            int index = rng.Next(spawns.Length);
+            StageSpawnPoint spawn = spawns[index];
+            if (spawn == null)
+            {
+                return;
+            }
+
+            spawn.IsObjectiveTarget = true;
+            spawn.HealthMultiplier *= GameConfig.KeyTargetHealthMultiplier;
+            spawn.ScaleMultiplier *= GameConfig.KeyTargetScaleMultiplier;
         }
 
         private static string[] GetEnemyPool(int floor)
@@ -263,6 +372,8 @@ namespace My2DEngine.Game.Map
                 RoomHeight = 31,
                 IsBossRoom = true,
                 LayoutVariant = RoomLayoutVariant.Open,
+                ObjectiveKind = RoomObjectiveKind.EliminateAll,
+                HazardKind = RoomHazardKind.None,
                 Spawns = new[] { SpawnEnemy(assetId, 0f, 0f) }
             };
         }
@@ -286,7 +397,8 @@ namespace My2DEngine.Game.Map
                 MoveSpeedMultiplier = 1f,
                 AttackRangeMultiplier = 1f,
                 ScaleMultiplier = 1f,
-                IsBoss = archetype.Rank == EnemyRank.Boss
+                IsBoss = archetype.Rank == EnemyRank.Boss,
+                IsObjectiveTarget = false
             };
         }
     }

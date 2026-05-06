@@ -60,6 +60,8 @@ namespace My2DEngine.Game
 
         public bool IsMiniBoss => Rank == EnemyRank.MiniBoss;
 
+        public bool IsObjectiveTarget { get; set; }
+
         public string DisplayName { get; private set; }
 
         public float MoveSpeed { get; private set; }
@@ -77,6 +79,8 @@ namespace My2DEngine.Game
         public float StunTimer { get; set; }
 
         public float HitFlash { get; set; }
+
+        public float HitReactTimer { get; set; }
 
         public float WanderDirX { get; private set; }
 
@@ -240,7 +244,8 @@ namespace My2DEngine.Game
             }
 
             Health -= damage;
-            HitFlash = 0.12f;
+            HitFlash = Math.Max(HitFlash, GameConfig.EnemyHitFlashDuration);
+            HitReactTimer = Math.Max(HitReactTimer, GameConfig.EnemyHitReactDuration);
 
             if (Health > 0f)
             {
@@ -302,12 +307,14 @@ namespace My2DEngine.Game
                 SpawnAnimationTime += dt;
                 SpawnAnimationTimer = Math.Max(0f, SpawnAnimationTimer - dt);
                 HitFlash = Math.Max(0f, HitFlash - dt);
+                HitReactTimer = Math.Max(0f, HitReactTimer - dt);
                 return;
             }
 
             AnimationTime += dt;
             AttackCooldown = Math.Max(0f, AttackCooldown - dt);
             HitFlash = Math.Max(0f, HitFlash - dt);
+            HitReactTimer = Math.Max(0f, HitReactTimer - dt);
             WanderTimer = Math.Max(0f, WanderTimer - dt);
             IdleTimer = Math.Max(0f, IdleTimer - dt);
             StunTimer = Math.Max(0f, StunTimer - dt);
@@ -459,6 +466,7 @@ namespace My2DEngine.Game
             AttackCooldown = 0f;
             StunTimer = 0f;
             HitFlash = 0f;
+            HitReactTimer = 0f;
             WanderDirX = 0f;
             WanderDirY = 0f;
             WanderTimer = 0f;
@@ -515,6 +523,7 @@ namespace My2DEngine.Game
             }
 
             HitFlash = Math.Max(0f, HitFlash - dt);
+            HitReactTimer = Math.Max(0f, HitReactTimer - dt);
         }
     }
 }

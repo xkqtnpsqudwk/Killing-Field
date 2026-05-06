@@ -64,7 +64,6 @@ namespace My2DEngine.Game.Audio
             PreloadSoundEffect(GameConfig.RocketFireSoundPath, GameConfig.RocketFireSoundAlias);
             PreloadSoundEffect(GameConfig.RocketBoomSoundPath, GameConfig.RocketBoomSoundAlias);
             PreloadSoundEffect(GameConfig.RocketFlySoundPath, GameConfig.RocketFlySoundAlias);
-            PreloadSoundEffect(GameConfig.PlazmaGunChargeSoundPath, GameConfig.PlazmaGunChargeSoundAlias);
             PreloadSoundEffect(GameConfig.PlazmaGunFireSoundPath, GameConfig.PlazmaGunFireSoundAlias);
             PreloadSoundEffect(GameConfig.DoorSoundPath, GameConfig.DoorSoundAlias);
         }

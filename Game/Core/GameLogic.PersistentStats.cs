@@ -161,8 +161,6 @@ namespace My2DEngine.Game.Core
         {
             weapon.PendingShot = false;
             weapon.FireButtonHeld = false;
-            weapon.PendingChargeFire = false;
-            weapon.CancelCharge();
             StopLoopingWeaponEffects();
             interactPromptText = null;
             pendingPermanentStatClickX = -1f;

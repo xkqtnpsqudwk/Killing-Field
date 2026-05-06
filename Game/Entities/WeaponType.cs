@@ -9,7 +9,7 @@ namespace My2DEngine.Game
         BearKiller = 1,  // 2번 - 단발 (다중 탄환)
         HChainGun = 2,  // 3번 - 연사
         AutoCannon = 3,  // 4번 - 단발 (범위 폭발)
-        DuelBerettas = 4   // 5번 - 단발 차지샷
+        DuelBerettas = 4   // 5번 - 홀드 연사
     }
 
     /// <summary>
@@ -24,7 +24,7 @@ namespace My2DEngine.Game
         Range = 1,
         /// <summary>BearKiller 전용 - 발사 탄환 수 증가.</summary>
         Pellets = 2,
-        /// <summary>HChainGun / DuelBerettas - 발사 속도(차지 속도) 증가.</summary>
+        /// <summary>HChainGun / DuelBerettas - 발사 속도 증가.</summary>
         FireRate = 3,
         /// <summary>HChainGun 전용 - 탄 퍼짐 감소.</summary>
         Spread = 4,

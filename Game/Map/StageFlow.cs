@@ -29,6 +29,36 @@ namespace My2DEngine.Game.Map
     }
 
     /// <summary>
+    /// 전투 방의 클리어 목표 종류다.
+    /// </summary>
+    public enum RoomObjectiveKind
+    {
+        /// <summary>모든 적을 제거하면 클리어된다.</summary>
+        EliminateAll = 0,
+
+        /// <summary>제한 시간 동안 생존하면 클리어된다.</summary>
+        Survive = 1,
+
+        /// <summary>지정된 표적 적을 제거하면 클리어된다.</summary>
+        KeyTarget = 2,
+    }
+
+    /// <summary>
+    /// 전투 방에 추가로 붙는 위험 modifier 종류다.
+    /// </summary>
+    public enum RoomHazardKind
+    {
+        /// <summary>추가 위험 없음.</summary>
+        None = 0,
+
+        /// <summary>독성 안개가 주기적으로 플레이어에게 피해를 준다.</summary>
+        ToxicMist = 1,
+
+        /// <summary>방 안에서 적 처치 드롭이 없지만 클리어 보상 품질이 오른다.</summary>
+        SupplyShortage = 2,
+    }
+
+    /// <summary>
     /// 한 방 안에서 어떤 종류의 적이 어느 위치에, 어떤 속성으로 생성될지를 정의하는 스폰 포인트 데이터 클래스다.
     /// 스테이지 설계 단계에서 각 방의 적 배치를 지정하기 위해 사용된다.
     /// </summary>
@@ -115,6 +145,9 @@ namespace My2DEngine.Game.Map
         /// null이거나 빈 문자열이면 에셋 카탈로그의 기본 스프라이트 키가 사용된다.
         /// </summary>
         public string SpriteVariantKey { get; set; }
+
+        /// <summary>열쇠 방 목표 표적으로 지정된 스폰인지 여부다.</summary>
+        public bool IsObjectiveTarget { get; set; }
     }
 
     /// <summary>
@@ -176,6 +209,15 @@ namespace My2DEngine.Game.Map
         /// <summary>방 내부의 구조물 배치 방식을 나타내는 레이아웃 변형이다.</summary>
         public RoomLayoutVariant LayoutVariant { get; set; }
 
+        /// <summary>이 방의 클리어 목표 종류다.</summary>
+        public RoomObjectiveKind ObjectiveKind { get; set; } = RoomObjectiveKind.EliminateAll;
+
+        /// <summary>목표에 시간 제한이 있을 때 사용하는 목표 시간(초).</summary>
+        public float ObjectiveDuration { get; set; }
+
+        /// <summary>이 방에 적용되는 위험 modifier 종류다.</summary>
+        public RoomHazardKind HazardKind { get; set; } = RoomHazardKind.None;
+
         /// <summary>
         /// 이 방에서 다른 방으로 연결되는 문 연결 목록이다.
         /// 기본값은 빈 배열이다.
@@ -220,6 +262,15 @@ namespace My2DEngine.Game.Map
         /// <summary>방 클리어 보상이 이미 지급되었는지 여부를 나타낸다. 중복 지급을 방지하는 데 사용된다.</summary>
         public bool RewardGranted { get; set; }
 
+        /// <summary>활성화된 목표의 남은 시간(초). 시간 목표가 아니면 0이다.</summary>
+        public float ObjectiveTimer { get; set; }
+
+        /// <summary>위험 modifier의 다음 피해/효과까지 남은 시간(초).</summary>
+        public float HazardTickTimer { get; set; }
+
+        /// <summary>생존 방 증원 생성까지 남은 시간(초).</summary>
+        public float ReinforcementTimer { get; set; }
+
         /// <summary>
         /// 방의 진행 상태를 초기 상태로 리셋한다.
         /// <paramref name="unlockedAtStart"/>가 <c>true</c>이면 처음부터 활성화·클리어·보상 지급 완료 상태로 설정된다.
@@ -233,6 +284,9 @@ namespace My2DEngine.Game.Map
             Activated = unlockedAtStart;
             Cleared = unlockedAtStart;
             RewardGranted = unlockedAtStart;
+            ObjectiveTimer = 0f;
+            HazardTickTimer = 0f;
+            ReinforcementTimer = 0f;
         }
     }
 
@@ -341,6 +395,27 @@ namespace My2DEngine.Game.Map
         {
             get => Blueprint.LayoutVariant;
             set => Blueprint.LayoutVariant = value;
+        }
+
+        /// <summary>방의 클리어 목표 종류다. 내부적으로 <see cref="StageRoomBlueprint.ObjectiveKind"/>에 위임된다.</summary>
+        public RoomObjectiveKind ObjectiveKind
+        {
+            get => Blueprint.ObjectiveKind;
+            set => Blueprint.ObjectiveKind = value;
+        }
+
+        /// <summary>시간 목표의 기준 지속 시간(초)이다. 내부적으로 <see cref="StageRoomBlueprint.ObjectiveDuration"/>에 위임된다.</summary>
+        public float ObjectiveDuration
+        {
+            get => Blueprint.ObjectiveDuration;
+            set => Blueprint.ObjectiveDuration = value;
+        }
+
+        /// <summary>방에 적용된 위험 modifier 종류다. 내부적으로 <see cref="StageRoomBlueprint.HazardKind"/>에 위임된다.</summary>
+        public RoomHazardKind HazardKind
+        {
+            get => Blueprint.HazardKind;
+            set => Blueprint.HazardKind = value;
         }
 
         /// <summary>

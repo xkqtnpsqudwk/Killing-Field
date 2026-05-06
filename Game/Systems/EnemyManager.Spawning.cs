@@ -13,7 +13,7 @@ namespace My2DEngine.Game.Systems
     /// </summary>
     public partial class EnemyManager
     {
-        private bool TrySpawnStageEnemy(List<Enemy> list, StageRoom room, StageSpawnPoint spawn, Vector2 playerPosition, CollisionSystem collision)
+        private bool TrySpawnStageEnemy(List<Enemy> list, StageRoom room, StageSpawnPoint spawn, Vector2 playerPosition, CollisionSystem collision, bool allowNearPlayer = false)
         {
             EnemyArchetype archetype = ResolveArchetype(spawn);
             EnemyDefinition adjusted = BuildAdjustedDefinition(spawn, archetype);
@@ -29,8 +29,8 @@ namespace My2DEngine.Game.Systems
             float jitterX = spawn.X + (float)(rng.NextDouble() * 3.0 - 1.5);
             float jitterY = spawn.Y + (float)(rng.NextDouble() * 3.0 - 1.5);
             if (TrySpawnEnemy(list, adjusted, sprite, jitterX, jitterY,
-                playerPosition, false, collision, rank, displayName, aiProfile, leash, spriteVariantKey,
-                false, archetype.AssetId, archetype.SoundProfile))
+                playerPosition, allowNearPlayer, collision, rank, displayName, aiProfile, leash, spriteVariantKey,
+                false, archetype.AssetId, archetype.SoundProfile, spawn.IsObjectiveTarget))
             {
                 return true;
             }
@@ -39,8 +39,8 @@ namespace My2DEngine.Game.Systems
             {
                 PointF offset = StageSpawnOffsets[i];
                 if (TrySpawnEnemy(list, adjusted, sprite, spawn.X + offset.X, spawn.Y + offset.Y,
-                    playerPosition, false, collision, rank, displayName, aiProfile, leash, spriteVariantKey,
-                    false, archetype.AssetId, archetype.SoundProfile))
+                    playerPosition, allowNearPlayer, collision, rank, displayName, aiProfile, leash, spriteVariantKey,
+                    false, archetype.AssetId, archetype.SoundProfile, spawn.IsObjectiveTarget))
                 {
                     return true;
                 }
@@ -125,7 +125,8 @@ namespace My2DEngine.Game.Systems
             string spriteVariantKey = null,
             bool isIllusion = false,
             string assetId = null,
-            EnemySoundProfile soundProfile = null)
+            EnemySoundProfile soundProfile = null,
+            bool isObjectiveTarget = false)
         {
             if (collision == null || collision.IsWallRadius(x, y, definition.Radius, 0.08f))
             {
@@ -170,6 +171,7 @@ namespace My2DEngine.Game.Systems
                 assetId,
                 aiProfile,
                 soundProfile);
+            enemy.IsObjectiveTarget = isObjectiveTarget;
             enemy.DeathCallback = HandleEnemyDeath;
 
             if (leashBounds.HasValue)

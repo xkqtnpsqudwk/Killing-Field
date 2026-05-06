@@ -167,7 +167,9 @@ namespace My2DEngine.Game.Rendering
                     if (enemyBarW > 104) enemyBarW = 104;
                     float enemyHealthRatio = enemy.MaxHealth > 0f ? enemy.Health / enemy.MaxHealth : 0f;
                     DrawWorldHealthBar(spriteScreenX, enemyBarY, enemyBarW, 5, enemyHealthRatio,
-                        enemy.IsBoss
+                        enemy.IsObjectiveTarget
+                            ? Color.FromArgb(245, 255, 220, 65)
+                            : enemy.IsBoss
                             ? Color.FromArgb(240, 255, 175, 60)
                             : enemy.IsMiniBoss
                                 ? Color.FromArgb(235, 90, 180, 255)

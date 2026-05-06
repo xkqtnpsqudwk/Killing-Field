@@ -22,3 +22,7 @@ packages-temp/
 # Local assistant/tool metadata
 .agent/
 .claude/
+
+# WinForms designer can create resource files for partial Form1 classes; only Form1.resx is used.
+Form1.DebugHud.resx
+Form1.Input.resx

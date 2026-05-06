@@ -131,6 +131,27 @@ namespace My2DEngine.Game.Core
         /// <summary>발사 반동 카메라 흔들림 효과의 현재 강도(0~1).</summary>
         private float playerRecoilShakePower;
 
+        /// <summary>플레이어 공격이 적에게 명중했을 때 표시하는 히트마커 잔여 시간(초).</summary>
+        private float hitMarkerTimer;
+
+        /// <summary>플레이어 공격으로 적을 처치했을 때 표시하는 강화 히트마커 잔여 시간(초).</summary>
+        private float killMarkerTimer;
+
+        /// <summary>발사 불가 상태를 조준점 근처에 표시하는 짧은 HUD 문구.</summary>
+        private string weaponStatusText;
+
+        /// <summary>발사 불가 HUD 문구의 잔여 시간(초).</summary>
+        private float weaponStatusTimer;
+
+        /// <summary>연사 입력 중 동일 문구를 너무 자주 재등록하지 않기 위한 대기 시간(초).</summary>
+        private float weaponStatusRepeatGate;
+
+        /// <summary>보상 드롭/획득을 짧게 표시하는 HUD 토스트 문구.</summary>
+        private string pickupToastText;
+
+        /// <summary>보상 드롭/획득 HUD 토스트 잔여 시간(초).</summary>
+        private float pickupToastTimer;
+
         /// <summary>사망 연출(화면 기울기) 진행도(0~1). 1.25초 동안 선형으로 증가한다.</summary>
         private float deathPresentationProgress;
 
@@ -375,10 +396,11 @@ namespace My2DEngine.Game.Core
             endlessModeActive = currentFloor > FinalRoguelikeFloor;
             ApplyEnemyDifficultyScaling();
 
-            // 층당 1회용 특수기(LMG/PlazmaGun) → 매 층 전환 시 리셋
+            // 층당 1회용 특수기(HChainGun/DuelBerettas)는 매 층 전환 시 리셋한다.
             weapon.ResetFloorSpecial();
 
-            RoomTemplate template = preselected ?? RoomTemplateLibrary.SelectForFloor(currentFloor, templateRandom, bossClearGrowthCount);
+            bool allowRestRoom = preselected != null || ShouldAllowRestRoomAfterCurrentFloor();
+            RoomTemplate template = preselected ?? RoomTemplateLibrary.SelectForFloor(currentFloor, templateRandom, bossClearGrowthCount, allowRestRoom);
             mapManager.LoadRoomFromTemplate(template, out _, out _);
 
             ApplyMapSpawnSettings();
@@ -461,9 +483,8 @@ namespace My2DEngine.Game.Core
 
         /// <summary>
         /// 발사 버튼을 눌렀을 때 호출한다.
-        /// - Pistol / ShotGun / RocketLauncher : PendingShot 세팅
-        /// - LMG : FireButtonHeld = true (매 프레임 즉시 연사 처리)
-        /// - PlazmaGun : FireButtonHeld = true (매 프레임 연사 처리)
+        /// - AMPistol / BearKiller / AutoCannon : PendingShot 세팅
+        /// - HChainGun / DuelBerettas : FireButtonHeld = true (매 프레임 연사 처리)
         /// </summary>
         public void FireButtonDown()
         {
@@ -487,8 +508,7 @@ namespace My2DEngine.Game.Core
 
         /// <summary>
         /// 발사 버튼을 뗐을 때 호출한다.
-        /// - LMG : FireButtonHeld = false
-        /// - PlazmaGun : FireButtonHeld = false
+        /// - HChainGun / DuelBerettas : FireButtonHeld = false
         /// </summary>
         public void FireButtonUp()
         {
@@ -500,7 +520,6 @@ namespace My2DEngine.Game.Core
                     break;
                 case WeaponType.DuelBerettas:
                     weapon.FireButtonHeld = false;
-                    weapon.CancelCharge();
                     break;
             }
         }
@@ -752,6 +771,13 @@ namespace My2DEngine.Game.Core
             playerDamageShakePower = 0f;
             playerRecoilShakeTimer = 0f;
             playerRecoilShakePower = 0f;
+            hitMarkerTimer = 0f;
+            killMarkerTimer = 0f;
+            weaponStatusText = null;
+            weaponStatusTimer = 0f;
+            weaponStatusRepeatGate = 0f;
+            pickupToastText = null;
+            pickupToastTimer = 0f;
             deathPresentationProgress = 0f;
             deathRollDirection = 1f;
             dashKeyHeld = false;
@@ -785,7 +811,11 @@ namespace My2DEngine.Game.Core
                 playerDamageFlashTimer, playerDamageFlashDirX, playerDamageFlashDirY,
                 playerDamageShakeTimer, playerDamageShakePower,
                 playerRecoilShakeTimer, playerRecoilShakePower,
-                deathPresentationProgress, deathRollDirection);
+                deathPresentationProgress, deathRollDirection,
+                GetToxicMistOverlayAlpha(),
+                GetHitMarkerAlpha(), GetKillMarkerAlpha(),
+                weaponStatusText, GetWeaponStatusAlpha(),
+                pickupToastText, GetPickupToastAlpha());
 
             DrawPendingCardRewardReveal(r);
             DrawCardRewardUI(r);

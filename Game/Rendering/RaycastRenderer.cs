@@ -135,12 +135,22 @@ namespace My2DEngine.Game.Rendering
         /// <param name="playerRecoilShakePower">반동 화면 흔들림 세기(0~1).</param>
         /// <param name="deathPresentationProgress">사망 연출 진행 비율(0=시작, 1=완료).</param>
         /// <param name="deathRollDirection">사망 시 화면이 기울어지는 방향(-1 또는 1).</param>
+        /// <param name="hitMarkerAlpha">명중 히트마커 표시 강도(0~1).</param>
+        /// <param name="killMarkerAlpha">처치 히트마커 표시 강도(0~1).</param>
+        /// <param name="weaponStatusText">발사 불가 상태를 설명하는 짧은 HUD 문구.</param>
+        /// <param name="weaponStatusAlpha">발사 불가 HUD 문구 표시 강도(0~1).</param>
+        /// <param name="pickupToastText">보상 드롭/획득을 설명하는 짧은 HUD 토스트 문구.</param>
+        /// <param name="pickupToastAlpha">보상 드롭/획득 HUD 토스트 표시 강도(0~1).</param>
         public void Render(Renderer r, int screenWidth, int screenHeight, Player player, Weapon weapon,
             IList<RewardPickup> rewardPickups, IList<EnemyProjectile> playerProjectiles, Enemy bossEnemy, float bossIntroTimer, string stageStatusMessage,
             string interactPromptText, bool victory, float playerDamageFlash, float damageDirX, float damageDirY,
             float playerDamageShakeTimer, float playerDamageShakePower,
             float playerRecoilShakeTimer, float playerRecoilShakePower,
-            float deathPresentationProgress, float deathRollDirection)
+            float deathPresentationProgress, float deathRollDirection,
+            float toxicMistAlpha,
+            float hitMarkerAlpha, float killMarkerAlpha,
+            string weaponStatusText, float weaponStatusAlpha,
+            string pickupToastText, float pickupToastAlpha)
         {
             EnsureFrame(screenWidth, screenHeight);
             if (zBuffer == null)
@@ -166,7 +176,7 @@ namespace My2DEngine.Game.Rendering
             bool usedGpuWorld = false;
             if (canTryGpuWorld)
             {
-                usedGpuWorld = TryRenderWorld(r, player, rewardPickups, playerProjectiles, deathRotation, deathScale, deathOffsetY);
+                usedGpuWorld = TryRenderWorld(r, player, rewardPickups, playerProjectiles, deathRotation, deathScale, deathOffsetY, toxicMistAlpha);
             }
             else
             {
@@ -200,6 +210,9 @@ namespace My2DEngine.Game.Rendering
                 DrawStaminaBar(r, player);
                 DrawCrosshair(r);
                 DrawPlayerDamageOverlay(r, player, playerDamageFlash, damageDirX, damageDirY);
+                DrawHitMarker(r, hitMarkerAlpha, killMarkerAlpha);
+                DrawWeaponStatusFeedback(r, weaponStatusText, weaponStatusAlpha);
+                DrawPickupToast(r, pickupToastText, pickupToastAlpha);
                 DrawWeaponOverlay(r, weapon);
 
                 DrawBossHud(r, bossEnemy);
