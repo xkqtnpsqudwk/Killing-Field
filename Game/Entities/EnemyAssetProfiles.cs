@@ -36,7 +36,9 @@ namespace My2DEngine.Game
     {
         None,
         SingleShot,
-        SpreadTriplet
+        SpreadTriplet,
+        BurstPair,
+        WideFan
     }
 
     /// <summary>

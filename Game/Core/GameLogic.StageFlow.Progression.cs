@@ -171,10 +171,15 @@ namespace My2DEngine.Game.Core
                 }
                 else
                 {
+                    int rewardGradeBoost = RoomTemplateLibrary.GetCardRewardGradeBoost(activeRoom);
+                    int minimumRewardGrade = RoomTemplateLibrary.IsExtremeRewardRoom(activeRoom)
+                        ? (int)GetOneGradeAboveHighestLuckAvailableStatOfferGrade()
+                        : -1;
                     ShowCardReward(
                         wasBossRoom: false,
                         nextFloorIsBoss: nextIsBoss,
-                        gradeBoost: activeRoom.HazardKind == RoomHazardKind.SupplyShortage ? 1 : 0);
+                        gradeBoost: rewardGradeBoost,
+                        minimumStatGrade: minimumRewardGrade);
                 }
 
                 return;
@@ -260,8 +265,30 @@ namespace My2DEngine.Game.Core
             if (enemy.IsBoss || enemy.IsMiniBoss)
                 runBossesKilled++;
 
+            ApplyOnEnemyKilledRunStatBonuses();
             TrySpawnAmmoDrop(enemy);
             TrySpawnCoinDrop(enemy);
+        }
+
+        private void ApplyOnEnemyKilledRunStatBonuses()
+        {
+            if (player == null || player.IsDead)
+            {
+                return;
+            }
+
+            float killHealRatio = Math.Max(0f, Math.Min(0.10f, GetRunStatBonus(StatType.KillHeal)));
+            if (killHealRatio > 0f && player.Health < player.MaxHealth)
+            {
+                float missingHealth = Math.Max(0f, player.MaxHealth - player.Health);
+                player.Health = Math.Min(player.MaxHealth, player.Health + missingHealth * killHealRatio);
+            }
+
+            float dashRefundRatio = Math.Max(0f, Math.Min(0.25f, GetRunStatBonus(StatType.KillDashCooldownRefund)));
+            if (dashRefundRatio > 0f && player.DashCooldownTimer > 0f)
+            {
+                player.DashCooldownTimer = Math.Max(0f, player.DashCooldownTimer * (1f - dashRefundRatio));
+            }
         }
 
         private void TrySpawnAmmoDrop(Enemy enemy)
@@ -428,7 +455,7 @@ namespace My2DEngine.Game.Core
             if (room.IsRestRoom)
             {
                 SpawnRestRoomChoices(room);
-                SetStageStatus("휴식 상점 - 코인으로 아이템 구매", 3.6f);
+                SetStageStatus("카드 상점 - 코인으로 고등급 카드 구매", 3.6f);
                 return;
             }
 
@@ -514,7 +541,7 @@ namespace My2DEngine.Game.Core
                     objectiveText = "생존전 시작 - " + Math.Ceiling(Math.Max(1f, room.ObjectiveDuration)) + "초 버티기";
                     break;
                 case RoomObjectiveKind.KeyTarget:
-                    objectiveText = "열쇠 방 시작 - 표적 제거";
+                    objectiveText = "열쇠 방 시작 - 은닉 표적 추적";
                     break;
                 default:
                     objectiveText = room.IsBossRoom
@@ -591,7 +618,7 @@ namespace My2DEngine.Game.Core
         }
 
         /// <summary>
-        /// 휴식 룸 진입 시 체력팩, 스팀팩, 탄약 3개 선택지를 배치한다.
+        /// 휴식 룸 진입 시 Luck 기반 고등급 카드 상점 선택지 3개를 배치한다.
         /// 이미 같은 방의 선택지가 있으면 중복 생성하지 않는다.
         /// </summary>
         private void SpawnRestRoomChoices(StageRoom room)
@@ -611,19 +638,16 @@ namespace My2DEngine.Game.Core
             }
 
             PointF[] spawnPoints = FindRestChoiceSpawnPoints(room);
-            RewardPickupKind[] choices =
-            {
-                RewardPickupKind.HealthPack,
-                RewardPickupKind.StimPack,
-                RewardPickupKind.AmmoPack
-            };
+            RewardCardOffer[] offers = GenerateRestShopCardOffers(3);
 
-            for (int i = 0; i < choices.Length; i++)
+            for (int i = 0; i < offers.Length && i < spawnPoints.Length; i++)
             {
+                RewardCardOffer offer = offers[i];
+                CardGrade grade = offer.IsWeaponCard ? offer.WeaponGrade : offer.Grade;
                 rewardPickups.Add(new RewardPickup
                 {
                     RoomId = room.Id,
-                    Kind = choices[i],
+                    Kind = RewardPickupKind.Card,
                     Rarity = RewardPickupRarity.None,
                     EffectMultiplier = 1f,
                     X = spawnPoints[i].X,
@@ -631,7 +655,8 @@ namespace My2DEngine.Game.Core
                     Active = true,
                     PulseTimer = 0f,
                     IsRestChoice = true,
-                    CoinCost = GetRestShopCost(choices[i])
+                    CoinCost = GetRestShopCardCost(grade),
+                    CardOffer = offer
                 });
             }
         }
@@ -815,36 +840,27 @@ namespace My2DEngine.Game.Core
         }
 
         /// <summary>
-        /// 방 ID를 기반으로 이 방에서 획득할 보상의 종류를 결정한다.
-        /// 방 ID를 3으로 나눈 나머지에 따라 체력팩·스팀팩·탄약 순으로 순환한다.
+        /// 방 ID를 기반으로 전투 방 클리어 보상의 종류를 결정한다.
+        /// 회복/스팀 보상은 제거되어 전투 방 보상은 탄약 보급만 생성한다.
         /// </summary>
         /// <param name="room">보상 종류를 결정할 스테이지 방.</param>
         /// <returns>결정된 보상 픽업 종류.</returns>
         private RewardPickupKind DetermineRewardKind(StageRoom room)
         {
-            int rewardIndex = (room.Id - 1) % 3;
-            switch (rewardIndex)
-            {
-                case 0:
-                    return RewardPickupKind.HealthPack;
-                case 1:
-                    return RewardPickupKind.StimPack;
-                default:
-                    return RewardPickupKind.AmmoPack;
-            }
+            return RewardPickupKind.AmmoPack;
         }
 
         /// <summary>
         /// 방 타입과 보상 종류를 기반으로 보상의 희귀도를 무작위로 결정한다.
-        /// 스팀팩은 항상 <see cref="RewardPickupRarity.None"/>을 반환한다.
+        /// 코인과 카드는 항상 <see cref="RewardPickupRarity.None"/>을 반환한다.
         /// 보스 방일수록 Epic·Rare 확률이 높고, 일반 방일수록 낮다.
         /// </summary>
         /// <param name="room">희귀도 판정에 사용할 스테이지 방(보스 여부 확인).</param>
-        /// <param name="kind">보상 종류. StimPack이면 희귀도 판정을 건너뛴다.</param>
+        /// <param name="kind">보상 종류.</param>
         /// <returns>결정된 희귀도.</returns>
         private RewardPickupRarity DetermineRewardRarity(StageRoom room, RewardPickupKind kind)
         {
-            if (kind == RewardPickupKind.StimPack || kind == RewardPickupKind.Coin)
+            if (kind == RewardPickupKind.Coin || kind == RewardPickupKind.Card)
             {
                 return RewardPickupRarity.None;
             }
@@ -871,16 +887,16 @@ namespace My2DEngine.Game.Core
 
         /// <summary>
         /// 보상 종류와 희귀도를 기반으로 효과 배율을 계산한다.
-        /// 스팀팩이거나 희귀도가 None이면 기본 배율 1.0을 반환한다.
+        /// 코인, 카드이거나 희귀도가 None이면 기본 배율 1.0을 반환한다.
         /// </summary>
         /// <param name="kind">보상 종류.</param>
         /// <param name="rarity">보상 희귀도.</param>
         /// <returns>
-        /// 효과 배율. 예를 들어 Rare 체력팩은 1.45배, Epic 탄약은 2.2배의 효과를 가진다.
+        /// 효과 배율. 예를 들어 Rare 탄약은 1.8배, Epic 탄약은 2.2배의 효과를 가진다.
         /// </returns>
         private float GetRewardEffectMultiplier(RewardPickupKind kind, RewardPickupRarity rarity)
         {
-            if (kind == RewardPickupKind.StimPack || kind == RewardPickupKind.Coin || rarity == RewardPickupRarity.None)
+            if (kind == RewardPickupKind.Coin || kind == RewardPickupKind.Card || rarity == RewardPickupRarity.None)
             {
                 return 1f;
             }
@@ -888,11 +904,11 @@ namespace My2DEngine.Game.Core
             switch (rarity)
             {
                 case RewardPickupRarity.Rare:
-                    return kind == RewardPickupKind.HealthPack ? 1.45f : 1.8f;
+                    return 1.8f;
                 case RewardPickupRarity.Epic:
-                    return kind == RewardPickupKind.HealthPack ? 1.9f : 2.2f;
+                    return 2.2f;
                 default:
-                    return kind == RewardPickupKind.HealthPack ? 1.0f : 1.5f;
+                    return 1.5f;
             }
         }
 
@@ -951,7 +967,13 @@ namespace My2DEngine.Game.Core
 
                 if (pickup.IsRestChoice)
                 {
-                    CompleteRestRoomChoice(pickup.RoomId, purchased: true);
+                    int roomId = pickup.RoomId;
+                    pickup.Active = false;
+                    rewardPickups.RemoveAt(i);
+                    if (!HasActiveRestChoice(roomId))
+                    {
+                        CompleteRestRoomChoice(roomId, purchased: true);
+                    }
                     break;
                 }
 
@@ -961,7 +983,7 @@ namespace My2DEngine.Game.Core
         }
 
         /// <summary>
-        /// 휴식 룸에서 하나의 선택지를 획득했을 때 나머지 선택지를 제거하고 분기 선택으로 진행한다.
+        /// 휴식 룸 상점을 떠날 때 남은 선택지를 제거하고 분기 선택으로 진행한다.
         /// </summary>
         private void CompleteRestRoomChoice(int roomId, bool purchased = true)
         {
@@ -995,9 +1017,8 @@ namespace My2DEngine.Game.Core
         /// <summary>
         /// 보상 픽업 종류에 따라 플레이어 또는 무기에 효과를 적용한다.
         /// <list type="bullet">
-        ///   <item>HealthPack: 최대 체력 한도 내에서 체력을 회복한다.</item>
-        ///   <item>StimPack: 스팀팩 보유 수를 1 증가시킨다.</item>
         ///   <item>AmmoPack: 현재 들고 있는 무기의 탄약을 즉시 보충한다.</item>
+        ///   <item>Card: 휴식 상점 구매 카드 효과를 즉시 적용한다.</item>
         /// </list>
         /// </summary>
         /// <param name="pickup">획득한 보상 픽업 객체.</param>
@@ -1011,32 +1032,6 @@ namespace My2DEngine.Game.Core
             float effectMultiplier = Math.Max(1f, pickup.EffectMultiplier);
             switch (pickup.Kind)
             {
-                case RewardPickupKind.HealthPack:
-                    if (pickup.IsRestChoice && player.Health >= player.MaxHealth - 0.01f)
-                    {
-                        ShowRestShopBlockMessage("체력이 가득 찼습니다");
-                        return false;
-                    }
-
-                    if (!TrySpendRestShopCost(pickup))
-                    {
-                        return false;
-                    }
-
-                    float previousHealth = player.Health;
-                    player.Health = Math.Min(player.MaxHealth, player.Health + GameConfig.HealthPickupAmount * effectMultiplier);
-                    int healedAmount = Math.Max(1, (int)Math.Round(player.Health - previousHealth));
-                    RegisterPickupToast(pickup.IsRestChoice ? "HEALTH BOUGHT" : "HEALTH +" + healedAmount);
-                    return true;
-                case RewardPickupKind.StimPack:
-                    if (!TrySpendRestShopCost(pickup))
-                    {
-                        return false;
-                    }
-
-                    player.AddStimPack(1);
-                    RegisterPickupToast(pickup.IsRestChoice ? "STIM BOUGHT" : "STIM +1");
-                    return true;
                 case RewardPickupKind.AmmoPack:
                     WeaponType currentWeaponType = weapon.CurrentType;
                     int ammoAmount = GetAmmoPickupAmount(currentWeaponType, effectMultiplier);
@@ -1059,6 +1054,20 @@ namespace My2DEngine.Game.Core
                     weapon.AddAmmoToCurrentWeapon(ammoAmount);
                     RegisterPickupToast(pickup.IsRestChoice ? "AMMO BOUGHT" : "AMMO +" + addedAmmo);
                     return true;
+                case RewardPickupKind.Card:
+                    if (pickup.CardOffer == null)
+                    {
+                        return false;
+                    }
+
+                    if (!TrySpendRestShopCost(pickup))
+                    {
+                        return false;
+                    }
+
+                    ApplyCardOffer(pickup.CardOffer);
+                    RegisterPickupToast("CARD BOUGHT");
+                    return true;
                 case RewardPickupKind.Coin:
                     int coinAmount = Math.Max(1, pickup.Amount);
                     player.AddCoins(coinAmount);
@@ -1069,25 +1078,14 @@ namespace My2DEngine.Game.Core
             }
         }
 
-        private int GetRestShopCost(RewardPickupKind kind)
+        private int GetRestShopCardCost(CardGrade grade)
         {
-            int baseCost;
-            switch (kind)
-            {
-                case RewardPickupKind.HealthPack:
-                    baseCost = GameConfig.RestShopHealthPackCost;
-                    break;
-                case RewardPickupKind.StimPack:
-                    baseCost = GameConfig.RestShopStimPackCost;
-                    break;
-                case RewardPickupKind.AmmoPack:
-                    baseCost = GameConfig.RestShopAmmoPackCost;
-                    break;
-                default:
-                    return 0;
-            }
-
-            return baseCost + Math.Max(0, bossClearGrowthCount) * GameConfig.RestShopCostIncreasePerBossClear;
+            int gradeCost = Math.Max(0, (int)grade) * GameConfig.RestShopCardCostPerGrade;
+            int baseCost = GameConfig.RestShopCardBaseCost +
+                gradeCost +
+                Math.Max(0, bossClearGrowthCount) * GameConfig.RestShopCostIncreasePerBossClear;
+            float discount = Math.Max(0f, Math.Min(0.50f, GetRunStatBonus(StatType.ShopDiscount)));
+            return Math.Max(1, (int)Math.Ceiling(baseCost * (1f - discount)));
         }
 
         private bool TrySpendRestShopCost(RewardPickup pickup)
@@ -1114,14 +1112,6 @@ namespace My2DEngine.Game.Core
             {
                 SetStageStatus(message, 1.6f);
             }
-        }
-
-        private string BuildRestShopPurchaseMessage(RewardPickup pickup, string itemText)
-        {
-            int cost = pickup?.CoinCost ?? 0;
-            return cost > 0
-                ? $"{itemText} (-{cost} 코인)"
-                : itemText;
         }
 
         private bool TrySkipActiveRestRoom()
@@ -1152,6 +1142,20 @@ namespace My2DEngine.Game.Core
                 }
 
                 if (player.CoinCount >= Math.Max(0, pickup.CoinCost))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool HasActiveRestChoice(int roomId)
+        {
+            for (int i = 0; i < rewardPickups.Count; i++)
+            {
+                RewardPickup pickup = rewardPickups[i];
+                if (pickup != null && pickup.Active && pickup.IsRestChoice && pickup.RoomId == roomId)
                 {
                     return true;
                 }

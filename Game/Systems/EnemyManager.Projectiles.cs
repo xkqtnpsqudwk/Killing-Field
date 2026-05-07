@@ -38,6 +38,30 @@ namespace My2DEngine.Game.Systems
                 return;
             }
 
+            if (attackStyle == EnemyRangedAttackStyle.BurstPair)
+            {
+                float spread = Math.Max(0.04f, enemy.AiProfile.ProjectileSpreadOffset);
+                for (int i = 0; i < BurstPairSpreads.Length; i++)
+                {
+                    float offset = BurstPairSpreads[i] / 0.08f * spread;
+                    FireEnemySpreadShot(enemy, dirX, dirY, offset, 0.58f);
+                }
+
+                return;
+            }
+
+            if (attackStyle == EnemyRangedAttackStyle.WideFan)
+            {
+                float spread = Math.Max(0.14f, enemy.AiProfile.ProjectileSpreadOffset);
+                for (int i = 0; i < WideFanSpreads.Length; i++)
+                {
+                    float offset = WideFanSpreads[i] / 0.34f * spread;
+                    FireEnemySpreadShot(enemy, dirX, dirY, offset, 0.44f);
+                }
+
+                return;
+            }
+
             float aimJitter = ((float)rng.NextDouble() - 0.5f) * 0.04f;
             FireEnemySpreadShot(enemy, dirX, dirY, aimJitter, 0.9f);
         }

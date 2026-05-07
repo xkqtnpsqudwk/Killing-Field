@@ -205,8 +205,9 @@ namespace My2DEngine.Game.Rendering
                 DrawStageBackdrop(r, stageStatusMessage, interactPromptText, bossIntroTimer, bossEnemy, victory);
                 DrawMiniMap(r, player);
                 DrawAmmoCounterBackdrop(r, weapon);
-                DrawStimHudBackdrop(r);
+                DrawCoinHudBackdrop(r);
                 DrawHealthBar(r, player);
+                DrawShieldBar(r, player);
                 DrawStaminaBar(r, player);
                 DrawCrosshair(r);
                 DrawPlayerDamageOverlay(r, player, playerDamageFlash, damageDirX, damageDirY);
@@ -218,7 +219,7 @@ namespace My2DEngine.Game.Rendering
                 DrawBossHud(r, bossEnemy);
                 DrawStageOverlay(r, stageStatusMessage, interactPromptText, bossIntroTimer, bossEnemy, victory);
                 DrawAmmoCounter(r, weapon);
-                DrawStimHud(r, player);
+                DrawCoinHud(r, player);
                 DrawRewardPickupLabels(r, player, rewardPickups);
                 DrawSpriteProjectionDebug(r);
 

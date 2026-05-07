@@ -138,8 +138,8 @@ namespace My2DEngine.Game.Core
             if (currentRoom != null && currentRoom.IsRestRoom && currentRoom.State.Activated && !currentRoom.State.Cleared)
             {
                 interactPromptText = HasAffordableRestChoice(currentRoom.Id)
-                    ? $"휴식 상점 - 구매 또는 E로 나가기 (보유 코인 {player.CoinCount})"
-                    : $"휴식 상점 - E로 나가기 (보유 코인 {player.CoinCount})";
+                    ? $"카드 상점 - 구매 또는 E로 나가기 (보유 코인 {player.CoinCount})"
+                    : $"카드 상점 - E로 나가기 (보유 코인 {player.CoinCount})";
                 return;
             }
 
@@ -152,7 +152,7 @@ namespace My2DEngine.Game.Core
         {
             if (room.IsRestRoom)
             {
-                return "중앙 진입 시 휴식 상점";
+                return "중앙 진입 시 카드 상점";
             }
 
             string prompt;
@@ -162,7 +162,7 @@ namespace My2DEngine.Game.Core
                     prompt = "중앙 진입 시 생존전 시작";
                     break;
                 case RoomObjectiveKind.KeyTarget:
-                    prompt = "중앙 진입 시 열쇠 방 시작";
+                    prompt = "중앙 진입 시 은닉 표적 방 시작";
                     break;
                 default:
                     prompt = room.IsBossRoom
@@ -194,7 +194,7 @@ namespace My2DEngine.Game.Core
                     prompt = "목표: " + Math.Ceiling(Math.Max(0f, room.State.ObjectiveTimer)) + "초 버티기";
                     break;
                 case RoomObjectiveKind.KeyTarget:
-                    prompt = "목표: 열쇠 표적 처치";
+                    prompt = "목표: 은닉 표적 추적";
                     break;
                 default:
                     prompt = "목표: 적 제거 (" + enemyManager.CountAliveEnemies() + " 남음)";
@@ -215,11 +215,24 @@ namespace My2DEngine.Game.Core
 
         private float GetToxicMistOverlayAlpha()
         {
+            if (!IsActiveToxicMistRoom())
+            {
+                return 0f;
+            }
+
+            StageRoom room = mapManager.StageRooms[activeStageRoomIndex];
+            float interval = Math.Max(0.001f, GameConfig.ToxicMistDamageInterval);
+            float tickPulse = 1f - Math.Max(0f, Math.Min(1f, room.State.HazardTickTimer / interval));
+            return Math.Min(1f, 0.18f + tickPulse * 0.10f);
+        }
+
+        private bool IsActiveToxicMistRoom()
+        {
             if (activeStageRoomIndex < 0 ||
                 mapManager.StageRooms == null ||
                 activeStageRoomIndex >= mapManager.StageRooms.Length)
             {
-                return 0f;
+                return false;
             }
 
             StageRoom room = mapManager.StageRooms[activeStageRoomIndex];
@@ -228,12 +241,10 @@ namespace My2DEngine.Game.Core
                 !room.State.Activated ||
                 room.State.Cleared)
             {
-                return 0f;
+                return false;
             }
 
-            float interval = Math.Max(0.001f, GameConfig.ToxicMistDamageInterval);
-            float tickPulse = 1f - Math.Max(0f, Math.Min(1f, room.State.HazardTickTimer / interval));
-            return Math.Min(1f, 0.18f + tickPulse * 0.10f);
+            return true;
         }
 
         /// <summary>
@@ -373,7 +384,6 @@ namespace My2DEngine.Game.Core
             deathPresentationProgress = 0f;
             deathRollDirection = 1f;
             interactKeyHeld = false;
-            stimKeyHeld = false;
             specialKeyHeld = false;
             currentStageRoomCache = null;
             branchSelectionActive = false;

@@ -75,7 +75,7 @@ namespace My2DEngine.Game
 
     /// <summary>
     /// 게임 내 모든 적/보스 에셋 카탈로그다.
-    /// 일반 적 3종 + 신규 적 3종, 주력 보스 4종 + 신규 보스 7종을 정의한다.
+    /// 일반 적 10종, 주력 보스 4종 + 신규 보스 7종을 정의한다.
     /// </summary>
     public static class EnemyCatalog
     {
@@ -109,18 +109,9 @@ namespace My2DEngine.Game
             new[]
             {
                 "zombie_scientist_pack",
-                "zombie_scientist_plasma",
                 "zombie_scientist_freeze",
-                "zombie_scientist_uzi",
                 "zombie_scientist_halon",
-                "zombie_scientist_axe",
-                "zombie_scientist_cleaver",
-                "zombie_scientist_crowbar",
-                "zombie_scientist_hammer",
-                "zombie_scientist_knife",
-                "zombie_scientist_syringe",
-                "zombie_scientist_wrench",
-                "zombie_scientist_grenade"
+                "zombie_scientist_syringe"
             });
 
         private static readonly EnemyArchetype EliteEnemy = new EnemyArchetype(
@@ -173,6 +164,117 @@ namespace My2DEngine.Game
                 EnemyBehaviorPattern.Skirmisher,
                 EnemyBehaviorPattern.Pouncer,
                 EnemyBehaviorPattern.Rushdown
+            });
+
+        // ── 좀비 과학자 변형 적 ─────────────────────────────────────────────
+
+        private static readonly EnemyArchetype UziTrooperEnemy = new EnemyArchetype(
+            "uzi_trooper",
+            "Uzi Trooper",
+            "Uzi Trooper",
+            "zombie_scientist_uzi",
+            new EnemyDefinition
+            {
+                Type = EnemyType.Gunner,
+                Scale = 0.78f,
+                MaxHealth = 52f,
+                MoveSpeed = 1.16f,
+                AttackRange = 6.7f,
+                AttackDamage = 7f,
+                AttackCooldownDuration = 0.46f,
+                Radius = 0.21f
+            },
+            EnemyRank.Normal,
+            BuildUziTrooperProfile(),
+            EnemySoundProfile.Silent,
+            new[]
+            {
+                EnemyBehaviorPattern.Strafe,
+                EnemyBehaviorPattern.ZombieGunner
+            });
+
+        private static readonly EnemyArchetype PlasmaTechEnemy = new EnemyArchetype(
+            "plasma_tech",
+            "Plasma Tech",
+            "Plasma Tech",
+            "zombie_scientist_plasma",
+            new EnemyDefinition
+            {
+                Type = EnemyType.Gunner,
+                Scale = 0.86f,
+                MaxHealth = 68f,
+                MoveSpeed = 0.92f,
+                AttackRange = 8.6f,
+                AttackDamage = 15f,
+                AttackCooldownDuration = 0.96f,
+                Radius = 0.23f
+            },
+            EnemyRank.Normal,
+            BuildPlasmaTechProfile(),
+            EnemySoundProfile.Silent,
+            new[]
+            {
+                EnemyBehaviorPattern.BeamSniper,
+                EnemyBehaviorPattern.Kite
+            });
+
+        private static readonly EnemyArchetype GrenadierScientistEnemy = new EnemyArchetype(
+            "grenadier_scientist",
+            "Grenadier Scientist",
+            "Grenadier",
+            "zombie_scientist_grenade",
+            new EnemyDefinition
+            {
+                Type = EnemyType.RuinedGunner,
+                Scale = 0.88f,
+                MaxHealth = 82f,
+                MoveSpeed = 0.84f,
+                AttackRange = 7.2f,
+                AttackDamage = 9f,
+                AttackCooldownDuration = 1.38f,
+                Radius = 0.24f
+            },
+            EnemyRank.Normal,
+            BuildGrenadierProfile(),
+            EnemySoundProfile.Silent,
+            new[]
+            {
+                EnemyBehaviorPattern.SlimeLobber,
+                EnemyBehaviorPattern.Kite
+            });
+
+        private static readonly EnemyArchetype LabButcherEnemy = new EnemyArchetype(
+            "lab_butcher",
+            "Lab Butcher",
+            "Lab Butcher",
+            "zombie_scientist_cleaver",
+            new EnemyDefinition
+            {
+                Type = EnemyType.Elite,
+                Scale = 0.95f,
+                MaxHealth = 92f,
+                MoveSpeed = 1.18f,
+                AttackRange = 0.95f,
+                AttackDamage = 15f,
+                AttackCooldownDuration = 0.72f,
+                Radius = 0.27f
+            },
+            EnemyRank.Normal,
+            BuildLabButcherProfile(),
+            EnemySoundProfile.Silent,
+            new[]
+            {
+                EnemyBehaviorPattern.Rushdown,
+                EnemyBehaviorPattern.Pouncer
+            },
+            new[]
+            {
+                "zombie_scientist_axe",
+                "zombie_scientist_cleaver",
+                "zombie_scientist_crowbar",
+                "zombie_scientist_hammer",
+                "zombie_scientist_knife",
+                "zombie_scientist_wrench"
             });
 
         // ── 신규 일반 적 ─────────────────────────────────────────────────────
@@ -483,6 +585,10 @@ namespace My2DEngine.Game
             GunnerEnemy,
             EliteEnemy,
             RuinedGunnerEnemy,
+            UziTrooperEnemy,
+            PlasmaTechEnemy,
+            GrenadierScientistEnemy,
+            LabButcherEnemy,
             BloodGhostEnemy,
             BeamRevenantEnemy,
             HellionEnemy,
@@ -518,6 +624,16 @@ namespace My2DEngine.Game
             Register(GunnerEnemy, "zombie_scientist", "zombie_scientist_pack");
             Register(EliteEnemy, "blind_pinky");
             Register(RuinedGunnerEnemy, "slime_imp");
+            Register(UziTrooperEnemy, "zombie_scientist_uzi");
+            Register(PlasmaTechEnemy, "zombie_scientist_plasma");
+            Register(GrenadierScientistEnemy, "zombie_scientist_grenade");
+            Register(LabButcherEnemy,
+                "zombie_scientist_axe",
+                "zombie_scientist_cleaver",
+                "zombie_scientist_crowbar",
+                "zombie_scientist_hammer",
+                "zombie_scientist_knife",
+                "zombie_scientist_wrench");
             Register(BloodGhostEnemy);
             Register(BeamRevenantEnemy);
             Register(HellionEnemy);
@@ -657,6 +773,128 @@ namespace My2DEngine.Game
                 ProjectileSpreadOffset = 0.18f,
                 PatrolIdleChance = 0.14f,
                 PatrolMoveDurationMin = 1.25f,
+                PatrolMoveDurationMax = 2.6f
+            };
+        }
+
+        private static EnemyAiProfile BuildUziTrooperProfile()
+        {
+            return new EnemyAiProfile(
+                EnemyBehaviorPattern.ZombieGunner,
+                EnemyWanderStyle.Standard,
+                EnemyRangedAttackStyle.BurstPair)
+            {
+                SightRange = 10.8f,
+                HearingRange = 11.4f,
+                MemoryDuration = 3.2f,
+                PreferredCombatDistance = 5.4f,
+                PreferredDistanceTolerance = 0.9f,
+                AttackWindupDuration = 0.08f,
+                AttackRecoverDuration = 0.12f,
+                ChaseSpeedScale = 1.02f,
+                InvestigateSpeedScale = 0.96f,
+                SearchSpeedScale = 0.82f,
+                StrafeSpeedScale = 1.02f,
+                TurnResponse = 8.2f,
+                PredictionLeadSeconds = 0.24f,
+                ProjectileSpeed = 10.8f,
+                ProjectileLifetime = 3.1f,
+                ProjectileSpreadOffset = 0.06f,
+                DirectionalSearchDistance = 2.0f,
+                PatrolMoveDurationMin = 1.0f,
+                PatrolMoveDurationMax = 2.2f,
+                PatrolIdleChance = 0.08f
+            };
+        }
+
+        private static EnemyAiProfile BuildPlasmaTechProfile()
+        {
+            return new EnemyAiProfile(
+                EnemyBehaviorPattern.BeamSniper,
+                EnemyWanderStyle.Standard,
+                EnemyRangedAttackStyle.SingleShot)
+            {
+                SightRange = 12.8f,
+                HearingRange = 10.6f,
+                MemoryDuration = 3.8f,
+                SearchDuration = 3.6f,
+                PreferredCombatDistance = 7.2f,
+                PreferredDistanceTolerance = 1.1f,
+                AttackWindupDuration = 0.24f,
+                AttackRecoverDuration = 0.38f,
+                ChaseSpeedScale = 0.82f,
+                InvestigateSpeedScale = 0.82f,
+                SearchSpeedScale = 0.72f,
+                StrafeSpeedScale = 0.88f,
+                TurnResponse = 6.8f,
+                PredictionLeadSeconds = 0.36f,
+                ProjectileSpeed = 8.4f,
+                ProjectileLifetime = 4.1f,
+                DirectionalSearchDistance = 2.4f,
+                PatrolMoveDurationMin = 1.4f,
+                PatrolMoveDurationMax = 3.0f,
+                PatrolIdleChance = 0.18f
+            };
+        }
+
+        private static EnemyAiProfile BuildGrenadierProfile()
+        {
+            return new EnemyAiProfile(
+                EnemyBehaviorPattern.SlimeLobber,
+                EnemyWanderStyle.Standard,
+                EnemyRangedAttackStyle.WideFan)
+            {
+                SightRange = 11.6f,
+                HearingRange = 11f,
+                MemoryDuration = 3.4f,
+                SearchDuration = 3.6f,
+                DirectionalSearchDistance = 2.0f,
+                PreferredCombatDistance = 5.8f,
+                PreferredDistanceTolerance = 1.5f,
+                AttackWindupDuration = 0.26f,
+                AttackRecoverDuration = 0.44f,
+                ChaseSpeedScale = 0.78f,
+                InvestigateSpeedScale = 0.78f,
+                SearchSpeedScale = 0.68f,
+                StrafeSpeedScale = 0.78f,
+                TurnResponse = 5.8f,
+                PredictionLeadSeconds = 0.26f,
+                ProjectileSpeed = 7.2f,
+                ProjectileLifetime = 4.2f,
+                ProjectileSpreadOffset = 0.28f,
+                PatrolIdleChance = 0.2f,
+                PatrolMoveDurationMin = 1.5f,
+                PatrolMoveDurationMax = 3.1f
+            };
+        }
+
+        private static EnemyAiProfile BuildLabButcherProfile()
+        {
+            return new EnemyAiProfile(
+                EnemyBehaviorPattern.Rushdown,
+                EnemyWanderStyle.Standard)
+            {
+                SightRange = 8.8f,
+                HearingRange = 12.6f,
+                PatrolSightDot = 0.2f,
+                AlertSightDot = -0.48f,
+                MemoryDuration = 4.3f,
+                SearchDuration = 4.4f,
+                SearchRadius = 2.6f,
+                SearchSpreadDegrees = 95f,
+                DirectionalSearchDistance = 2.5f,
+                PreferredCombatDistance = 1.0f,
+                PreferredDistanceTolerance = 0.24f,
+                AttackWindupDuration = 0.13f,
+                AttackRecoverDuration = 0.22f,
+                ChaseSpeedScale = 1.18f,
+                InvestigateSpeedScale = 1.02f,
+                SearchSpeedScale = 0.88f,
+                TurnResponse = 9.2f,
+                DirectionInfluence = 0.52f,
+                PreferredAttackFacingDot = 0.2f,
+                PatrolIdleChance = 0.08f,
+                PatrolMoveDurationMin = 1.2f,
                 PatrolMoveDurationMax = 2.6f
             };
         }

@@ -1,4 +1,6 @@
 using My2DEngine.Engine.Math;
+using My2DEngine.Game.Config;
+using My2DEngine.Game.Map;
 
 namespace My2DEngine.Game.Core
 {
@@ -45,6 +47,25 @@ namespace My2DEngine.Game.Core
         public float FirstPlayerProjectileExplosionRadius { get; set; }
     }
 
+    internal sealed class PlayerDamageSmokeResult
+    {
+        public float Health { get; set; }
+        public float Shield { get; set; }
+        public float ShieldRegenDelayTimer { get; set; }
+    }
+
+    internal sealed class KillBonusSmokeResult
+    {
+        public float Health { get; set; }
+        public float DashCooldownTimer { get; set; }
+    }
+
+    internal sealed class ShieldSettingsSmokeResult
+    {
+        public float RegenRate { get; set; }
+        public float RegenDelayDuration { get; set; }
+    }
+
     /// <summary>
     /// GameLogic의 테스트용 관찰 API partial.
     /// 내부 상태를 <see cref="GameLogicSmokeSnapshot"/>으로 노출하여
@@ -86,6 +107,281 @@ namespace My2DEngine.Game.Core
             }
 
             return snapshot;
+        }
+
+        internal RewardCardOffer[] CreateRestShopCardOfferSmokeSnapshot(float luckValue)
+        {
+            PermanentProgressionData previousProgression = permanentProgression;
+            try
+            {
+                permanentProgression = PermanentProgressionData.CreateDefault();
+                permanentProgression.LuckValue = luckValue;
+                permanentProgression.Sanitize();
+                return GenerateRestShopCardOffers(3);
+            }
+            finally
+            {
+                permanentProgression = previousProgression;
+            }
+        }
+
+        internal int GetRestShopCardCostSmokeSnapshot(CardGrade grade)
+        {
+            return GetRestShopCardCost(grade);
+        }
+
+        internal int GetRoomRewardGradeBoostSmokeSnapshot(RoomTemplate template)
+        {
+            return RoomTemplateLibrary.GetCardRewardGradeBoost(template);
+        }
+
+        internal int GetExtremeRoomMinimumRewardGradeSmokeSnapshot(RoomTemplate template, float luckValue)
+        {
+            PermanentProgressionData previousProgression = permanentProgression;
+            try
+            {
+                permanentProgression = PermanentProgressionData.CreateDefault();
+                permanentProgression.LuckValue = luckValue;
+                permanentProgression.Sanitize();
+                return RoomTemplateLibrary.IsExtremeRewardRoom(template)
+                    ? (int)GetOneGradeAboveHighestLuckAvailableStatOfferGrade()
+                    : -1;
+            }
+            finally
+            {
+                permanentProgression = previousProgression;
+            }
+        }
+
+        internal int GetRestShopCardCostSmokeSnapshot(CardGrade grade, float shopDiscount)
+        {
+            float previous = runStatBonusTotals[(int)StatType.ShopDiscount];
+            try
+            {
+                runStatBonusTotals[(int)StatType.ShopDiscount] = shopDiscount;
+                return GetRestShopCardCost(grade);
+            }
+            finally
+            {
+                runStatBonusTotals[(int)StatType.ShopDiscount] = previous;
+            }
+        }
+
+        internal bool CanOfferRestRoomForNextSelectionSmokeSnapshot(
+            bool currentFloorAllowsRestRoom,
+            bool restRoomCooldownActive)
+        {
+            return ShouldAllowRestRoomForNextSelection(currentFloorAllowsRestRoom, restRoomCooldownActive);
+        }
+
+        internal bool BranchIncludesRestRoomSmokeSnapshot(bool optionAIsRestRoom, bool optionBIsRestRoom)
+        {
+            RoomTemplate optionA = new RoomTemplate { IsRestRoom = optionAIsRestRoom };
+            RoomTemplate optionB = new RoomTemplate { IsRestRoom = optionBIsRestRoom };
+            return BranchIncludesRestRoom(optionA, optionB);
+        }
+
+        internal float ClampRunStatBonusSmokeSnapshot(StatType stat, float value)
+        {
+            return ClampRunStatBonusTotal(stat, value);
+        }
+
+        internal bool IsStatInRewardPoolSmokeSnapshot(StatType stat)
+        {
+            for (int i = 0; i < RewardStatTypes.Length; i++)
+            {
+                if (RewardStatTypes[i] == stat)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        internal bool IsStatOfferAvailableSmokeSnapshot(StatType stat, int floor, bool cardChoiceOffered, float currentBonus)
+        {
+            int previousFloor = currentFloor;
+            bool previousCardChoiceOffered = this.cardChoiceBonusOffered;
+            float previousBonus = runStatBonusTotals[(int)stat];
+            try
+            {
+                currentFloor = floor;
+                this.cardChoiceBonusOffered = cardChoiceOffered;
+                runStatBonusTotals[(int)stat] = currentBonus;
+                return IsStatOfferAvailable(stat);
+            }
+            finally
+            {
+                currentFloor = previousFloor;
+                this.cardChoiceBonusOffered = previousCardChoiceOffered;
+                runStatBonusTotals[(int)stat] = previousBonus;
+            }
+        }
+
+        internal int GetCardRewardOfferSlotCountSmokeSnapshot(float cardChoiceBonus)
+        {
+            float previous = runStatBonusTotals[(int)StatType.CardChoiceBonus];
+            try
+            {
+                runStatBonusTotals[(int)StatType.CardChoiceBonus] = cardChoiceBonus;
+                return GetCardRewardOfferSlotCount();
+            }
+            finally
+            {
+                runStatBonusTotals[(int)StatType.CardChoiceBonus] = previous;
+            }
+        }
+
+        internal ShieldSettingsSmokeResult GetShieldSettingsSmokeSnapshot(float regenRateBonus, float regenDelayReduction)
+        {
+            float previousRate = runStatBonusTotals[(int)StatType.ShieldRegenRate];
+            float previousDelay = runStatBonusTotals[(int)StatType.ShieldRegenDelayReduction];
+            try
+            {
+                runStatBonusTotals[(int)StatType.ShieldRegenRate] = regenRateBonus;
+                runStatBonusTotals[(int)StatType.ShieldRegenDelayReduction] = regenDelayReduction;
+                return new ShieldSettingsSmokeResult
+                {
+                    RegenRate = GetEffectiveShieldRegenRate(),
+                    RegenDelayDuration = GetEffectiveShieldRegenDelayDuration(),
+                };
+            }
+            finally
+            {
+                runStatBonusTotals[(int)StatType.ShieldRegenRate] = previousRate;
+                runStatBonusTotals[(int)StatType.ShieldRegenDelayReduction] = previousDelay;
+            }
+        }
+
+        internal PlayerDamageSmokeResult ApplyIncomingDamageSmokeSnapshot(
+            float startingHealth,
+            float maxHealth,
+            float startingShield,
+            float damage,
+            float damageReduction)
+        {
+            float previousHealth = player.Health;
+            float previousMaxHealth = player.MaxHealth;
+            bool previousIsDead = player.IsDead;
+            float previousShield = player.Shield;
+            float previousMaxShield = player.MaxShield;
+            float previousShieldRegenRate = player.ShieldRegenRate;
+            float previousShieldRegenDelay = player.ShieldRegenDelayDuration;
+            float previousShieldRegenTimer = player.ShieldRegenDelayTimer;
+            float previousDamageReduction = runStatBonusTotals[(int)StatType.DamageReduction];
+            float previousDashTimer = player.DashTimer;
+            try
+            {
+                player.MaxHealth = maxHealth;
+                player.Health = startingHealth;
+                player.IsDead = false;
+                player.ConfigureShield(GameConfig.PlayerShieldMax, GameConfig.PlayerShieldBaseRegenRate, GameConfig.PlayerShieldBaseRegenDelay);
+                player.RestoreShieldState(startingShield, 0f);
+                player.DashTimer = 0f;
+                runStatBonusTotals[(int)StatType.DamageReduction] = damageReduction;
+
+                OnPlayerDamaged(damage, player.Position.X, player.Position.Y);
+                return new PlayerDamageSmokeResult
+                {
+                    Health = player.Health,
+                    Shield = player.Shield,
+                    ShieldRegenDelayTimer = player.ShieldRegenDelayTimer,
+                };
+            }
+            finally
+            {
+                player.MaxHealth = previousMaxHealth;
+                player.Health = previousHealth;
+                player.IsDead = previousIsDead;
+                player.ConfigureShield(previousMaxShield, previousShieldRegenRate, previousShieldRegenDelay);
+                player.RestoreShieldState(previousShield, previousShieldRegenTimer);
+                player.DashTimer = previousDashTimer;
+                runStatBonusTotals[(int)StatType.DamageReduction] = previousDamageReduction;
+            }
+        }
+
+        internal KillBonusSmokeResult ApplyKillBonusesSmokeSnapshot(
+            float startingHealth,
+            float maxHealth,
+            float dashCooldownTimer,
+            float killHealBonus,
+            float killDashRefundBonus)
+        {
+            float previousHealth = player.Health;
+            float previousMaxHealth = player.MaxHealth;
+            bool previousIsDead = player.IsDead;
+            float previousDashCooldown = player.DashCooldownTimer;
+            float previousKillHeal = runStatBonusTotals[(int)StatType.KillHeal];
+            float previousKillDash = runStatBonusTotals[(int)StatType.KillDashCooldownRefund];
+            try
+            {
+                player.MaxHealth = maxHealth;
+                player.Health = startingHealth;
+                player.IsDead = false;
+                player.DashCooldownTimer = dashCooldownTimer;
+                runStatBonusTotals[(int)StatType.KillHeal] = killHealBonus;
+                runStatBonusTotals[(int)StatType.KillDashCooldownRefund] = killDashRefundBonus;
+
+                ApplyOnEnemyKilledRunStatBonuses();
+                return new KillBonusSmokeResult
+                {
+                    Health = player.Health,
+                    DashCooldownTimer = player.DashCooldownTimer,
+                };
+            }
+            finally
+            {
+                player.MaxHealth = previousMaxHealth;
+                player.Health = previousHealth;
+                player.IsDead = previousIsDead;
+                player.DashCooldownTimer = previousDashCooldown;
+                runStatBonusTotals[(int)StatType.KillHeal] = previousKillHeal;
+                runStatBonusTotals[(int)StatType.KillDashCooldownRefund] = previousKillDash;
+            }
+        }
+
+        internal float GetLifeStealRatioSmokeSnapshot(float lifeStealBonus, bool toxicMistPenaltyActive)
+        {
+            float previous = runStatBonusTotals[(int)StatType.LifeSteal];
+            try
+            {
+                runStatBonusTotals[(int)StatType.LifeSteal] = lifeStealBonus;
+                return GetEffectiveLifeStealRatio(toxicMistPenaltyActive);
+            }
+            finally
+            {
+                runStatBonusTotals[(int)StatType.LifeSteal] = previous;
+            }
+        }
+
+        internal float ApplyLifeStealSmokeSnapshot(
+            float startingHealth,
+            float maxHealth,
+            float lifeStealBonus,
+            float dealtDamage,
+            bool toxicMistPenaltyActive)
+        {
+            float previousHealth = player.Health;
+            float previousMaxHealth = player.MaxHealth;
+            bool previousIsDead = player.IsDead;
+            float previousLifeSteal = runStatBonusTotals[(int)StatType.LifeSteal];
+            try
+            {
+                player.MaxHealth = maxHealth;
+                player.Health = startingHealth;
+                player.IsDead = false;
+                runStatBonusTotals[(int)StatType.LifeSteal] = lifeStealBonus;
+                ApplyPlayerLifeSteal(dealtDamage, toxicMistPenaltyActive);
+                return player.Health;
+            }
+            finally
+            {
+                player.MaxHealth = previousMaxHealth;
+                player.Health = previousHealth;
+                player.IsDead = previousIsDead;
+                runStatBonusTotals[(int)StatType.LifeSteal] = previousLifeSteal;
+            }
         }
     }
 }

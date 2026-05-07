@@ -6,9 +6,10 @@
 
 - `Game/Entities/Player.cs`
   - 플레이어의 런타임 상태를 소유한다.
-  - 위치, 방향, FOV, 체력, 스태미나, 대시, 스팀팩, 코인을 관리한다.
+  - 위치, 방향, FOV, 체력, 스태미나, 대시, 코인을 관리한다.
+  - 보호막과 보호막 회복 지연/회복 속도도 소유한다.
 - `Game/Core/GameLogic.Update.cs`
-  - 실제 입력을 읽고 이동/대시/스팀 사용을 처리한다.
+  - 실제 입력을 읽고 이동/대시를 처리한다.
 - `Game/Systems/CollisionSystem.cs`
   - 실제 위치 갱신은 여기서만 수행한다.
 - `Game/Core/GameLogic.PersistentStats.cs`
@@ -66,11 +67,24 @@
 ### 체력 / 최대 체력 / 영구 스탯 반영
 - `Game/Config/GameConfig.cs`
   - `PlayerHealthMax`
+  - `PlayerShieldMax`
+  - `PlayerShieldBaseRegenDelay`
+  - `PlayerShieldBaseRegenRate`
   - `PermanentHealthPerPoint`
 - `Game/Core/GameLogic.PersistentStats.cs`
   - `ApplyCombinedProgressionStats()`
 - `Game/Core/GameLogic.PlayerStatsOverlay.cs`
   - 체력 breakdown 문구
+
+### 보호막
+- `Game/Entities/Player.cs`
+  - `AbsorbShieldDamage()`
+  - `UpdateShield()`
+  - `ConfigureShield()`
+- `Game/Core/GameLogic.Combat.cs`
+  - 피해 감소 적용 후 보호막이 먼저 피해를 흡수한다
+- `Game/Rendering/RaycastRenderer.Hud.cs`
+  - 보호막 HUD 바 표시
 
 ### FOV / 마우스 감도
 - `Game/Entities/Player.cs`
@@ -82,12 +96,9 @@
 - `Form1.UI.cs`
   - 설정 화면 슬라이더 표시
 
-### 스팀팩 / 코인
+### 코인
 - `Game/Entities/Player.cs`
-  - `AddStimPack()`, `UseStimPack()`
   - `AddCoins()`, `TrySpendCoins()`
-- `Game/Core/GameLogic.Update.cs`
-  - `HandleStimInput()`
 - `Game/Core/GameLogic.StageFlow.Progression.cs`
   - 코인 드랍, 휴식 상점 구매 로직
 

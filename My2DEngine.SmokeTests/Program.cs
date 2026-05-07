@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
 using My2DEngine.Game.Config;
 using My2DEngine.Game.Core;
 using My2DEngine.Game.Rendering;
@@ -30,10 +33,19 @@ namespace My2DEngine.SmokeTests
             {
                 RunBootSmokeCheck();
                 RunEnemyVariantSmokeCheck();
+                RunRemovedRecoveryPickupSmokeCheck();
                 RunRoguelikeStartSmokeCheck(GameLogic.DifficultyPreset.Easy, "roguelike start easy");
                 RunRoguelikeStartSmokeCheck(GameLogic.DifficultyPreset.Normal, "roguelike start normal");
                 RunRoguelikeStartSmokeCheck(GameLogic.DifficultyPreset.Hard, "roguelike start hard");
                 RunRoomObjectiveTemplateSmokeCheck();
+                RunKeyTargetRevealSmokeCheck();
+                RunRoomDifficultyRewardSmokeCheck();
+                RunEnemyProgressionPoolSmokeCheck();
+                RunBossTemplateUnlockSmokeCheck();
+                RunRestShopCardOfferSmokeCheck();
+                RunRestRoomBranchCooldownSmokeCheck();
+                RunLifeStealStatSmokeCheck();
+                RunExpandedStatCardSmokeCheck();
                 RunAutoCannonProjectileSmokeCheck();
                 Console.WriteLine("Smoke checks passed.");
                 return 0;
@@ -87,6 +99,11 @@ namespace My2DEngine.SmokeTests
                         EnsureVariantLoaded(textures, archetype.AssetId, variantPool[variantIndex]);
                     }
                 }
+
+                EnsureImageBackedEnemyVariant(textures, "uzi_trooper", "zombie_scientist_uzi", 6, 6, 4, 3);
+                EnsureImageBackedEnemyVariant(textures, "plasma_tech", "zombie_scientist_plasma", 6, 6, 4, 3);
+                EnsureImageBackedEnemyVariant(textures, "grenadier_scientist", "zombie_scientist_grenade", 6, 6, 4, 3);
+                EnsureImageBackedEnemyVariant(textures, "lab_butcher", "zombie_scientist_cleaver", 6, 6, 4, 3);
             }
         }
 
@@ -102,6 +119,83 @@ namespace My2DEngine.SmokeTests
                 throw new InvalidOperationException(
                     "Smoke check failed for enemy variants: asset '" + assetId +
                     "' is missing sprite variant '" + spriteVariantKey + "'.");
+            }
+        }
+
+        private static void EnsureImageBackedEnemyVariant(
+            TextureManager textures,
+            string assetId,
+            string spriteVariantKey,
+            int idleFrames,
+            int moveFrames,
+            int attackFrames,
+            int deathFrames)
+        {
+            EnemyArchetype archetype = EnemyCatalog.Get(assetId);
+            EnsureVariantLoaded(textures, assetId, assetId);
+            EnsureVariantLoaded(textures, assetId, spriteVariantKey);
+
+            Color[] sprite = textures.GetEnemySprite(assetId, archetype.Definition.Type);
+            if (sprite == null || sprite.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    "Smoke check failed for image-backed enemy variants: asset '" +
+                    assetId + "' did not return a loaded image sprite.");
+            }
+
+            string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Game", "Images", "Enemy", assetId);
+            if (!Directory.Exists(root))
+            {
+                throw new InvalidOperationException(
+                    "Smoke check failed for image-backed enemy variants: copied image folder is missing for asset '" +
+                    assetId + "' at '" + root + "'.");
+            }
+
+            EnsureFrameCount(root, assetId, "IDLE", idleFrames);
+            EnsureFrameCount(root, assetId, "MOVE", moveFrames);
+            EnsureFrameCount(root, assetId, "ATTACK", attackFrames);
+            EnsureFrameCount(root, assetId, "DEATH", deathFrames);
+        }
+
+        private static void EnsureFrameCount(string root, string assetId, string action, int expectedCount)
+        {
+            string directory = Path.Combine(root, action);
+            int actualCount = Directory.Exists(directory)
+                ? Directory.GetFiles(directory, "*.png", SearchOption.TopDirectoryOnly).Length
+                : 0;
+            if (actualCount != expectedCount)
+            {
+                throw new InvalidOperationException(
+                    "Smoke check failed for image-backed enemy variants: asset '" + assetId +
+                    "' expected " + expectedCount + " " + action + " frames, got " + actualCount + ".");
+            }
+        }
+
+        /// <summary>
+        /// 체력팩/스팀팩 픽업 종류가 보상 시스템에서 제거됐고, 남은 픽업 스프라이트가 로드되는지 검증한다.
+        /// </summary>
+        private static void RunRemovedRecoveryPickupSmokeCheck()
+        {
+            string[] names = Enum.GetNames(typeof(RewardPickupKind));
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (string.Equals(names[i], "HealthPack", StringComparison.Ordinal) ||
+                    string.Equals(names[i], "StimPack", StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        "Smoke check failed for removed recovery pickups: " + names[i] + " is still present.");
+                }
+            }
+
+            using (var textures = new TextureManager())
+            {
+                textures.LoadAllTextures();
+                if (textures.GetPickupSprite(RewardPickupKind.AmmoPack) == null ||
+                    textures.GetPickupSprite(RewardPickupKind.Coin) == null ||
+                    textures.GetPickupSprite(RewardPickupKind.Card) == null)
+                {
+                    throw new InvalidOperationException("Smoke check failed for removed recovery pickups: remaining pickup sprites did not load.");
+                }
             }
         }
 
@@ -170,10 +264,13 @@ namespace My2DEngine.SmokeTests
                 if (template.ObjectiveKind == RoomObjectiveKind.KeyTarget)
                 {
                     sawKeyTarget = true;
-                    if (!HasObjectiveTargetSpawn(template.Spawns))
+                    StageSpawnPoint targetSpawn = FindObjectiveTargetSpawn(template.Spawns);
+                    if (targetSpawn == null)
                     {
                         throw new InvalidOperationException("Smoke check failed for room objectives: key room has no key target spawn.");
                     }
+
+                    AssertKeyTargetSpawnReworked(targetSpawn);
                 }
 
                 if (template.HazardKind == RoomHazardKind.ToxicMist)
@@ -203,22 +300,565 @@ namespace My2DEngine.SmokeTests
             }
         }
 
-        private static bool HasObjectiveTargetSpawn(StageSpawnPoint[] spawns)
+        private static StageSpawnPoint FindObjectiveTargetSpawn(StageSpawnPoint[] spawns)
         {
             if (spawns == null)
             {
-                return false;
+                return null;
             }
 
             for (int i = 0; i < spawns.Length; i++)
             {
                 if (spawns[i]?.IsObjectiveTarget == true)
                 {
+                    return spawns[i];
+                }
+            }
+
+            return null;
+        }
+
+        private static void AssertKeyTargetSpawnReworked(StageSpawnPoint targetSpawn)
+        {
+            if (targetSpawn.HealthMultiplier < GameConfig.KeyTargetHealthMultiplier)
+            {
+                throw new InvalidOperationException(
+                    "Smoke check failed for room objectives: key target health multiplier is too low.");
+            }
+
+            if (Math.Abs(targetSpawn.ScaleMultiplier - GameConfig.KeyTargetScaleMultiplier) > 0.001f)
+            {
+                throw new InvalidOperationException(
+                    "Smoke check failed for room objectives: key target should not use scale as an obvious visual marker.");
+            }
+        }
+
+        private static void RunKeyTargetRevealSmokeCheck()
+        {
+            var enemy = new Enemy(
+                0f,
+                0f,
+                new EnemyDefinition
+                {
+                    Type = EnemyType.Gunner,
+                    Scale = 1f,
+                    MaxHealth = 100f,
+                    MoveSpeed = 1f,
+                    AttackRange = 1f,
+                    AttackDamage = 1f,
+                    AttackCooldownDuration = 1f,
+                    Radius = 0.2f
+                },
+                new[] { Color.Red });
+
+            enemy.IsObjectiveTarget = true;
+            if (enemy.ObjectiveTargetRevealed)
+            {
+                throw new InvalidOperationException("Smoke check failed for key target reveal: target started revealed.");
+            }
+
+            enemy.TakeDamage(19f);
+            if (enemy.ObjectiveTargetRevealed)
+            {
+                throw new InvalidOperationException("Smoke check failed for key target reveal: target revealed before threshold.");
+            }
+
+            enemy.TakeDamage(1.1f);
+            if (!enemy.ObjectiveTargetRevealed)
+            {
+                throw new InvalidOperationException("Smoke check failed for key target reveal: target did not reveal after threshold.");
+            }
+
+            enemy.Reset();
+            if (enemy.ObjectiveTargetRevealed)
+            {
+                throw new InvalidOperationException("Smoke check failed for key target reveal: reset target stayed revealed.");
+            }
+        }
+
+        /// <summary>
+        /// 방 레이아웃/목표/위험도에 비례해 카드 보상 등급 보정이 붙고, 극한 방은 최고 가능 등급+1을 보장하는지 검증한다.
+        /// </summary>
+        private static void RunRoomDifficultyRewardSmokeCheck()
+        {
+            var world = new GameLogic();
+
+            RoomTemplate lowRisk = new RoomTemplate
+            {
+                LayoutVariant = RoomLayoutVariant.Open,
+                ObjectiveKind = RoomObjectiveKind.EliminateAll,
+                HazardKind = RoomHazardKind.None,
+                Spawns = new[] { new StageSpawnPoint(), new StageSpawnPoint(), new StageSpawnPoint() }
+            };
+
+            if (RoomTemplateLibrary.GetRoomRiskScore(lowRisk) >= RoomTemplateLibrary.HighRoomRiskScore ||
+                world.GetRoomRewardGradeBoostSmokeSnapshot(lowRisk) != 0 ||
+                world.GetExtremeRoomMinimumRewardGradeSmokeSnapshot(lowRisk, 0f) != -1)
+            {
+                throw new InvalidOperationException("Smoke check failed for room difficulty rewards: low-risk room received a grade reward.");
+            }
+
+            RoomTemplate highRisk = new RoomTemplate
+            {
+                LayoutVariant = RoomLayoutVariant.SplitLanes,
+                ObjectiveKind = RoomObjectiveKind.Survive,
+                HazardKind = RoomHazardKind.None,
+                ObjectiveDuration = 20f,
+                Spawns = new[] { new StageSpawnPoint(), new StageSpawnPoint(), new StageSpawnPoint() }
+            };
+
+            if (RoomTemplateLibrary.GetRoomRiskScore(highRisk) != RoomTemplateLibrary.HighRoomRiskScore ||
+                world.GetRoomRewardGradeBoostSmokeSnapshot(highRisk) != 1 ||
+                RoomTemplateLibrary.IsExtremeRewardRoom(highRisk))
+            {
+                throw new InvalidOperationException("Smoke check failed for room difficulty rewards: high-risk room grade boost is incorrect.");
+            }
+
+            RoomTemplate extremeRisk = new RoomTemplate
+            {
+                LayoutVariant = RoomLayoutVariant.CenterWall,
+                ObjectiveKind = RoomObjectiveKind.Survive,
+                HazardKind = RoomHazardKind.ToxicMist,
+                ObjectiveDuration = 24f,
+                Spawns = new[] { new StageSpawnPoint(), new StageSpawnPoint(), new StageSpawnPoint() }
+            };
+
+            if (!RoomTemplateLibrary.IsExtremeRewardRoom(extremeRisk))
+            {
+                throw new InvalidOperationException("Smoke check failed for room difficulty rewards: extreme room was not classified as extreme.");
+            }
+
+            int minimumGrade = world.GetExtremeRoomMinimumRewardGradeSmokeSnapshot(extremeRisk, 0f);
+            if (minimumGrade != (int)CardGrade.Green)
+            {
+                throw new InvalidOperationException("Smoke check failed for room difficulty rewards: expected extreme room minimum grade Green, got " + (CardGrade)minimumGrade + ".");
+            }
+        }
+
+        /// <summary>
+        /// 보스 클리어 전에는 신규 적이 잠겨 있고, 보스 클리어 단계가 오를수록 중후반 적이 실제 템플릿에 등장하는지 검증한다.
+        /// </summary>
+        private static void RunEnemyProgressionPoolSmokeCheck()
+        {
+            var rng = new Random(9207);
+            var lockedBeforeFirstBoss = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "plasma_tech",
+                "grenadier_scientist",
+                "blood_ghost",
+                "beam_revenant",
+                "hellion"
+            };
+            var earlySeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0; i < 180; i++)
+            {
+                RoomTemplate template = RoomTemplateLibrary.SelectForFloor(15, rng, bossClearGrowthCount: 0, allowRestRoom: false);
+                AddSpawnAssets(template.Spawns, earlySeen);
+                if (ContainsAnySpawnAsset(template.Spawns, lockedBeforeFirstBoss))
+                {
+                    throw new InvalidOperationException("Smoke check failed for enemy progression: post-boss enemies appeared before the first boss clear.");
+                }
+            }
+
+            if (!earlySeen.Contains("uzi_trooper") || !earlySeen.Contains("lab_butcher"))
+            {
+                throw new InvalidOperationException("Smoke check failed for enemy progression: early expanded pool did not produce Uzi Trooper and Lab Butcher.");
+            }
+
+            var tierOneSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < 360; i++)
+            {
+                RoomTemplate template = RoomTemplateLibrary.SelectForFloor(21 + i % 12, rng, bossClearGrowthCount: 1, allowRestRoom: false);
+                AddSpawnAssets(template.Spawns, tierOneSeen);
+            }
+
+            if (!tierOneSeen.Contains("plasma_tech") ||
+                !tierOneSeen.Contains("grenadier_scientist") ||
+                !tierOneSeen.Contains("blood_ghost") ||
+                !tierOneSeen.Contains("beam_revenant"))
+            {
+                throw new InvalidOperationException("Smoke check failed for enemy progression: first boss unlock tier did not produce Plasma Tech, Grenadier, Blood Ghost, and Beam Revenant.");
+            }
+
+            var tierTwoSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < 360; i++)
+            {
+                RoomTemplate template = RoomTemplateLibrary.SelectForFloor(41 + i % 15, rng, bossClearGrowthCount: 2, allowRestRoom: false);
+                AddSpawnAssets(template.Spawns, tierTwoSeen);
+            }
+
+            if (!tierTwoSeen.Contains("hellion"))
+            {
+                throw new InvalidOperationException("Smoke check failed for enemy progression: second boss unlock tier did not produce Hellion.");
+            }
+        }
+
+        /// <summary>
+        /// 보스 방 템플릿이 보스 클리어 단계에 따라 기본 보스에서 신규 보스 풀까지 확장되는지 검증한다.
+        /// </summary>
+        private static void RunBossTemplateUnlockSmokeCheck()
+        {
+            var rng = new Random(7071);
+            var baseBosses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "feral_alpha",
+                "bulwark_colossus",
+                "ashen_artillerist",
+                "rift_strider"
+            };
+            var tierOneBosses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "abaddon",
+                "afrit",
+                "agatho_demon",
+                "arachnobaron"
+            };
+            var tierTwoBosses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "annihilator",
+                "arachnophyte",
+                "aracnorb_queen"
+            };
+
+            for (int i = 0; i < 80; i++)
+            {
+                string assetId = GetFirstSpawnAsset(RoomTemplateLibrary.SelectForFloor(20, rng, bossClearGrowthCount: 0).Spawns);
+                if (!baseBosses.Contains(assetId))
+                {
+                    throw new InvalidOperationException("Smoke check failed for boss unlocks: locked boss '" + assetId + "' appeared in the first boss pool.");
+                }
+            }
+
+            bool sawTierOneBoss = false;
+            for (int i = 0; i < 160; i++)
+            {
+                string assetId = GetFirstSpawnAsset(RoomTemplateLibrary.SelectForFloor(40, rng, bossClearGrowthCount: 1).Spawns);
+                sawTierOneBoss |= tierOneBosses.Contains(assetId);
+                if (tierTwoBosses.Contains(assetId))
+                {
+                    throw new InvalidOperationException("Smoke check failed for boss unlocks: late boss '" + assetId + "' appeared after only one boss clear.");
+                }
+            }
+
+            if (!sawTierOneBoss)
+            {
+                throw new InvalidOperationException("Smoke check failed for boss unlocks: first boss unlock tier did not produce any newly unlocked boss.");
+            }
+
+            bool sawTierTwoBoss = false;
+            for (int i = 0; i < 200; i++)
+            {
+                string assetId = GetFirstSpawnAsset(RoomTemplateLibrary.SelectForFloor(60, rng, bossClearGrowthCount: 2).Spawns);
+                sawTierTwoBoss |= tierTwoBosses.Contains(assetId);
+            }
+
+            if (!sawTierTwoBoss)
+            {
+                throw new InvalidOperationException("Smoke check failed for boss unlocks: second boss unlock tier did not produce any late boss.");
+            }
+        }
+
+        /// <summary>
+        /// 휴식 상점이 Luck으로 현재 출현 가능한 최고 등급보다 한 단계 높은 카드 3장을 중복 없이 생성하는지 검증한다.
+        /// </summary>
+        private static void RunRestShopCardOfferSmokeCheck()
+        {
+            AssertRestShopCardOffers(0f, CardGrade.Green, "luck level 0");
+            AssertRestShopCardOffers(5.0f, CardGrade.Purple, "luck level 4");
+            AssertRestShopCardOffers(GameConfig.PermanentLuckMax, CardGrade.Red, "max luck");
+
+            var world = new GameLogic();
+            int greenCost = world.GetRestShopCardCostSmokeSnapshot(CardGrade.Green);
+            int redCost = world.GetRestShopCardCostSmokeSnapshot(CardGrade.Red);
+            if (greenCost != GameConfig.RestShopCardBaseCost + (int)CardGrade.Green * GameConfig.RestShopCardCostPerGrade ||
+                redCost != GameConfig.RestShopCardBaseCost + (int)CardGrade.Red * GameConfig.RestShopCardCostPerGrade)
+            {
+                throw new InvalidOperationException("Smoke check failed for rest shop card offers: card costs do not match grade scaling.");
+            }
+        }
+
+        private static void AssertRestShopCardOffers(float luckValue, CardGrade expectedGrade, string scenarioName)
+        {
+            var world = new GameLogic();
+            RewardCardOffer[] offers = world.CreateRestShopCardOfferSmokeSnapshot(luckValue);
+            if (offers == null || offers.Length != 3)
+            {
+                throw new InvalidOperationException(
+                    "Smoke check failed for rest shop card offers (" + scenarioName +
+                    "): expected 3 offers, got " + (offers == null ? 0 : offers.Length) + ".");
+            }
+
+            var seenStats = new HashSet<StatType>();
+            for (int i = 0; i < offers.Length; i++)
+            {
+                RewardCardOffer offer = offers[i];
+                if (offer == null || offer.IsWeaponCard)
+                {
+                    throw new InvalidOperationException(
+                        "Smoke check failed for rest shop card offers (" + scenarioName +
+                        "): shop offer " + i + " is not a stat card.");
+                }
+
+                if (offer.Grade != expectedGrade)
+                {
+                    throw new InvalidOperationException(
+                        "Smoke check failed for rest shop card offers (" + scenarioName +
+                        "): expected " + expectedGrade + ", got " + offer.Grade + ".");
+                }
+
+                if (!seenStats.Add(offer.StatType))
+                {
+                    throw new InvalidOperationException(
+                        "Smoke check failed for rest shop card offers (" + scenarioName +
+                        "): duplicate stat card " + offer.StatType + ".");
+                }
+            }
+        }
+
+        /// <summary>
+        /// 카드 상점이 실제 입장뿐 아니라 분기 후보 노출만으로도 다음 생성 기회에서 제외되는지 검증한다.
+        /// </summary>
+        private static void RunRestRoomBranchCooldownSmokeCheck()
+        {
+            var world = new GameLogic();
+            if (!world.CanOfferRestRoomForNextSelectionSmokeSnapshot(currentFloorAllowsRestRoom: true, restRoomCooldownActive: false))
+            {
+                throw new InvalidOperationException("Smoke check failed for rest room branch cooldown: rest room should be allowed without cooldown.");
+            }
+
+            if (world.CanOfferRestRoomForNextSelectionSmokeSnapshot(currentFloorAllowsRestRoom: true, restRoomCooldownActive: true))
+            {
+                throw new InvalidOperationException("Smoke check failed for rest room branch cooldown: previous branch rest offer did not block the next rest room.");
+            }
+
+            if (world.CanOfferRestRoomForNextSelectionSmokeSnapshot(currentFloorAllowsRestRoom: false, restRoomCooldownActive: false))
+            {
+                throw new InvalidOperationException("Smoke check failed for rest room branch cooldown: rest room was allowed directly after a rest room.");
+            }
+
+            if (!world.BranchIncludesRestRoomSmokeSnapshot(optionAIsRestRoom: true, optionBIsRestRoom: false) ||
+                !world.BranchIncludesRestRoomSmokeSnapshot(optionAIsRestRoom: false, optionBIsRestRoom: true) ||
+                world.BranchIncludesRestRoomSmokeSnapshot(optionAIsRestRoom: false, optionBIsRestRoom: false))
+            {
+                throw new InvalidOperationException("Smoke check failed for rest room branch cooldown: branch rest-room detection is incorrect.");
+            }
+        }
+
+        /// <summary>
+        /// 모든 피해 흡혈 스탯이 0~100%로 고정되고 독안개에서 절반으로 감소하는지 검증한다.
+        /// </summary>
+        private static void RunLifeStealStatSmokeCheck()
+        {
+            var world = new GameLogic();
+
+            if (!world.IsStatInRewardPoolSmokeSnapshot(StatType.LifeSteal))
+            {
+                throw new InvalidOperationException("Smoke check failed for life steal: stat is missing from the reward card pool.");
+            }
+
+            if (world.ClampRunStatBonusSmokeSnapshot(StatType.LifeSteal, -0.25f) != 0f)
+            {
+                throw new InvalidOperationException("Smoke check failed for life steal: negative value was not clamped to zero.");
+            }
+
+            if (world.ClampRunStatBonusSmokeSnapshot(StatType.LifeSteal, 1.25f) != 1f)
+            {
+                throw new InvalidOperationException("Smoke check failed for life steal: value above 100% was not capped.");
+            }
+
+            if (Math.Abs(world.GetLifeStealRatioSmokeSnapshot(0.40f, toxicMistPenaltyActive: false) - 0.40f) > 0.0001f)
+            {
+                throw new InvalidOperationException("Smoke check failed for life steal: normal ratio is incorrect.");
+            }
+
+            if (Math.Abs(world.GetLifeStealRatioSmokeSnapshot(0.40f, toxicMistPenaltyActive: true) - 0.20f) > 0.0001f)
+            {
+                throw new InvalidOperationException("Smoke check failed for life steal: toxic mist penalty did not halve the ratio.");
+            }
+
+            float healed = world.ApplyLifeStealSmokeSnapshot(
+                startingHealth: 40f,
+                maxHealth: 100f,
+                lifeStealBonus: 0.25f,
+                dealtDamage: 80f,
+                toxicMistPenaltyActive: false);
+            if (Math.Abs(healed - 60f) > 0.0001f)
+            {
+                throw new InvalidOperationException("Smoke check failed for life steal: expected health 60, got " + healed + ".");
+            }
+
+            float toxicHealed = world.ApplyLifeStealSmokeSnapshot(
+                startingHealth: 40f,
+                maxHealth: 100f,
+                lifeStealBonus: 0.25f,
+                dealtDamage: 80f,
+                toxicMistPenaltyActive: true);
+            if (Math.Abs(toxicHealed - 50f) > 0.0001f)
+            {
+                throw new InvalidOperationException("Smoke check failed for life steal: expected toxic health 50, got " + toxicHealed + ".");
+            }
+        }
+
+        /// <summary>
+        /// 확장 스탯 카드와 기본 보호막이 전투, 상점, 카드 선택지 계산에 연결되는지 검증한다.
+        /// </summary>
+        private static void RunExpandedStatCardSmokeCheck()
+        {
+            var world = new GameLogic();
+
+            StatType[] expectedStats =
+            {
+                StatType.DamageReduction,
+                StatType.ShopDiscount,
+                StatType.KillHeal,
+                StatType.KillDashCooldownRefund,
+                StatType.CriticalChance,
+                StatType.CardChoiceBonus,
+                StatType.ShieldRegenRate,
+                StatType.ShieldRegenDelayReduction
+            };
+
+            for (int i = 0; i < expectedStats.Length; i++)
+            {
+                if (!world.IsStatInRewardPoolSmokeSnapshot(expectedStats[i]))
+                {
+                    throw new InvalidOperationException("Smoke check failed for expanded stat cards: " + expectedStats[i] + " is missing from the reward pool.");
+                }
+            }
+
+            AssertNearlyEqual(0.65f, world.ClampRunStatBonusSmokeSnapshot(StatType.DamageReduction, 1f), "damage reduction cap");
+            AssertNearlyEqual(0.50f, world.ClampRunStatBonusSmokeSnapshot(StatType.ShopDiscount, 1f), "shop discount cap");
+            AssertNearlyEqual(0.10f, world.ClampRunStatBonusSmokeSnapshot(StatType.KillHeal, 1f), "kill heal cap");
+            AssertNearlyEqual(0.25f, world.ClampRunStatBonusSmokeSnapshot(StatType.KillDashCooldownRefund, 1f), "kill dash refund cap");
+            AssertNearlyEqual(1f, world.ClampRunStatBonusSmokeSnapshot(StatType.CriticalChance, 1.5f), "critical chance cap");
+            AssertNearlyEqual(1f, world.ClampRunStatBonusSmokeSnapshot(StatType.CardChoiceBonus, 2f), "card choice cap");
+            AssertNearlyEqual(19f, world.ClampRunStatBonusSmokeSnapshot(StatType.ShieldRegenRate, 99f), "shield regen rate cap");
+            AssertNearlyEqual(0.80f, world.ClampRunStatBonusSmokeSnapshot(StatType.ShieldRegenDelayReduction, 1f), "shield regen delay cap");
+
+            if (world.IsStatOfferAvailableSmokeSnapshot(StatType.CardChoiceBonus, floor: 5, cardChoiceOffered: false, currentBonus: 0f))
+            {
+                throw new InvalidOperationException("Smoke check failed for expanded stat cards: card choice bonus appeared on a low floor.");
+            }
+
+            if (!world.IsStatOfferAvailableSmokeSnapshot(StatType.CardChoiceBonus, floor: 10, cardChoiceOffered: false, currentBonus: 0f))
+            {
+                throw new InvalidOperationException("Smoke check failed for expanded stat cards: card choice bonus did not become available after the low-floor gate.");
+            }
+
+            if (world.IsStatOfferAvailableSmokeSnapshot(StatType.CardChoiceBonus, floor: 10, cardChoiceOffered: true, currentBonus: 0f))
+            {
+                throw new InvalidOperationException("Smoke check failed for expanded stat cards: card choice bonus reappeared after being offered.");
+            }
+
+            if (world.GetCardRewardOfferSlotCountSmokeSnapshot(0f) != 3 ||
+                world.GetCardRewardOfferSlotCountSmokeSnapshot(1f) != 4)
+            {
+                throw new InvalidOperationException("Smoke check failed for expanded stat cards: card reward slot count is incorrect.");
+            }
+
+            int redCost = world.GetRestShopCardCostSmokeSnapshot(CardGrade.Red);
+            int discountedRedCost = world.GetRestShopCardCostSmokeSnapshot(CardGrade.Red, 0.50f);
+            if (discountedRedCost != Math.Max(1, (int)Math.Ceiling(redCost * 0.5f)))
+            {
+                throw new InvalidOperationException("Smoke check failed for expanded stat cards: shop discount did not apply to card cost.");
+            }
+
+            PlayerDamageSmokeResult shieldOnly = world.ApplyIncomingDamageSmokeSnapshot(
+                startingHealth: 100f,
+                maxHealth: 100f,
+                startingShield: 100f,
+                damage: 50f,
+                damageReduction: 0f);
+            AssertNearlyEqual(100f, shieldOnly.Health, "shield absorbs health damage");
+            AssertNearlyEqual(50f, shieldOnly.Shield, "shield remaining after damage");
+
+            PlayerDamageSmokeResult reducedDamage = world.ApplyIncomingDamageSmokeSnapshot(
+                startingHealth: 100f,
+                maxHealth: 100f,
+                startingShield: 100f,
+                damage: 50f,
+                damageReduction: 0.50f);
+            AssertNearlyEqual(75f, reducedDamage.Shield, "damage reduction before shield");
+
+            PlayerDamageSmokeResult shieldBreak = world.ApplyIncomingDamageSmokeSnapshot(
+                startingHealth: 100f,
+                maxHealth: 100f,
+                startingShield: 20f,
+                damage: 50f,
+                damageReduction: 0f);
+            AssertNearlyEqual(70f, shieldBreak.Health, "leftover shield damage reaches health");
+            AssertNearlyEqual(0f, shieldBreak.Shield, "shield breaks to zero");
+
+            KillBonusSmokeResult killBonus = world.ApplyKillBonusesSmokeSnapshot(
+                startingHealth: 40f,
+                maxHealth: 100f,
+                dashCooldownTimer: 8f,
+                killHealBonus: 0.10f,
+                killDashRefundBonus: 0.25f);
+            AssertNearlyEqual(46f, killBonus.Health, "kill heal missing-health ratio");
+            AssertNearlyEqual(6f, killBonus.DashCooldownTimer, "kill dash cooldown refund");
+
+            ShieldSettingsSmokeResult shieldSettings = world.GetShieldSettingsSmokeSnapshot(
+                regenRateBonus: 99f,
+                regenDelayReduction: 0.90f);
+            AssertNearlyEqual(GameConfig.PlayerShieldMaxRegenRate, shieldSettings.RegenRate, "shield regen rate max");
+            AssertNearlyEqual(GameConfig.PlayerShieldMinRegenDelay, shieldSettings.RegenDelayDuration, "shield regen delay min");
+        }
+
+        private static void AssertNearlyEqual(float expected, float actual, string scenarioName)
+        {
+            if (Math.Abs(expected - actual) > 0.0001f)
+            {
+                throw new InvalidOperationException(
+                    "Smoke check failed for " + scenarioName + ": expected " + expected + ", got " + actual + ".");
+            }
+        }
+
+        private static void AddSpawnAssets(StageSpawnPoint[] spawns, HashSet<string> destination)
+        {
+            if (spawns == null || destination == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < spawns.Length; i++)
+            {
+                string assetId = spawns[i]?.EnemyAssetId;
+                if (!string.IsNullOrWhiteSpace(assetId))
+                {
+                    destination.Add(assetId);
+                }
+            }
+        }
+
+        private static bool ContainsAnySpawnAsset(StageSpawnPoint[] spawns, HashSet<string> candidates)
+        {
+            if (spawns == null || candidates == null || candidates.Count == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < spawns.Length; i++)
+            {
+                string assetId = spawns[i]?.EnemyAssetId;
+                if (!string.IsNullOrWhiteSpace(assetId) && candidates.Contains(assetId))
+                {
                     return true;
                 }
             }
 
             return false;
+        }
+
+        private static string GetFirstSpawnAsset(StageSpawnPoint[] spawns)
+        {
+            if (spawns == null || spawns.Length == 0 || string.IsNullOrWhiteSpace(spawns[0]?.EnemyAssetId))
+            {
+                throw new InvalidOperationException("Smoke check failed for boss unlocks: boss template has no spawn asset.");
+            }
+
+            return spawns[0].EnemyAssetId;
         }
 
         /// <summary>

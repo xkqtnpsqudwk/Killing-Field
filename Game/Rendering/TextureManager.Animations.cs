@@ -1099,10 +1099,9 @@ namespace My2DEngine.Game.Rendering
         private void LoadPickupSprites()
         {
             pickupSprites.Clear();
-            RegisterPickupSprite(RewardPickupKind.HealthPack, "Item", "Medkit.png");
-            RegisterPickupSprite(RewardPickupKind.StimPack, "Item", "Stimpack.png");
             RegisterPickupSprite(RewardPickupKind.AmmoPack, "Item", "AmmoPack.png");
             RegisterPickupSprite(RewardPickupKind.Coin, "Item", "Coin.png");
+            RegisterPickupSprite(RewardPickupKind.Card, "Item", "Card.png");
             if (!pickupSprites.ContainsKey(RewardPickupKind.AmmoPack))
             {
                 pickupSprites[RewardPickupKind.AmmoPack] = BuildFallbackAmmoPickupSprite();
@@ -1110,6 +1109,10 @@ namespace My2DEngine.Game.Rendering
             if (!pickupSprites.ContainsKey(RewardPickupKind.Coin))
             {
                 pickupSprites[RewardPickupKind.Coin] = BuildFallbackCoinPickupSprite();
+            }
+            if (!pickupSprites.ContainsKey(RewardPickupKind.Card))
+            {
+                pickupSprites[RewardPickupKind.Card] = BuildFallbackCardPickupSprite();
             }
         }
 
@@ -1135,6 +1138,39 @@ namespace My2DEngine.Game.Rendering
 
         private Color[] BuildFallbackAmmoPickupSprite()
             => BuildWeaponAmmoSprite(Color.FromArgb(255, 255, 210, 120));
+
+        private Color[] BuildFallbackCardPickupSprite()
+        {
+            int size = GameConfig.TextureSize;
+            Color[] sprite = new Color[size * size];
+            Color edge = Color.FromArgb(255, 255, 226, 122);
+            Color face = Color.FromArgb(255, 46, 58, 84);
+            Color stripe = Color.FromArgb(255, 128, 205, 255);
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    int idx = y * size + x;
+                    float nx = ((x / (float)(size - 1)) - 0.5f) * 2f;
+                    float ny = ((y / (float)(size - 1)) - 0.5f) * 2f;
+                    float skewX = nx + ny * 0.16f;
+                    bool body = skewX > -0.48f && skewX < 0.48f && ny > -0.62f && ny < 0.62f;
+                    if (!body)
+                    {
+                        sprite[idx] = Color.Transparent;
+                        continue;
+                    }
+
+                    bool border = skewX < -0.40f || skewX > 0.40f || ny < -0.54f || ny > 0.54f;
+                    bool band = ny > -0.12f && ny < 0.06f && skewX > -0.32f && skewX < 0.32f;
+                    bool pip = (skewX * skewX + (ny + 0.30f) * (ny + 0.30f)) < 0.035f;
+                    sprite[idx] = border ? edge : band || pip ? stripe : face;
+                }
+            }
+
+            return sprite;
+        }
 
         private Color[] BuildFallbackCoinPickupSprite()
         {

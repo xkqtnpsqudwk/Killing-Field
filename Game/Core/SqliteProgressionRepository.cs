@@ -103,11 +103,24 @@ namespace My2DEngine.Game.Core
                             bonus_ammo_drop     REAL    NOT NULL DEFAULT 0,
                             bonus_dash_cooldown REAL    NOT NULL DEFAULT 0,
                             bonus_coin_drop     REAL    NOT NULL DEFAULT 0,
+                            bonus_life_steal    REAL    NOT NULL DEFAULT 0,
+                            bonus_damage_reduction REAL NOT NULL DEFAULT 0,
+                            bonus_shop_discount REAL NOT NULL DEFAULT 0,
+                            bonus_kill_heal     REAL    NOT NULL DEFAULT 0,
+                            bonus_kill_dash_refund REAL NOT NULL DEFAULT 0,
+                            bonus_crit_chance   REAL    NOT NULL DEFAULT 0,
+                            bonus_card_choice_bonus REAL NOT NULL DEFAULT 0,
+                            bonus_shield_regen_rate REAL NOT NULL DEFAULT 0,
+                            bonus_shield_regen_delay REAL NOT NULL DEFAULT 0,
+                            player_shield       REAL    NOT NULL DEFAULT 100,
+                            shield_regen_delay_timer REAL NOT NULL DEFAULT 0,
+                            card_choice_bonus_offered INTEGER NOT NULL DEFAULT 0,
                             combat_floor_clears INTEGER NOT NULL DEFAULT 0,
                             boss_clear_growth   INTEGER NOT NULL DEFAULT 0,
                             owned_weapons_mask  INTEGER NOT NULL DEFAULT 1,
                             coin_count          INTEGER NOT NULL DEFAULT 0,
                             weapon_card_pool_count INTEGER NOT NULL DEFAULT 0,
+                            rest_room_cooldown INTEGER NOT NULL DEFAULT 0,
                             current_weapon_type INTEGER NOT NULL DEFAULT 0,
                             weapon_ammo_state   TEXT    NOT NULL DEFAULT '',
                             weapon_upgrade_state TEXT   NOT NULL DEFAULT '',
@@ -120,8 +133,21 @@ namespace My2DEngine.Game.Core
 
                 EnsureColumnExists(conn, "run_save", "combat_floor_clears", "INTEGER NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "bonus_coin_drop", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_life_steal", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_damage_reduction", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_shop_discount", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_kill_heal", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_kill_dash_refund", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_crit_chance", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_card_choice_bonus", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_shield_regen_rate", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_shield_regen_delay", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "player_shield", "REAL NOT NULL DEFAULT 100");
+                EnsureColumnExists(conn, "run_save", "shield_regen_delay_timer", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "card_choice_bonus_offered", "INTEGER NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "coin_count", "INTEGER NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "weapon_card_pool_count", "INTEGER NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "rest_room_cooldown", "INTEGER NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "current_weapon_type", "INTEGER NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "weapon_ammo_state", "TEXT NOT NULL DEFAULT ''");
                 EnsureColumnExists(conn, "run_save", "weapon_upgrade_state", "TEXT NOT NULL DEFAULT ''");
@@ -188,9 +214,13 @@ namespace My2DEngine.Game.Core
                     cmd.CommandText = @"
                         SELECT floor, player_health,
                                bonus_max_health, bonus_move_speed, bonus_damage,
-                               bonus_ammo_drop, bonus_dash_cooldown, bonus_coin_drop,
+                               bonus_ammo_drop, bonus_dash_cooldown, bonus_coin_drop, bonus_life_steal,
+                               bonus_damage_reduction, bonus_shop_discount, bonus_kill_heal,
+                               bonus_kill_dash_refund, bonus_crit_chance, bonus_card_choice_bonus,
+                               bonus_shield_regen_rate, bonus_shield_regen_delay,
+                               player_shield, shield_regen_delay_timer, card_choice_bonus_offered,
                                combat_floor_clears, boss_clear_growth, owned_weapons_mask, coin_count,
-                               weapon_card_pool_count, current_weapon_type,
+                               weapon_card_pool_count, rest_room_cooldown, current_weapon_type,
                                weapon_ammo_state, weapon_upgrade_state,
                                run_stat_grade_state, run_stat_pickup_state
                         FROM run_save WHERE id = 1";
@@ -209,16 +239,29 @@ namespace My2DEngine.Game.Core
                             BonusAmmoDropChance = (float)reader.GetDouble(5),
                             BonusDashCooldown   = (float)reader.GetDouble(6),
                             BonusCoinDropChance = (float)reader.GetDouble(7),
-                            ClearedCombatFloorCount = reader.GetInt32(8),
-                            BossClearGrowthCount = reader.GetInt32(9),
-                            OwnedWeaponsMask    = reader.GetInt32(10),
-                            CoinCount           = reader.GetInt32(11),
-                            WeaponCardPoolCount = reader.GetInt32(12),
-                            CurrentWeaponType   = reader.GetInt32(13),
-                            WeaponAmmoState     = reader.GetString(14),
-                            WeaponUpgradeState  = reader.GetString(15),
-                            RunStatGradeState   = reader.GetString(16),
-                            RunStatPickupState  = reader.GetString(17),
+                            BonusLifeSteal      = (float)reader.GetDouble(8),
+                            BonusDamageReduction = (float)reader.GetDouble(9),
+                            BonusShopDiscount = (float)reader.GetDouble(10),
+                            BonusKillHeal = (float)reader.GetDouble(11),
+                            BonusKillDashCooldownRefund = (float)reader.GetDouble(12),
+                            BonusCriticalChance = (float)reader.GetDouble(13),
+                            BonusCardChoiceBonus = (float)reader.GetDouble(14),
+                            BonusShieldRegenRate = (float)reader.GetDouble(15),
+                            BonusShieldRegenDelayReduction = (float)reader.GetDouble(16),
+                            PlayerShield = (float)reader.GetDouble(17),
+                            ShieldRegenDelayTimer = (float)reader.GetDouble(18),
+                            CardChoiceBonusOffered = reader.GetInt32(19) != 0,
+                            ClearedCombatFloorCount = reader.GetInt32(20),
+                            BossClearGrowthCount = reader.GetInt32(21),
+                            OwnedWeaponsMask    = reader.GetInt32(22),
+                            CoinCount           = reader.GetInt32(23),
+                            WeaponCardPoolCount = reader.GetInt32(24),
+                            RestRoomOpportunityCooldownActive = reader.GetInt32(25) != 0,
+                            CurrentWeaponType   = reader.GetInt32(26),
+                            WeaponAmmoState     = reader.GetString(27),
+                            WeaponUpgradeState  = reader.GetString(28),
+                            RunStatGradeState   = reader.GetString(29),
+                            RunStatPickupState  = reader.GetString(30),
                         };
                     }
                 }
@@ -242,14 +285,20 @@ namespace My2DEngine.Game.Core
                         INSERT OR REPLACE INTO run_save
                             (id, floor, player_health,
                              bonus_max_health, bonus_move_speed, bonus_damage,
-                             bonus_ammo_drop, bonus_dash_cooldown, bonus_coin_drop,
+                             bonus_ammo_drop, bonus_dash_cooldown, bonus_coin_drop, bonus_life_steal,
+                             bonus_damage_reduction, bonus_shop_discount, bonus_kill_heal,
+                             bonus_kill_dash_refund, bonus_crit_chance, bonus_card_choice_bonus,
+                             bonus_shield_regen_rate, bonus_shield_regen_delay,
+                             player_shield, shield_regen_delay_timer, card_choice_bonus_offered,
                              combat_floor_clears, boss_clear_growth, owned_weapons_mask, coin_count,
-                             weapon_card_pool_count, current_weapon_type,
+                             weapon_card_pool_count, rest_room_cooldown, current_weapon_type,
                              weapon_ammo_state, weapon_upgrade_state,
                              run_stat_grade_state, run_stat_pickup_state, saved_at)
                         VALUES
-                            (1, @fl, @ph, @bh, @bm, @bd, @ba, @bdc, @bcd, @cf, @bg, @ow, @cc,
-                             @wcp, @cwt, @was, @wus, @rgs, @rps, @sa)";
+                            (1, @fl, @ph, @bh, @bm, @bd, @ba, @bdc, @bcd, @bls,
+                             @bdr, @bsd, @bkh, @bkdr, @bcc, @bcb, @bsrr, @bsrd, @ps, @srdt, @bcbo,
+                             @cf, @bg, @ow, @cc,
+                             @wcp, @rrc, @cwt, @was, @wus, @rgs, @rps, @sa)";
 
                     cmd.Parameters.AddWithValue("@fl", data.Floor);
                     cmd.Parameters.AddWithValue("@ph", data.PlayerHealth);
@@ -259,11 +308,24 @@ namespace My2DEngine.Game.Core
                     cmd.Parameters.AddWithValue("@ba", data.BonusAmmoDropChance);
                     cmd.Parameters.AddWithValue("@bdc", data.BonusDashCooldown);
                     cmd.Parameters.AddWithValue("@bcd", data.BonusCoinDropChance);
+                    cmd.Parameters.AddWithValue("@bls", data.BonusLifeSteal);
+                    cmd.Parameters.AddWithValue("@bdr", data.BonusDamageReduction);
+                    cmd.Parameters.AddWithValue("@bsd", data.BonusShopDiscount);
+                    cmd.Parameters.AddWithValue("@bkh", data.BonusKillHeal);
+                    cmd.Parameters.AddWithValue("@bkdr", data.BonusKillDashCooldownRefund);
+                    cmd.Parameters.AddWithValue("@bcc", data.BonusCriticalChance);
+                    cmd.Parameters.AddWithValue("@bcb", data.BonusCardChoiceBonus);
+                    cmd.Parameters.AddWithValue("@bsrr", data.BonusShieldRegenRate);
+                    cmd.Parameters.AddWithValue("@bsrd", data.BonusShieldRegenDelayReduction);
+                    cmd.Parameters.AddWithValue("@ps", data.PlayerShield);
+                    cmd.Parameters.AddWithValue("@srdt", data.ShieldRegenDelayTimer);
+                    cmd.Parameters.AddWithValue("@bcbo", data.CardChoiceBonusOffered ? 1 : 0);
                     cmd.Parameters.AddWithValue("@cf", data.ClearedCombatFloorCount);
                     cmd.Parameters.AddWithValue("@bg", data.BossClearGrowthCount);
                     cmd.Parameters.AddWithValue("@ow", data.OwnedWeaponsMask);
                     cmd.Parameters.AddWithValue("@cc", data.CoinCount);
                     cmd.Parameters.AddWithValue("@wcp", data.WeaponCardPoolCount);
+                    cmd.Parameters.AddWithValue("@rrc", data.RestRoomOpportunityCooldownActive ? 1 : 0);
                     cmd.Parameters.AddWithValue("@cwt", data.CurrentWeaponType);
                     cmd.Parameters.AddWithValue("@was", data.WeaponAmmoState ?? string.Empty);
                     cmd.Parameters.AddWithValue("@wus", data.WeaponUpgradeState ?? string.Empty);

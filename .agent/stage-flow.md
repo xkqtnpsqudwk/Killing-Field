@@ -9,7 +9,7 @@
 - `Game/Core/GameLogic.StageFlow.cs`
   - 문 상호작용, 층 출구, 상태 메시지
 - `Game/Core/GameLogic.StageFlow.Progression.cs`
-  - 방 활성화, 클리어, 보상/휴식 상점
+  - 방 활성화, 클리어, 보상/카드 상점
 - `Game/Core/GameLogic.Branch.cs`
   - 일반 전투 층 클리어 후 분기 선택 UI
 - `Game/Map/RoomTemplate.cs`
@@ -30,11 +30,14 @@
    - 출구 문(`TargetRoomId = -1`)
    를 포함한 맵을 만든다.
 4. 플레이어가 방 안으로 들어오면 `UpdateStageProgression()`이 방을 활성화한다.
-5. 전투 방이면 적 스폰, 휴식 방이면 상점 선택지 3개 생성.
+5. 전투 방이면 적 스폰, 휴식 방이면 Luck 기반 고등급 카드 상점 선택지 3개 생성.
+   - 열쇠 방의 목표 적은 일반 적과 같은 크기/체력바 색으로 시작하고, 충분히 피해를 입거나 주변 적이 모두 정리된 뒤에만 표적으로 드러난다.
 6. 방 클리어 후
    - 일반 방: 카드 선택 → 분기 선택
    - 다음 층이 보스면: 카드 선택 후 `E`로 직행
    - 보스 방: 카드/영구 포인트 후 `E`로 다음 층
+   - 위험도 `높음` 이상 전투 방: 카드 등급 +1 보정
+   - 위험도 `극한` 전투 방: 현재 Luck으로 가능한 최고 등급보다 한 단계 높은 등급을 최소 보장
 
 ## 수정 원칙
 
@@ -53,7 +56,7 @@
 - 정적 설계 데이터는 `Blueprint`
 - 런타임 진행 상태는 `State`
 
-4. **휴식 방은 적 스폰이 아니라 픽업 선택지 생성**
+4. **휴식 방은 적 스폰이 아니라 카드 상점 픽업 선택지 생성**
 - `SpawnRestRoomChoices()`
 - `CompleteRestRoomChoice()`
 - `TrySkipActiveRestRoom()`
@@ -86,6 +89,8 @@
 ### 클리어 후 보상/분기
 - `Game/Core/GameLogic.StageFlow.Progression.cs`
   - `SpawnRewardPickupForRoom()`
+  - `RoomTemplateLibrary.GetCardRewardGradeBoost()`
+  - `RoomTemplateLibrary.IsExtremeRewardRoom()`
 - `Game/Core/GameLogic.CardReward.cs`
   - `ConfirmCardSelection()`
 - `Game/Core/GameLogic.Branch.cs`

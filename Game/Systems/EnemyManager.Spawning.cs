@@ -320,21 +320,7 @@ namespace My2DEngine.Game.Systems
                 return false;
             }
 
-            string assetId = archetype.AssetId.ToLowerInvariant();
-            switch (assetId)
-            {
-                case "feral_alpha":
-                case "azazel":
-                case "bulwark_colossus":
-                case "behemoth":
-                case "ashen_artillerist":
-                case "arachnocortex":
-                case "rift_strider":
-                case "agaures":
-                    return true;
-                default:
-                    return false;
-            }
+            return archetype.Rank == EnemyRank.Boss;
         }
 
         private static EnemyAiProfile StripBossPatternProfile(EnemyAiProfile profile, EnemyRank rank)

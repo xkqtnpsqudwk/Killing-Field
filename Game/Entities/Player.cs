@@ -28,6 +28,21 @@ namespace My2DEngine.Game
         /// <summary>최대 체력. GameConfig.PlayerHealthMax로 초기화된다. 카드 보너스로 증가할 수 있다.</summary>
         public float MaxHealth { get; set; }
 
+        /// <summary>현재 보호막. 피해를 먼저 흡수하고, 일정 시간 피해가 없으면 회복된다.</summary>
+        public float Shield { get; private set; }
+
+        /// <summary>최대 보호막. 기본값은 GameConfig.PlayerShieldMax다.</summary>
+        public float MaxShield { get; private set; }
+
+        /// <summary>보호막 초당 회복량.</summary>
+        public float ShieldRegenRate { get; private set; }
+
+        /// <summary>피해를 입은 뒤 보호막 회복이 시작되기까지의 대기 시간(초).</summary>
+        public float ShieldRegenDelayDuration { get; private set; }
+
+        /// <summary>현재 남은 보호막 회복 지연 타이머(초).</summary>
+        public float ShieldRegenDelayTimer { get; set; }
+
         /// <summary>플레이어 사망 여부. true이면 입력·이동·발사가 무시된다.</summary>
         public bool IsDead { get; set; }
 
@@ -67,9 +82,6 @@ namespace My2DEngine.Game
         /// <summary>플레이어가 현재 서 있는 타일의 바닥 높이(0.0~1.0). 계단·단차 이동 시 갱신된다.</summary>
         public float FloorZ { get; set; }
 
-        /// <summary>보유 중인 스팀팩 수. UseStimPack()으로 소비된다.</summary>
-        public int StimPackCount { get; private set; }
-
         /// <summary>현재 보유 중인 코인 수. 휴식 상점에서 소비한다.</summary>
         public int CoinCount { get; private set; }
 
@@ -78,12 +90,6 @@ namespace My2DEngine.Game
         /// 스탯 카드 '대시 쿨타임'으로 감소시킬 수 있다.
         /// </summary>
         public float DashCooldownMult { get; private set; } = 1f;
-
-        /// <summary>스팀 부스트 잔여 시간(초). 0보다 크면 이동 속도가 증가한다.</summary>
-        public float StimBoostTimer { get; private set; }
-
-        /// <summary>StimBoostTimer > 0이면 스팀 부스트가 활성 상태임을 나타낸다.</summary>
-        public bool StimBoostActive => StimBoostTimer > 0f;
 
         /// <summary>FovDegrees 프로퍼티 백킹 필드. 직접 쓰지 않고 FovDegrees를 통해 접근한다.</summary>
         private float fovDegrees;
@@ -116,6 +122,11 @@ namespace My2DEngine.Game
 
             Health = GameConfig.PlayerHealthMax;
             MaxHealth = GameConfig.PlayerHealthMax;
+            MaxShield = GameConfig.PlayerShieldMax;
+            Shield = MaxShield;
+            ShieldRegenRate = GameConfig.PlayerShieldBaseRegenRate;
+            ShieldRegenDelayDuration = GameConfig.PlayerShieldBaseRegenDelay;
+            ShieldRegenDelayTimer = 0f;
             IsDead = false;
 
             Stamina = GameConfig.StaminaMax;
@@ -129,22 +140,22 @@ namespace My2DEngine.Game
             MoveSpeed = GameConfig.MoveSpeed;
             MouseSensitivity = GameConfig.MouseSensitivity;
             Radius = GameConfig.PlayerRadius;
-            StimPackCount = 0;
             CoinCount = 0;
-            StimBoostTimer = 0f;
 
             fovDegrees = GameConfig.DefaultFovDegrees;
             UpdatePlaneFromFov();
         }
 
         /// <summary>
-        /// 플레이어를 최초 생성 상태로 되돌린다. 체력·스태미나·대시·스팀팩을 모두 초기화한다.
+        /// 플레이어를 최초 생성 상태로 되돌린다. 체력·스태미나·대시 상태를 모두 초기화한다.
         /// 스테이지 재시작이나 게임 오버 직후에 호출된다.
         /// </summary>
         public void Reset()
         {
             ResetRunBonuses();
             Health = MaxHealth;
+            Shield = MaxShield;
+            ShieldRegenDelayTimer = 0f;
             IsDead = false;
             Stamina = MaxStamina;
             StaminaRecoverTimer = 0f;
@@ -152,9 +163,7 @@ namespace My2DEngine.Game
             DashTimer = 0f;
             DashDirX = 0f;
             DashDirY = 0f;
-            StimPackCount = 0;
             CoinCount = 0;
-            StimBoostTimer = 0f;
         }
 
         /// <summary>
@@ -169,6 +178,34 @@ namespace My2DEngine.Game
                 Health = 0f;
                 IsDead = true;
             }
+        }
+
+        /// <summary>
+        /// 보호막으로 피해를 먼저 흡수하고, 남은 피해량을 반환한다.
+        /// 실제 피해가 들어오면 보호막 회복 지연 타이머가 다시 시작된다.
+        /// </summary>
+        public float AbsorbShieldDamage(float damage)
+        {
+            if (damage <= 0f)
+            {
+                return 0f;
+            }
+
+            ShieldRegenDelayTimer = ShieldRegenDelayDuration;
+            if (Shield <= 0f || MaxShield <= 0f)
+            {
+                Shield = 0f;
+                return damage;
+            }
+
+            float absorbed = System.Math.Min(Shield, damage);
+            Shield -= absorbed;
+            if (Shield < 0f)
+            {
+                Shield = 0f;
+            }
+
+            return damage - absorbed;
         }
 
         /// <summary>
@@ -216,6 +253,37 @@ namespace My2DEngine.Game
             }
         }
 
+        public void UpdateShield(float dt)
+        {
+            if (dt <= 0f || MaxShield <= 0f)
+            {
+                return;
+            }
+
+            if (Shield >= MaxShield)
+            {
+                Shield = MaxShield;
+                ShieldRegenDelayTimer = 0f;
+                return;
+            }
+
+            if (ShieldRegenDelayTimer > 0f)
+            {
+                ShieldRegenDelayTimer -= dt;
+                if (ShieldRegenDelayTimer < 0f)
+                {
+                    ShieldRegenDelayTimer = 0f;
+                }
+                return;
+            }
+
+            Shield += ShieldRegenRate * dt;
+            if (Shield > MaxShield)
+            {
+                Shield = MaxShield;
+            }
+        }
+
         public void UpdateDashCooldown(float dt)
         {
             if (DashCooldownTimer <= 0f)
@@ -244,42 +312,6 @@ namespace My2DEngine.Game
             {
                 DashTimer = 0f;
             }
-        }
-
-        public void UpdateStimBoost(float dt)
-        {
-            if (StimBoostTimer <= 0f)
-            {
-                return;
-            }
-
-            StimBoostTimer -= dt;
-            if (StimBoostTimer < 0f)
-            {
-                StimBoostTimer = 0f;
-            }
-        }
-
-        public void AddStimPack(int count)
-        {
-            if (count <= 0)
-            {
-                return;
-            }
-
-            StimPackCount += count;
-        }
-
-        public bool UseStimPack()
-        {
-            if (StimPackCount <= 0)
-            {
-                return false;
-            }
-
-            StimPackCount--;
-            StimBoostTimer = GameConfig.StimBoostDuration;
-            return true;
         }
 
         public void AddCoins(int count)
@@ -313,6 +345,21 @@ namespace My2DEngine.Game
             CoinCount = System.Math.Max(0, count);
         }
 
+        public void ConfigureShield(float maxShield, float regenRate, float regenDelayDuration)
+        {
+            MaxShield = System.Math.Max(0f, maxShield);
+            Shield = System.Math.Max(0f, System.Math.Min(MaxShield, Shield));
+            ShieldRegenRate = System.Math.Max(0f, regenRate);
+            ShieldRegenDelayDuration = System.Math.Max(GameConfig.PlayerShieldMinRegenDelay, regenDelayDuration);
+            ShieldRegenDelayTimer = System.Math.Max(0f, System.Math.Min(ShieldRegenDelayDuration, ShieldRegenDelayTimer));
+        }
+
+        public void RestoreShieldState(float shield, float regenDelayTimer)
+        {
+            Shield = System.Math.Max(0f, System.Math.Min(MaxShield, shield));
+            ShieldRegenDelayTimer = System.Math.Max(0f, System.Math.Min(ShieldRegenDelayDuration, regenDelayTimer));
+        }
+
         public float GetEffectiveSpeed(bool sprintHeld)
         {
             bool exhausted = Stamina <= 0f;
@@ -330,11 +377,6 @@ namespace My2DEngine.Game
             else
             {
                 speed = MoveSpeed;
-            }
-
-            if (StimBoostActive)
-            {
-                speed *= GameConfig.StimSpeedMultiplier;
             }
 
             return speed;
@@ -392,6 +434,11 @@ namespace My2DEngine.Game
         public void ResetRunBonuses()
         {
             MaxHealth = GameConfig.PlayerHealthMax;
+            MaxShield = GameConfig.PlayerShieldMax;
+            Shield = System.Math.Min(Shield, MaxShield);
+            ShieldRegenRate = GameConfig.PlayerShieldBaseRegenRate;
+            ShieldRegenDelayDuration = GameConfig.PlayerShieldBaseRegenDelay;
+            ShieldRegenDelayTimer = 0f;
             MoveSpeed = GameConfig.MoveSpeed;
             DashCooldownMult = 1f;
         }

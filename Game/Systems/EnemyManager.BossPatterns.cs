@@ -47,7 +47,8 @@ namespace My2DEngine.Game.Systems
 
             bool isUltimate = IsUltimateBossAction(actionPlan.ActionKind);
             float windupBase = isUltimate ? enemy.AiProfile.UltimateWindupDuration : enemy.AiProfile.SpecialWindupDuration;
-            float windupDuration = Math.Max(0.05f, windupBase * actionPlan.WindupScale);
+            float windupDuration = Math.Max(0.05f, windupBase * actionPlan.WindupScale * GetBossPhaseWindupMultiplier(enemy));
+            float cooldownMultiplier = GetBossPhaseCooldownMultiplier(enemy);
 
             QueueAction(
                 enemy,
@@ -61,11 +62,11 @@ namespace My2DEngine.Game.Systems
 
             if (isUltimate)
             {
-                enemy.UltimateCooldown = Math.Max(enemy.UltimateCooldown, enemy.AiProfile.UltimateCooldownDuration);
+                enemy.UltimateCooldown = Math.Max(enemy.UltimateCooldown, enemy.AiProfile.UltimateCooldownDuration * cooldownMultiplier);
             }
             else
             {
-                enemy.SpecialCooldown = Math.Max(enemy.SpecialCooldown, enemy.AiProfile.SpecialCooldownDuration);
+                enemy.SpecialCooldown = Math.Max(enemy.SpecialCooldown, enemy.AiProfile.SpecialCooldownDuration * cooldownMultiplier);
             }
         }
 
@@ -108,6 +109,94 @@ namespace My2DEngine.Game.Systems
             }
         }
 
+        private static int GetBossPhaseIndex(Enemy enemy)
+        {
+            float healthRatio = GetBossHealthRatio(enemy);
+            if (healthRatio <= GameConfig.BossPhaseThreeHealthRatio)
+            {
+                return 2;
+            }
+
+            if (healthRatio <= GameConfig.BossPhaseTwoHealthRatio)
+            {
+                return 1;
+            }
+
+            return 0;
+        }
+
+        private static float GetBossHealthRatio(Enemy enemy)
+        {
+            if (enemy == null || enemy.MaxHealth <= 0.001f)
+            {
+                return 1f;
+            }
+
+            return Math.Max(0f, Math.Min(1f, enemy.Health / enemy.MaxHealth));
+        }
+
+        private static float GetBossPhaseWindupMultiplier(Enemy enemy)
+        {
+            int phase = GetBossPhaseIndex(enemy);
+            if (phase >= 2)
+            {
+                return GameConfig.BossPhaseThreeWindupMultiplier;
+            }
+
+            if (phase == 1)
+            {
+                return GameConfig.BossPhaseTwoWindupMultiplier;
+            }
+
+            return 1f;
+        }
+
+        private static float GetBossPhaseCooldownMultiplier(Enemy enemy)
+        {
+            int phase = GetBossPhaseIndex(enemy);
+            if (phase >= 2)
+            {
+                return GameConfig.BossPhaseThreeCooldownMultiplier;
+            }
+
+            if (phase == 1)
+            {
+                return GameConfig.BossPhaseTwoCooldownMultiplier;
+            }
+
+            return 1f;
+        }
+
+        private static float GetBossPhasePowerScale(Enemy enemy)
+        {
+            return 1f + GetBossPhaseIndex(enemy) * GameConfig.BossPhasePowerBonusPerPhase;
+        }
+
+        private static float GetBossPhaseProjectileSpeedScale(Enemy enemy)
+        {
+            return GetBossPhaseIndex(enemy) * GameConfig.BossPhaseProjectileSpeedBonusPerPhase;
+        }
+
+        private static float GetBossPhaseProjectileRadiusScale(Enemy enemy)
+        {
+            return GetBossPhaseIndex(enemy) * GameConfig.BossPhaseProjectileRadiusBonusPerPhase;
+        }
+
+        private static float GetBossPhaseDashDistanceScale(Enemy enemy)
+        {
+            return 1f + GetBossPhaseIndex(enemy) * GameConfig.BossPhaseDashDistanceBonusPerPhase;
+        }
+
+        private static int GetBossPhaseProjectileBonus(Enemy enemy)
+        {
+            return GetBossPhaseIndex(enemy) * GameConfig.BossPhaseProjectileBonusPerPhase;
+        }
+
+        private static int GetBossPhaseMinorProjectileBonus(Enemy enemy)
+        {
+            return GetBossPhaseIndex(enemy) * GameConfig.BossPhaseMinorProjectileBonusPerPhase;
+        }
+
         private void ExecuteAzazelInfernoDash(
             Enemy enemy,
             PerceptionContext perception,
@@ -117,9 +206,14 @@ namespace My2DEngine.Game.Systems
         {
             PerformEnemyAttack(enemy, EnemySoundCueType.Special);
             GetAimDirection(enemy, perception, out float aimX, out float aimY);
-            float dashDistance = Math.Max(1.1f, enemy.AiProfile.ChargeDuration * enemy.AiProfile.ChargeSpeedMultiplier * 1.35f);
+            float phasePower = GetBossPhasePowerScale(enemy);
+            float dashDistance = Math.Max(1.1f,
+                enemy.AiProfile.ChargeDuration *
+                enemy.AiProfile.ChargeSpeedMultiplier *
+                1.35f *
+                GetBossPhaseDashDistanceScale(enemy));
             PerformDashMotion(enemy, aimX, aimY, dashDistance, collision, playerPosition);
-            TryDamagePlayerWithMelee(enemy, playerPosition, onPlayerDamaged, enemy.AiProfile.SpecialDamageMultiplier * 1.1f, collision);
+            TryDamagePlayerWithMelee(enemy, playerPosition, onPlayerDamaged, enemy.AiProfile.SpecialDamageMultiplier * 1.1f * phasePower, collision);
             EnterRecoverState(enemy, EnemyAiState.AttackRecover, enemy.AiProfile.SpecialRecoverDuration);
         }
 
@@ -127,8 +221,13 @@ namespace My2DEngine.Game.Systems
         {
             PerformEnemyAttack(enemy, EnemySoundCueType.Ultimate);
             GetAimDirection(enemy, perception, out float aimX, out float aimY);
-            FireArcVolley(enemy, aimX, aimY, 7, 52f, enemy.AiProfile.UltimateDamageMultiplier * 0.42f, 1.05f, 1.18f, 0.9f);
-            FireArcVolley(enemy, aimX, aimY, 5, 28f, enemy.AiProfile.UltimateDamageMultiplier * 0.36f, 1.22f, 1.06f, 0.82f);
+            int projectileBonus = GetBossPhaseProjectileBonus(enemy);
+            int minorBonus = GetBossPhaseMinorProjectileBonus(enemy);
+            float phasePower = GetBossPhasePowerScale(enemy);
+            float speedBonus = GetBossPhaseProjectileSpeedScale(enemy);
+            float radiusBonus = GetBossPhaseProjectileRadiusScale(enemy);
+            FireArcVolley(enemy, aimX, aimY, 7 + projectileBonus, 52f, enemy.AiProfile.UltimateDamageMultiplier * 0.42f * phasePower, 1.05f + speedBonus, 1.18f + radiusBonus, 0.9f);
+            FireArcVolley(enemy, aimX, aimY, 5 + minorBonus, 28f, enemy.AiProfile.UltimateDamageMultiplier * 0.36f * phasePower, 1.22f + speedBonus, 1.06f + radiusBonus, 0.82f);
             EnterRecoverState(enemy, EnemyAiState.AttackRecover, enemy.AiProfile.UltimateRecoverDuration);
         }
 
@@ -139,14 +238,18 @@ namespace My2DEngine.Game.Systems
             Action<float, float, float> onPlayerDamaged)
         {
             PerformEnemyAttack(enemy, EnemySoundCueType.Special);
-            FireRadialBurst(enemy, 10, enemy.AiProfile.SpecialDamageMultiplier * 0.44f, 0.62f, 1.35f, 0.8f);
+            int projectileBonus = GetBossPhaseProjectileBonus(enemy);
+            float phasePower = GetBossPhasePowerScale(enemy);
+            float speedBonus = GetBossPhaseProjectileSpeedScale(enemy);
+            float radiusBonus = GetBossPhaseProjectileRadiusScale(enemy);
+            FireRadialBurst(enemy, 10 + projectileBonus, enemy.AiProfile.SpecialDamageMultiplier * 0.44f * phasePower, 0.62f + speedBonus, 1.35f + radiusBonus, 0.8f);
             TryDamagePlayerInRadius(
                 enemy,
                 playerPosition,
                 onPlayerDamaged,
                 collision,
-                radius: 2.45f,
-                damage: enemy.AttackDamage * enemy.AiProfile.SpecialDamageMultiplier);
+                radius: 2.45f * phasePower,
+                damage: enemy.AttackDamage * enemy.AiProfile.SpecialDamageMultiplier * phasePower);
             EnterRecoverState(enemy, EnemyAiState.AttackRecover, enemy.AiProfile.SpecialRecoverDuration);
         }
 
@@ -154,8 +257,13 @@ namespace My2DEngine.Game.Systems
         {
             PerformEnemyAttack(enemy, EnemySoundCueType.Ultimate);
             GetAimDirection(enemy, perception, out float aimX, out float aimY);
-            FireArcVolley(enemy, aimX, aimY, 9, 60f, enemy.AiProfile.UltimateDamageMultiplier * 0.38f, 0.74f, 1.45f, 1.1f);
-            FireRadialBurst(enemy, 6, enemy.AiProfile.UltimateDamageMultiplier * 0.26f, 0.58f, 1.2f, 0.9f);
+            int projectileBonus = GetBossPhaseProjectileBonus(enemy);
+            int minorBonus = GetBossPhaseMinorProjectileBonus(enemy);
+            float phasePower = GetBossPhasePowerScale(enemy);
+            float speedBonus = GetBossPhaseProjectileSpeedScale(enemy);
+            float radiusBonus = GetBossPhaseProjectileRadiusScale(enemy);
+            FireArcVolley(enemy, aimX, aimY, 9 + projectileBonus, 60f, enemy.AiProfile.UltimateDamageMultiplier * 0.38f * phasePower, 0.74f + speedBonus, 1.45f + radiusBonus, 1.1f);
+            FireRadialBurst(enemy, 6 + minorBonus, enemy.AiProfile.UltimateDamageMultiplier * 0.26f * phasePower, 0.58f + speedBonus, 1.2f + radiusBonus, 0.9f);
             EnterRecoverState(enemy, EnemyAiState.AttackRecover, enemy.AiProfile.UltimateRecoverDuration);
         }
 
@@ -163,7 +271,11 @@ namespace My2DEngine.Game.Systems
         {
             PerformEnemyAttack(enemy, EnemySoundCueType.Special);
             GetAimDirection(enemy, perception, out float aimX, out float aimY);
-            FireArcVolley(enemy, aimX, aimY, 6, 48f, enemy.AiProfile.SpecialDamageMultiplier * 0.38f, 1.15f, 0.95f, 0.88f);
+            int projectileBonus = GetBossPhaseProjectileBonus(enemy);
+            float phasePower = GetBossPhasePowerScale(enemy);
+            float speedBonus = GetBossPhaseProjectileSpeedScale(enemy);
+            float radiusBonus = GetBossPhaseProjectileRadiusScale(enemy);
+            FireArcVolley(enemy, aimX, aimY, 6 + projectileBonus, 48f, enemy.AiProfile.SpecialDamageMultiplier * 0.38f * phasePower, 1.15f + speedBonus, 0.95f + radiusBonus, 0.88f);
             EnterRecoverState(enemy, EnemyAiState.AttackRecover, enemy.AiProfile.SpecialRecoverDuration);
         }
 
@@ -171,12 +283,17 @@ namespace My2DEngine.Game.Systems
         {
             PerformEnemyAttack(enemy, EnemySoundCueType.Ultimate);
             GetAimDirection(enemy, perception, out float aimX, out float aimY);
-            FireArcVolley(enemy, aimX, aimY, 7, 34f, enemy.AiProfile.UltimateDamageMultiplier * 0.34f, 1.3f, 1f, 0.95f);
+            int projectileBonus = GetBossPhaseProjectileBonus(enemy);
+            int minorBonus = GetBossPhaseMinorProjectileBonus(enemy);
+            float phasePower = GetBossPhasePowerScale(enemy);
+            float speedBonus = GetBossPhaseProjectileSpeedScale(enemy);
+            float radiusBonus = GetBossPhaseProjectileRadiusScale(enemy);
+            FireArcVolley(enemy, aimX, aimY, 7 + projectileBonus, 34f, enemy.AiProfile.UltimateDamageMultiplier * 0.34f * phasePower, 1.3f + speedBonus, 1f + radiusBonus, 0.95f);
 
             RotateVector(aimX, aimY, 18f, out float leftX, out float leftY);
             RotateVector(aimX, aimY, -18f, out float rightX, out float rightY);
-            FireArcVolley(enemy, leftX, leftY, 5, 22f, enemy.AiProfile.UltimateDamageMultiplier * 0.28f, 1.2f, 0.95f, 0.85f);
-            FireArcVolley(enemy, rightX, rightY, 5, 22f, enemy.AiProfile.UltimateDamageMultiplier * 0.28f, 1.2f, 0.95f, 0.85f);
+            FireArcVolley(enemy, leftX, leftY, 5 + minorBonus, 22f, enemy.AiProfile.UltimateDamageMultiplier * 0.28f * phasePower, 1.2f + speedBonus, 0.95f + radiusBonus, 0.85f);
+            FireArcVolley(enemy, rightX, rightY, 5 + minorBonus, 22f, enemy.AiProfile.UltimateDamageMultiplier * 0.28f * phasePower, 1.2f + speedBonus, 0.95f + radiusBonus, 0.85f);
             EnterRecoverState(enemy, EnemyAiState.AttackRecover, enemy.AiProfile.UltimateRecoverDuration);
         }
 
@@ -190,9 +307,16 @@ namespace My2DEngine.Game.Systems
             PerformEnemyAttack(enemy, EnemySoundCueType.Special);
             TryBlinkNearPlayer(enemy, playerPosition, collision);
             GetAimDirection(enemy, perception, out float aimX, out float aimY);
-            PerformDashMotion(enemy, aimX, aimY, Math.Max(0.9f, enemy.AiProfile.ChargeDuration * enemy.AiProfile.ChargeSpeedMultiplier * 0.9f), collision, playerPosition);
-            TryDamagePlayerWithMelee(enemy, playerPosition, onPlayerDamaged, enemy.AiProfile.SpecialDamageMultiplier * 1.2f, collision);
-            FireArcVolley(enemy, aimX, aimY, 3, 20f, enemy.AiProfile.SpecialDamageMultiplier * 0.2f, 1.1f, 0.9f, 0.72f);
+            int minorBonus = GetBossPhaseMinorProjectileBonus(enemy);
+            float phasePower = GetBossPhasePowerScale(enemy);
+            float speedBonus = GetBossPhaseProjectileSpeedScale(enemy);
+            float radiusBonus = GetBossPhaseProjectileRadiusScale(enemy);
+            PerformDashMotion(enemy, aimX, aimY,
+                Math.Max(0.9f, enemy.AiProfile.ChargeDuration * enemy.AiProfile.ChargeSpeedMultiplier * 0.9f * GetBossPhaseDashDistanceScale(enemy)),
+                collision,
+                playerPosition);
+            TryDamagePlayerWithMelee(enemy, playerPosition, onPlayerDamaged, enemy.AiProfile.SpecialDamageMultiplier * 1.2f * phasePower, collision);
+            FireArcVolley(enemy, aimX, aimY, 3 + minorBonus, 20f, enemy.AiProfile.SpecialDamageMultiplier * 0.2f * phasePower, 1.1f + speedBonus, 0.9f + radiusBonus, 0.72f);
             EnterRecoverState(enemy, EnemyAiState.AttackRecover, enemy.AiProfile.SpecialRecoverDuration);
         }
 
@@ -201,8 +325,13 @@ namespace My2DEngine.Game.Systems
             PerformEnemyAttack(enemy, EnemySoundCueType.Ultimate);
             TryBlinkNearPlayer(enemy, playerPosition, collision);
             GetAimDirection(enemy, perception, out float aimX, out float aimY);
-            FireArcVolley(enemy, aimX, aimY, 5, 36f, enemy.AiProfile.UltimateDamageMultiplier * 0.32f, 1.2f, 1f, 0.88f);
-            FireRadialBurst(enemy, 8, enemy.AiProfile.UltimateDamageMultiplier * 0.26f, 0.95f, 1.05f, 0.82f);
+            int projectileBonus = GetBossPhaseProjectileBonus(enemy);
+            int minorBonus = GetBossPhaseMinorProjectileBonus(enemy);
+            float phasePower = GetBossPhasePowerScale(enemy);
+            float speedBonus = GetBossPhaseProjectileSpeedScale(enemy);
+            float radiusBonus = GetBossPhaseProjectileRadiusScale(enemy);
+            FireArcVolley(enemy, aimX, aimY, 5 + projectileBonus, 36f, enemy.AiProfile.UltimateDamageMultiplier * 0.32f * phasePower, 1.2f + speedBonus, 1f + radiusBonus, 0.88f);
+            FireRadialBurst(enemy, 8 + minorBonus, enemy.AiProfile.UltimateDamageMultiplier * 0.26f * phasePower, 0.95f + speedBonus, 1.05f + radiusBonus, 0.82f);
             EnterRecoverState(enemy, EnemyAiState.AttackRecover, enemy.AiProfile.UltimateRecoverDuration);
         }
 

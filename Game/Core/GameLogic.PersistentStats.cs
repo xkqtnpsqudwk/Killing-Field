@@ -44,7 +44,7 @@ namespace My2DEngine.Game.Core
 
         private float GetRunStatBonus(StatType stat)
         {
-            return runStatBonusTotals[(int)stat];
+            return ClampRunStatBonusTotal(stat, runStatBonusTotals[(int)stat]);
         }
 
         private void ApplyCombinedProgressionStats(bool refillHealth, bool healMaxHealthDelta)
@@ -72,11 +72,29 @@ namespace My2DEngine.Game.Core
 
             player.MoveSpeed = GameConfig.MoveSpeed * (1f + data.GetMoveSpeedBonus() + GetRunStatBonus(StatType.MoveSpeed));
             player.SetDashCooldownMult(1f - GetRunStatBonus(StatType.DashCooldown));
+            player.ConfigureShield(
+                GameConfig.PlayerShieldMax,
+                GetEffectiveShieldRegenRate(),
+                GetEffectiveShieldRegenDelayDuration());
 
             weapon.SetStatDamageMult(1f + GetRunStatBonus(StatType.Damage));
             weapon.SetPermanentPistolDamageMult(1f + data.GetPistolDamageBonus());
 
             senseLevel = data.GetSenseTier();
+        }
+
+        private float GetEffectiveShieldRegenRate()
+        {
+            float bonus = Math.Max(0f, GetRunStatBonus(StatType.ShieldRegenRate));
+            return Math.Min(GameConfig.PlayerShieldMaxRegenRate, GameConfig.PlayerShieldBaseRegenRate + bonus);
+        }
+
+        private float GetEffectiveShieldRegenDelayDuration()
+        {
+            float reduction = Math.Max(0f, Math.Min(
+                1f - (GameConfig.PlayerShieldMinRegenDelay / GameConfig.PlayerShieldBaseRegenDelay),
+                GetRunStatBonus(StatType.ShieldRegenDelayReduction)));
+            return Math.Max(GameConfig.PlayerShieldMinRegenDelay, GameConfig.PlayerShieldBaseRegenDelay * (1f - reduction));
         }
 
         private void HandlePermanentStatsInput()
@@ -152,7 +170,6 @@ namespace My2DEngine.Game.Core
             permanentStatKey5Held = key5;
 
             interactKeyHeld = Input.GetKey(Keys.E);
-            stimKeyHeld = Input.GetKey(Keys.Q);
             specialKeyHeld = Input.GetKey(Keys.F);
             dashKeyHeld = Input.GetKey(Keys.ControlKey) || Input.GetKey(Keys.LControlKey) || Input.GetKey(Keys.RControlKey);
         }
@@ -443,17 +460,30 @@ namespace My2DEngine.Game.Core
             {
                 Floor               = currentFloor,
                 PlayerHealth        = player.Health,
-                BonusMaxHealth      = runStatBonusTotals[(int)StatType.MaxHealth],
-                BonusMoveSpeed      = runStatBonusTotals[(int)StatType.MoveSpeed],
-                BonusDamage         = runStatBonusTotals[(int)StatType.Damage],
-                BonusAmmoDropChance = runStatBonusTotals[(int)StatType.AmmoDropChance],
-                BonusDashCooldown   = runStatBonusTotals[(int)StatType.DashCooldown],
-                BonusCoinDropChance = runStatBonusTotals[(int)StatType.CoinDropChance],
+                BonusMaxHealth      = GetRunStatBonus(StatType.MaxHealth),
+                BonusMoveSpeed      = GetRunStatBonus(StatType.MoveSpeed),
+                BonusDamage         = GetRunStatBonus(StatType.Damage),
+                BonusAmmoDropChance = GetRunStatBonus(StatType.AmmoDropChance),
+                BonusDashCooldown   = GetRunStatBonus(StatType.DashCooldown),
+                BonusCoinDropChance = GetRunStatBonus(StatType.CoinDropChance),
+                BonusLifeSteal      = GetRunStatBonus(StatType.LifeSteal),
+                BonusDamageReduction = GetRunStatBonus(StatType.DamageReduction),
+                BonusShopDiscount = GetRunStatBonus(StatType.ShopDiscount),
+                BonusKillHeal = GetRunStatBonus(StatType.KillHeal),
+                BonusKillDashCooldownRefund = GetRunStatBonus(StatType.KillDashCooldownRefund),
+                BonusCriticalChance = GetRunStatBonus(StatType.CriticalChance),
+                BonusCardChoiceBonus = GetRunStatBonus(StatType.CardChoiceBonus),
+                BonusShieldRegenRate = GetRunStatBonus(StatType.ShieldRegenRate),
+                BonusShieldRegenDelayReduction = GetRunStatBonus(StatType.ShieldRegenDelayReduction),
+                PlayerShield = player.Shield,
+                ShieldRegenDelayTimer = player.ShieldRegenDelayTimer,
+                CardChoiceBonusOffered = cardChoiceBonusOffered,
                 ClearedCombatFloorCount = clearedCombatFloorCount,
                 BossClearGrowthCount = bossClearGrowthCount,
                 OwnedWeaponsMask    = weaponMask,
                 CoinCount           = player.CoinCount,
                 WeaponCardPoolCount = weaponCardPoolCount,
+                RestRoomOpportunityCooldownActive = restRoomOpportunityCooldownActive,
                 CurrentWeaponType   = (int)weapon.CurrentType,
                 WeaponAmmoState     = SerializeWeaponAmmoState(),
                 WeaponUpgradeState  = SerializeWeaponUpgradeState(),
@@ -480,6 +510,7 @@ namespace My2DEngine.Game.Core
             runStartTime = DateTime.UtcNow;
 
             currentFloor = save.Floor - 1; // TransitionToNextFloor 에서 +1 됨
+            restRoomOpportunityCooldownActive = save.RestRoomOpportunityCooldownActive;
             clearedCombatFloorCount = save.ClearedCombatFloorCount;
             bossClearGrowthCount = save.BossClearGrowthCount;
 
@@ -494,8 +525,19 @@ namespace My2DEngine.Game.Core
             runStatBonusTotals[(int)StatType.AmmoDropChance] = save.BonusAmmoDropChance;
             runStatBonusTotals[(int)StatType.DashCooldown]   = save.BonusDashCooldown;
             runStatBonusTotals[(int)StatType.CoinDropChance] = save.BonusCoinDropChance;
+            runStatBonusTotals[(int)StatType.LifeSteal]      = save.BonusLifeSteal;
+            runStatBonusTotals[(int)StatType.DamageReduction] = save.BonusDamageReduction;
+            runStatBonusTotals[(int)StatType.ShopDiscount] = save.BonusShopDiscount;
+            runStatBonusTotals[(int)StatType.KillHeal] = save.BonusKillHeal;
+            runStatBonusTotals[(int)StatType.KillDashCooldownRefund] = save.BonusKillDashCooldownRefund;
+            runStatBonusTotals[(int)StatType.CriticalChance] = save.BonusCriticalChance;
+            runStatBonusTotals[(int)StatType.CardChoiceBonus] = save.BonusCardChoiceBonus;
+            runStatBonusTotals[(int)StatType.ShieldRegenRate] = save.BonusShieldRegenRate;
+            runStatBonusTotals[(int)StatType.ShieldRegenDelayReduction] = save.BonusShieldRegenDelayReduction;
+            cardChoiceBonusOffered = save.CardChoiceBonusOffered || save.BonusCardChoiceBonus >= 1f;
             RestoreIntArray(save.RunStatGradeState, runStatGrade, -1);
             RestoreIntArray(save.RunStatPickupState, runStatPickupCount, 0);
+            ClampRunStatBonusTotals();
             weaponCardPoolCount = Math.Max(0, save.WeaponCardPoolCount);
 
             // 무기 소유 복원
@@ -512,6 +554,7 @@ namespace My2DEngine.Game.Core
             // 스탯 적용 (MaxHealth 포함) 후 저장된 HP로 덮어쓰기
             ApplyCombinedProgressionStats(refillHealth: true, healMaxHealthDelta: false);
             player.Health = Math.Min(save.PlayerHealth, player.MaxHealth);
+            player.RestoreShieldState(save.PlayerShield, save.ShieldRegenDelayTimer);
             player.SetCoinCount(save.CoinCount);
 
             TransitionToNextFloor(commitCurrentFloorGrowth: false);

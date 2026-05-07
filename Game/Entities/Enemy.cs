@@ -62,6 +62,8 @@ namespace My2DEngine.Game
 
         public bool IsObjectiveTarget { get; set; }
 
+        public bool ObjectiveTargetRevealed { get; private set; }
+
         public string DisplayName { get; private set; }
 
         public float MoveSpeed { get; private set; }
@@ -246,6 +248,10 @@ namespace My2DEngine.Game
             Health -= damage;
             HitFlash = Math.Max(HitFlash, GameConfig.EnemyHitFlashDuration);
             HitReactTimer = Math.Max(HitReactTimer, GameConfig.EnemyHitReactDuration);
+            if (IsObjectiveTarget && Health <= MaxHealth * GameConfig.KeyTargetRevealHealthRatio)
+            {
+                RevealObjectiveTarget();
+            }
 
             if (Health > 0f)
             {
@@ -287,6 +293,11 @@ namespace My2DEngine.Game
             DeathAnimationTime = 0f;
             DeathAnimationTimer = 1.45f;
             DeathCallback?.Invoke(this);
+        }
+
+        public void RevealObjectiveTarget()
+        {
+            ObjectiveTargetRevealed = true;
         }
 
         public void UpdateTimers(float dt)
@@ -485,6 +496,7 @@ namespace My2DEngine.Game
             State = EnemyAiState.Patrol;
             StateTimer = 0f;
             PendingAction = EnemyPendingAction.None;
+            ObjectiveTargetRevealed = false;
             FacingDirX = 0f;
             FacingDirY = -1f;
             MemoryTimer = 0f;

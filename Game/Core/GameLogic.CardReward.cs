@@ -17,7 +17,10 @@ namespace My2DEngine.Game.Core
     {
         /// <summary>룸 클리어 후 카드가 실제로 나타나기까지 대기하는 시간(초).</summary>
         private const float CardRewardRevealDelaySeconds = 2f;
-        private const int RunStatCount = 6;
+        private const int RunStatCount = 15;
+        private const int BaseCardRewardOfferCount = 3;
+        private const int MaxCardRewardOfferCount = 4;
+        private const int CardChoiceBonusMinFloor = 10;
 
         private static readonly StatType[] RewardStatTypes =
         {
@@ -26,7 +29,16 @@ namespace My2DEngine.Game.Core
             StatType.DashCooldown,
             StatType.AmmoDropChance,
             StatType.Damage,
-            StatType.CoinDropChance
+            StatType.CoinDropChance,
+            StatType.LifeSteal,
+            StatType.DamageReduction,
+            StatType.ShopDiscount,
+            StatType.KillHeal,
+            StatType.KillDashCooldownRefund,
+            StatType.CriticalChance,
+            StatType.CardChoiceBonus,
+            StatType.ShieldRegenRate,
+            StatType.ShieldRegenDelayReduction
         };
 
         // ── 카드 보상 상태 ──────────────────────────────────────────────
@@ -46,8 +58,11 @@ namespace My2DEngine.Game.Core
         /// <summary>이번 카드 보상에서 스탯 카드 등급을 올릴 단계 수.</summary>
         private int cardRewardGradeBoost;
 
-        /// <summary>현재 제시 중인 카드 3장. null이면 해당 슬롯 비어 있음.</summary>
-        private readonly RewardCardOffer[] currentCardOffers = new RewardCardOffer[3];
+        /// <summary>이번 카드 보상에서 보장할 최소 스탯 카드 등급. -1이면 보장 없음.</summary>
+        private int cardRewardMinimumStatGrade = -1;
+
+        /// <summary>현재 제시 중인 카드. 카드 선택지 증가 스탯이 있으면 4번째 슬롯까지 사용한다.</summary>
+        private readonly RewardCardOffer[] currentCardOffers = new RewardCardOffer[MaxCardRewardOfferCount];
 
         /// <summary>마우스 클릭으로 카드 선택 시 처리할 게임 좌표 X (-1이면 미처리).</summary>
         private float pendingCardClickX = -1f;
@@ -58,7 +73,7 @@ namespace My2DEngine.Game.Core
         /// 현재 런에서 각 StatType에 보유 중인 카드 등급.
         /// -1 = 미보유, 0 = White, 1 = Green, 2 = Blue, 3 = Purple, 4 = Red.
         /// </summary>
-        private readonly int[] runStatGrade = { -1, -1, -1, -1, -1, -1 }; // indexed by (int)StatType
+        private readonly int[] runStatGrade = CreateInitialRunStatGradeState(); // indexed by (int)StatType
 
         /// <summary>현재 런에서 스탯 카드로 누적된 총 보너스 값.</summary>
         private readonly float[] runStatBonusTotals = new float[RunStatCount];
@@ -69,11 +84,39 @@ namespace My2DEngine.Game.Core
         /// <summary>카드 풀에 남은 무기 카드 수. 보스 처치 시 +1, 카드 선택 시 -1.</summary>
         private int weaponCardPoolCount;
 
+        /// <summary>카드 선택지 증가 카드는 한 번 제시되면 다시 등장하지 않는다.</summary>
+        private bool cardChoiceBonusOffered;
+
         /// <summary>
         /// 현재 런에서 해금된 무기. 인덱스는 (int)WeaponType.
         /// 피스톨(0)은 항상 true, 나머지는 무기 카드 획득 시 true로 전환된다.
         /// </summary>
         private readonly bool[] ownedWeapons = new bool[5];
+
+        private static int[] CreateInitialRunStatGradeState()
+        {
+            int[] values = new int[RunStatCount];
+            for (int i = 0; i < values.Length; i++)
+            {
+                values[i] = -1;
+            }
+
+            return values;
+        }
+
+        private void ClearCurrentCardOffers()
+        {
+            for (int i = 0; i < currentCardOffers.Length; i++)
+            {
+                currentCardOffers[i] = null;
+            }
+        }
+
+        private int GetCardRewardOfferSlotCount()
+        {
+            int bonus = GetRunStatBonus(StatType.CardChoiceBonus) >= 1f ? 1 : 0;
+            return Math.Max(BaseCardRewardOfferCount, Math.Min(MaxCardRewardOfferCount, BaseCardRewardOfferCount + bonus));
+        }
 
         // ── 카드 보상 오픈 ──────────────────────────────────────────────
 
@@ -82,14 +125,15 @@ namespace My2DEngine.Game.Core
         /// </summary>
         /// <param name="wasBossRoom">방금 클리어한 방이 보스 방이었는지.</param>
         /// <param name="nextFloorIsBoss">다음 층이 보스 층(% 20 == 0)인지.</param>
-        private void ShowCardReward(bool wasBossRoom, bool nextFloorIsBoss, int gradeBoost = 0)
+        private void ShowCardReward(bool wasBossRoom, bool nextFloorIsBoss, int gradeBoost = 0, int minimumStatGrade = -1)
         {
             cardRewardWasBossRoom = wasBossRoom;
             cardRewardNextFloorIsBoss = nextFloorIsBoss;
             cardRewardGradeBoost = Math.Max(0, gradeBoost);
-            currentCardOffers[0] = null;
-            currentCardOffers[1] = null;
-            currentCardOffers[2] = null;
+            cardRewardMinimumStatGrade = minimumStatGrade < 0
+                ? -1
+                : Math.Max((int)CardGrade.White, Math.Min((int)CardGrade.Red, minimumStatGrade));
+            ClearCurrentCardOffers();
             pendingCardClickX = -1f;
             pendingCardClickY = -1f;
             cardRewardRevealTimer = CardRewardRevealDelaySeconds;
@@ -98,21 +142,21 @@ namespace My2DEngine.Game.Core
 
         private void GenerateCardOffers()
         {
-            currentCardOffers[0] = null;
-            currentCardOffers[1] = null;
-            currentCardOffers[2] = null;
+            ClearCurrentCardOffers();
+            int offerSlotCount = GetCardRewardOfferSlotCount();
 
             if (cardRewardWasBossRoom)
             {
-                GenerateBossWeaponOffers();
+                GenerateBossWeaponOffers(offerSlotCount);
                 return;
             }
 
-            // 무기 카드 풀이 있으면 슬롯 2에 무기 카드, 슬롯 0~1에 스탯 카드
+            // 무기 카드 풀이 있으면 마지막 슬롯에 무기 카드, 앞 슬롯에 스탯 카드
             bool hasWeaponCard = false;
             if (weaponCardPoolCount > 0)
             {
-                if (GenerateWeaponOffer(out currentCardOffers[2]))
+                int weaponSlot = offerSlotCount - 1;
+                if (GenerateWeaponOffer(out currentCardOffers[weaponSlot]))
                 {
                     hasWeaponCard = true;
                 }
@@ -120,11 +164,11 @@ namespace My2DEngine.Game.Core
                 {
                     // 더 이상 제공할 무기 업그레이드가 없음 → 풀 소진 처리
                     weaponCardPoolCount = 0;
-                    currentCardOffers[2] = null;
+                    currentCardOffers[weaponSlot] = null;
                 }
             }
 
-            int statSlots = hasWeaponCard ? 2 : 3;
+            int statSlots = hasWeaponCard ? offerSlotCount - 1 : offerSlotCount;
             HashSet<int> usedStatOfferKeys = new HashSet<int>();
 
             for (int slot = 0; slot < statSlots; slot++)
@@ -135,9 +179,9 @@ namespace My2DEngine.Game.Core
             }
         }
 
-        private void GenerateBossWeaponOffers()
+        private void GenerateBossWeaponOffers(int offerSlotCount)
         {
-            if (TryGenerateWeaponOffers(3, out RewardCardOffer[] offers))
+            if (TryGenerateWeaponOffers(offerSlotCount, out RewardCardOffer[] offers))
             {
                 int slot = 0;
                 for (; slot < offers.Length; slot++)
@@ -145,13 +189,13 @@ namespace My2DEngine.Game.Core
                     currentCardOffers[slot] = offers[slot];
                 }
 
-                if (slot >= currentCardOffers.Length)
+                if (slot >= offerSlotCount)
                 {
                     return;
                 }
 
                 HashSet<int> usedStatOfferKeys = new HashSet<int>();
-                for (; slot < currentCardOffers.Length; slot++)
+                for (; slot < offerSlotCount; slot++)
                 {
                     RewardCardOffer offer = GenerateStatOffer(usedStatOfferKeys);
                     currentCardOffers[slot] = offer;
@@ -167,7 +211,7 @@ namespace My2DEngine.Game.Core
             }
 
             HashSet<int> fallbackStatOfferKeys = new HashSet<int>();
-            for (int slot = 0; slot < currentCardOffers.Length; slot++)
+            for (int slot = 0; slot < offerSlotCount; slot++)
             {
                 RewardCardOffer offer = GenerateStatOffer(fallbackStatOfferKeys);
                 currentCardOffers[slot] = offer;
@@ -188,6 +232,7 @@ namespace My2DEngine.Game.Core
                 ? RollStatOfferGrade(availableGrades)
                 : RollStatOfferGrade();
             offerGrade = ApplyCardRewardGradeBoost(offerGrade, cardRewardGradeBoost, availableGrades);
+            offerGrade = ApplyCardRewardMinimumGrade(offerGrade, cardRewardMinimumStatGrade, availableGrades);
 
             List<StatType> gradeCandidates = BuildAvailableStatOfferPoolForGrade(candidates, offerGrade, usedStatOfferKeys);
             if (gradeCandidates.Count <= 0)
@@ -198,13 +243,89 @@ namespace My2DEngine.Game.Core
             StatType picked = gradeCandidates[templateRandom.Next(gradeCandidates.Count)];
             float actualBonus = GetEffectiveStatOfferBonus(picked, offerGrade);
 
-            return new RewardCardOffer
+            return CreateStatOffer(picked, offerGrade, actualBonus);
+        }
+
+        private RewardCardOffer[] GenerateRestShopCardOffers(int desiredCount)
+        {
+            if (desiredCount <= 0)
+            {
+                return Array.Empty<RewardCardOffer>();
+            }
+
+            CardGrade offerGrade = GetRestShopCardGrade();
+            var offers = new List<RewardCardOffer>(desiredCount);
+            var usedStatOfferKeys = new HashSet<int>();
+            for (int i = 0; i < desiredCount; i++)
+            {
+                RewardCardOffer offer = GenerateStatOfferForGrade(offerGrade, usedStatOfferKeys);
+                if (offer == null)
+                {
+                    break;
+                }
+
+                offers.Add(offer);
+                TrackStatOfferKey(offer, usedStatOfferKeys);
+            }
+
+            return offers.ToArray();
+        }
+
+        private RewardCardOffer GenerateStatOfferForGrade(CardGrade offerGrade, ISet<int> usedStatOfferKeys)
+        {
+            List<StatType> candidates = BuildAvailableStatOfferPool();
+            if (candidates.Count <= 0)
+            {
+                return null;
+            }
+
+            List<StatType> gradeCandidates = BuildAvailableStatOfferPoolForGrade(candidates, offerGrade, usedStatOfferKeys);
+            if (gradeCandidates.Count <= 0)
+            {
+                return null;
+            }
+
+            StatType picked = gradeCandidates[templateRandom.Next(gradeCandidates.Count)];
+            float actualBonus = GetEffectiveStatOfferBonus(picked, offerGrade);
+            return CreateStatOffer(picked, offerGrade, actualBonus);
+        }
+
+        private RewardCardOffer CreateStatOffer(StatType stat, CardGrade grade, float actualBonus)
+        {
+            RewardCardOffer offer = new RewardCardOffer
             {
                 IsWeaponCard = false,
-                StatType = picked,
-                Grade = offerGrade,
+                StatType = stat,
+                Grade = grade,
                 StatBonusValue = actualBonus
             };
+
+            RegisterStatOfferGenerated(offer);
+            return offer;
+        }
+
+        private void RegisterStatOfferGenerated(RewardCardOffer offer)
+        {
+            if (offer != null && !offer.IsWeaponCard && offer.StatType == StatType.CardChoiceBonus)
+            {
+                cardChoiceBonusOffered = true;
+            }
+        }
+
+        private CardGrade GetRestShopCardGrade()
+        {
+            return GetOneGradeAboveHighestLuckAvailableStatOfferGrade();
+        }
+
+        private CardGrade GetOneGradeAboveHighestLuckAvailableStatOfferGrade()
+        {
+            CardGrade highestNormallyAvailable = GetHighestLuckAvailableStatOfferGrade();
+            if ((int)highestNormallyAvailable >= (int)CardGrade.Red)
+            {
+                return CardGrade.Red;
+            }
+
+            return (CardGrade)((int)highestNormallyAvailable + 1);
         }
 
         private static CardGrade ApplyCardRewardGradeBoost(CardGrade grade, int boost, ICollection<CardGrade> allowedGrades)
@@ -236,6 +357,31 @@ namespace My2DEngine.Game.Core
             }
 
             return result;
+        }
+
+        private static CardGrade ApplyCardRewardMinimumGrade(CardGrade grade, int minimumGrade, ICollection<CardGrade> allowedGrades)
+        {
+            if (minimumGrade < 0 || (int)grade >= minimumGrade)
+            {
+                return grade;
+            }
+
+            CardGrade desired = (CardGrade)Math.Min((int)CardGrade.Red, minimumGrade);
+            if (allowedGrades == null || allowedGrades.Contains(desired))
+            {
+                return desired;
+            }
+
+            for (int g = (int)desired + 1; g <= (int)CardGrade.Red; g++)
+            {
+                CardGrade candidate = (CardGrade)g;
+                if (allowedGrades.Contains(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            return grade;
         }
 
         private static void TrackStatOfferKey(RewardCardOffer offer, ISet<int> usedStatOfferKeys)
@@ -313,12 +459,25 @@ namespace My2DEngine.Game.Core
         private bool IsStatOfferAvailable(StatType stat)
         {
             const float epsilon = 0.0001f;
+            if (stat == StatType.CardChoiceBonus)
+            {
+                if (currentFloor < CardChoiceBonusMinFloor || cardChoiceBonusOffered)
+                {
+                    return false;
+                }
+
+                if (GetRunStatBonus(StatType.CardChoiceBonus) >= 1f)
+                {
+                    return false;
+                }
+            }
+
             return GetRemainingStatBonusCap(stat) > epsilon;
         }
 
         private float GetEffectiveStatOfferBonus(StatType stat, CardGrade grade)
         {
-            float baseBonus = GetBaseStatCardBonus(grade);
+            float baseBonus = GetBaseStatCardBonus(stat, grade);
             float remaining = GetRemainingStatBonusCap(stat);
             return Math.Max(0f, Math.Min(baseBonus, remaining));
         }
@@ -344,13 +503,41 @@ namespace My2DEngine.Game.Core
                     return 1f - NormalEnemyAmmoDropChance;
                 case StatType.CoinDropChance:
                     return 0.50f;
+                case StatType.LifeSteal:
+                    return 1f;
+                case StatType.DamageReduction:
+                    return 0.65f;
+                case StatType.ShopDiscount:
+                    return 0.50f;
+                case StatType.KillHeal:
+                    return 0.10f;
+                case StatType.KillDashCooldownRefund:
+                    return 0.25f;
+                case StatType.CriticalChance:
+                    return 1f;
+                case StatType.CardChoiceBonus:
+                    return 1f;
+                case StatType.ShieldRegenRate:
+                    return Math.Max(0f, GameConfig.PlayerShieldMaxRegenRate - GameConfig.PlayerShieldBaseRegenRate);
+                case StatType.ShieldRegenDelayReduction:
+                    return 1f - (GameConfig.PlayerShieldMinRegenDelay / GameConfig.PlayerShieldBaseRegenDelay);
                 default:
                     return float.PositiveInfinity;
             }
         }
 
-        private static float GetBaseStatCardBonus(CardGrade grade)
+        private static float GetBaseStatCardBonus(StatType stat, CardGrade grade)
         {
+            switch (stat)
+            {
+                case StatType.CardChoiceBonus:
+                    return 1f;
+                case StatType.ShieldRegenRate:
+                    return 1f + Math.Max(0, (int)grade);
+                default:
+                    break;
+            }
+
             return CardGradeHelper.GetBonusValue(grade);
         }
 
@@ -414,6 +601,21 @@ namespace My2DEngine.Game.Core
             }
 
             return CardGrade.Red;
+        }
+
+        private CardGrade GetHighestLuckAvailableStatOfferGrade()
+        {
+            PermanentProgressionData data = permanentProgression ?? PermanentProgressionData.CreateDefault();
+            int luckLevel = Math.Max(0, Math.Min(10, data.GetLuckLevel()));
+            for (int g = (int)CardGrade.Red; g >= (int)CardGrade.White; g--)
+            {
+                if (LuckGradeWeights[luckLevel, g] > 0)
+                {
+                    return (CardGrade)g;
+                }
+            }
+
+            return CardGrade.White;
         }
 
         private bool GenerateWeaponOffer(out RewardCardOffer offer)
@@ -593,16 +795,9 @@ namespace My2DEngine.Game.Core
             pendingCardClickX = -1f;
             pendingCardClickY = -1f;
 
-            const float cardW = 170f;
-            const float cardH = 210f;
-            const float gap   = 15f;
-            const float totalW = 3f * cardW + 2f * gap;
-            float fw = GameConfig.GpuWorldMaxRenderWidth;
-            float fh = GameConfig.GpuWorldMaxRenderHeight;
-            float startX = (fw - totalW) * 0.5f;
-            float cardY  = cardRewardWasBossRoom ? fh * 0.20f : fh * 0.16f;
+            GetCardRewardLayout(out int slotCount, out float cardW, out float cardH, out float gap, out float startX, out float cardY);
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < slotCount; i++)
             {
                 if (currentCardOffers[i] == null) continue;
                 float cx = startX + i * (cardW + gap);
@@ -648,9 +843,7 @@ namespace My2DEngine.Game.Core
             ApplyCardOffer(offer);
 
             cardRewardActive = false;
-            currentCardOffers[0] = null;
-            currentCardOffers[1] = null;
-            currentCardOffers[2] = null;
+            ClearCurrentCardOffers();
             pendingCardClickX = -1f;
             pendingCardClickY = -1f;
 
@@ -702,11 +895,11 @@ namespace My2DEngine.Game.Core
             StatType stat = offer.StatType;
             CardGrade grade = offer.Grade;
             int statIndex = (int)stat;
-            float currentTotal = runStatBonusTotals[statIndex];
+            float currentTotal = ClampRunStatBonusTotal(stat, runStatBonusTotals[statIndex]);
             float bonus = offer.StatBonusValue > 0f
                 ? offer.StatBonusValue
                 : GetEffectiveStatOfferBonus(stat, grade);
-            float nextTotal = currentTotal + bonus;
+            float nextTotal = Math.Max(0f, currentTotal + bonus);
             float cappedTotal = GetStatBonusCap(stat);
             if (!float.IsPositiveInfinity(cappedTotal))
             {
@@ -727,6 +920,66 @@ namespace My2DEngine.Game.Core
             SetStageStatus(BuildStatCardMessage(stat, grade, actualBonus), 3f);
         }
 
+        private static float ClampRunStatBonusTotal(StatType stat, float value)
+        {
+            if (float.IsNaN(value) || value < 0f)
+            {
+                value = 0f;
+            }
+
+            switch (stat)
+            {
+                case StatType.DashCooldown:
+                    return Math.Min(value, 1f - (GameConfig.DashCooldownMinDuration / GameConfig.DashCooldownDuration));
+                case StatType.AmmoDropChance:
+                    return Math.Min(value, 1f - NormalEnemyAmmoDropChance);
+                case StatType.CoinDropChance:
+                    return Math.Min(value, 0.50f);
+                case StatType.LifeSteal:
+                    return Math.Min(value, 1f);
+                case StatType.DamageReduction:
+                    return Math.Min(value, 0.65f);
+                case StatType.ShopDiscount:
+                    return Math.Min(value, 0.50f);
+                case StatType.KillHeal:
+                    return Math.Min(value, 0.10f);
+                case StatType.KillDashCooldownRefund:
+                    return Math.Min(value, 0.25f);
+                case StatType.CriticalChance:
+                    return Math.Min(value, 1f);
+                case StatType.CardChoiceBonus:
+                    return Math.Min(value, 1f);
+                case StatType.ShieldRegenRate:
+                    return Math.Min(value, Math.Max(0f, GameConfig.PlayerShieldMaxRegenRate - GameConfig.PlayerShieldBaseRegenRate));
+                case StatType.ShieldRegenDelayReduction:
+                    return Math.Min(value, 1f - (GameConfig.PlayerShieldMinRegenDelay / GameConfig.PlayerShieldBaseRegenDelay));
+                default:
+                    return value;
+            }
+        }
+
+        private void GetCardRewardLayout(out int slotCount, out float cardW, out float cardH, out float gap, out float startX, out float cardY)
+        {
+            slotCount = GetCardRewardOfferSlotCount();
+            cardW = slotCount > BaseCardRewardOfferCount ? 145f : 170f;
+            cardH = 210f;
+            gap = slotCount > BaseCardRewardOfferCount ? 12f : 15f;
+
+            float fw = GameConfig.GpuWorldMaxRenderWidth;
+            float fh = GameConfig.GpuWorldMaxRenderHeight;
+            float totalW = slotCount * cardW + Math.Max(0, slotCount - 1) * gap;
+            startX = (fw - totalW) * 0.5f;
+            cardY = cardRewardWasBossRoom ? fh * 0.20f : fh * 0.16f;
+        }
+
+        private void ClampRunStatBonusTotals()
+        {
+            for (int i = 0; i < runStatBonusTotals.Length; i++)
+            {
+                runStatBonusTotals[i] = ClampRunStatBonusTotal((StatType)i, runStatBonusTotals[i]);
+            }
+        }
+
         // ── 카드 상태 리셋 ──────────────────────────────────────────────
 
         /// <summary>카드 UI 표시 상태만 초기화한다 (층 전환 시). 런 카드 등급은 유지.</summary>
@@ -737,9 +990,8 @@ namespace My2DEngine.Game.Core
             cardRewardWasBossRoom = false;
             cardRewardNextFloorIsBoss = false;
             cardRewardGradeBoost = 0;
-            currentCardOffers[0] = null;
-            currentCardOffers[1] = null;
-            currentCardOffers[2] = null;
+            cardRewardMinimumStatGrade = -1;
+            ClearCurrentCardOffers();
             pendingCardClickX = -1f;
             pendingCardClickY = -1f;
         }
@@ -749,6 +1001,7 @@ namespace My2DEngine.Game.Core
         {
             ResetCardDisplayState();
             weaponCardPoolCount = 0;
+            cardChoiceBonusOffered = false;
             for (int i = 0; i < runStatGrade.Length; i++)
             {
                 runStatGrade[i] = -1;
@@ -793,6 +1046,15 @@ namespace My2DEngine.Game.Core
                 case StatType.AmmoDropChance: return "탄 드랍 확률";
                 case StatType.Damage:      return "공격력";
                 case StatType.CoinDropChance: return "코인 드랍 확률";
+                case StatType.LifeSteal:   return "모든 피해 흡혈";
+                case StatType.DamageReduction: return "피해 감소";
+                case StatType.ShopDiscount: return "상점 할인";
+                case StatType.KillHeal: return "처치 시 회복";
+                case StatType.KillDashCooldownRefund: return "처치 시 대시 환급";
+                case StatType.CriticalChance: return "치명타 확률";
+                case StatType.CardChoiceBonus: return "카드 선택지 증가";
+                case StatType.ShieldRegenRate: return "보호막 회복 속도";
+                case StatType.ShieldRegenDelayReduction: return "보호막 회복 지연";
                 default:                   return "???";
             }
         }
@@ -852,7 +1114,13 @@ namespace My2DEngine.Game.Core
             switch (stat)
             {
                 case StatType.DashCooldown:
+                case StatType.ShopDiscount:
+                case StatType.ShieldRegenDelayReduction:
                     return $"-{pct}%";
+                case StatType.CardChoiceBonus:
+                    return "+1";
+                case StatType.ShieldRegenRate:
+                    return $"+{bonusValue:0.#}/s";
                 default:
                     return $"+{pct}%";
             }
@@ -880,14 +1148,9 @@ namespace My2DEngine.Game.Core
                     Color.FromArgb(255, 140, 220, 155), 9.5f);
             }
 
-            float cardW = 170f;
-            float cardH = 210f;
-            float gap = 15f;
-            float totalW = 3f * cardW + 2f * gap;
-            float startX = (fw - totalW) * 0.5f;
-            float cardY = cardRewardWasBossRoom ? fh * 0.20f : fh * 0.16f;
+            GetCardRewardLayout(out int slotCount, out float cardW, out float cardH, out float gap, out float startX, out float cardY);
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < slotCount; i++)
             {
                 RewardCardOffer offer = currentCardOffers[i];
                 if (offer == null) continue;
@@ -933,6 +1196,8 @@ namespace My2DEngine.Game.Core
             string gradeName = CardGradeHelper.GetGradeName(offer.Grade);
             string statName = GetStatName(offer.StatType);
             string valueText = GetStatCardValueText(offer.StatType, offer.StatBonusValue);
+            float nameFontSize = w < 160f ? 10f : 12f;
+            float valueFontSize = w < 160f ? 13f : 15f;
 
             r.DrawTextCenteredShadow("스탯 카드", cx, y + 16f,
                 Color.FromArgb(200, 170, 170, 170), 9f);
@@ -940,8 +1205,8 @@ namespace My2DEngine.Game.Core
             r.DrawRectangle(cx - w * 0.35f, y + 57f, w * 0.7f, 1f,
                 Color.FromArgb(80, 200, 200, 200));
             r.DrawTextCenteredShadow(statName, cx, y + 80f,
-                Color.FromArgb(255, 235, 225, 200), 12f);
-            r.DrawTextCenteredShadow(valueText, cx, y + 108f, gradeColor, 15f);
+                Color.FromArgb(255, 235, 225, 200), nameFontSize);
+            r.DrawTextCenteredShadow(valueText, cx, y + 108f, gradeColor, valueFontSize);
 
             // 현재 보유 등급 표시
             int statIndex = (int)offer.StatType;
@@ -962,7 +1227,13 @@ namespace My2DEngine.Game.Core
             switch (stat)
             {
                 case StatType.DashCooldown:
+                case StatType.ShopDiscount:
+                case StatType.ShieldRegenDelayReduction:
                     return $"-{pct}%";
+                case StatType.CardChoiceBonus:
+                    return totalBonus >= 1f ? "+1" : "+0";
+                case StatType.ShieldRegenRate:
+                    return $"+{totalBonus:0.#}/s";
                 default:
                     return $"+{pct}%";
             }

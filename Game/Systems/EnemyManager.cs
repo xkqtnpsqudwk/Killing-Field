@@ -27,6 +27,8 @@ namespace My2DEngine.Game.Systems
         };
 
         private static readonly float[] RuinedGunnerSpreads = { -0.18f, 0f, 0.18f };
+        private static readonly float[] BurstPairSpreads = { -0.08f, 0.08f };
+        private static readonly float[] WideFanSpreads = { -0.34f, -0.18f, 0f, 0.18f, 0.34f };
 
         private sealed class PlayerSoundStimulus
         {
@@ -254,6 +256,7 @@ namespace My2DEngine.Game.Systems
         {
             UpdatePlayerSoundStimuli(dt);
             UpdateEnemies(dt, playerPosition, playerDead, collision, onPlayerDamaged);
+            RevealIsolatedObjectiveTargets();
             UpdateEnemyProjectiles(dt, collision, playerPosition, onPlayerDamaged);
             RemoveExpiredDeadEnemies();
         }
@@ -329,8 +332,7 @@ namespace My2DEngine.Game.Systems
             StageSpawnPoint fallback = CloneSpawnPoint(source);
             fallback.IsObjectiveTarget = true;
             fallback.HealthMultiplier = Math.Max(fallback.HealthMultiplier, GameConfig.KeyTargetHealthMultiplier);
-            fallback.ScaleMultiplier = Math.Max(fallback.ScaleMultiplier, GameConfig.KeyTargetScaleMultiplier);
-            fallback.DisplayName = string.IsNullOrWhiteSpace(fallback.DisplayName) ? "Key Target" : fallback.DisplayName;
+            fallback.ScaleMultiplier *= GameConfig.KeyTargetScaleMultiplier;
 
             PointF[] fallbackPositions =
             {
@@ -352,6 +354,48 @@ namespace My2DEngine.Game.Systems
             }
 
             return false;
+        }
+
+        private void RevealIsolatedObjectiveTargets()
+        {
+            if (enemies == null || enemies.Length == 0)
+            {
+                return;
+            }
+
+            bool hasAliveObjectiveTarget = false;
+            bool hasAliveNonObjectiveEnemy = false;
+            for (int i = 0; i < enemies.Length; i++)
+            {
+                Enemy enemy = enemies[i];
+                if (enemy == null || !enemy.Alive)
+                {
+                    continue;
+                }
+
+                if (enemy.IsObjectiveTarget)
+                {
+                    hasAliveObjectiveTarget = true;
+                }
+                else
+                {
+                    hasAliveNonObjectiveEnemy = true;
+                }
+            }
+
+            if (!hasAliveObjectiveTarget || hasAliveNonObjectiveEnemy)
+            {
+                return;
+            }
+
+            for (int i = 0; i < enemies.Length; i++)
+            {
+                Enemy enemy = enemies[i];
+                if (enemy != null && enemy.Alive && enemy.IsObjectiveTarget)
+                {
+                    enemy.RevealObjectiveTarget();
+                }
+            }
         }
 
         private static StageSpawnPoint FindObjectiveTargetSpawn(StageRoom room)
@@ -596,10 +640,10 @@ namespace My2DEngine.Game.Systems
 
         private void RegisterBossPatterns()
         {
-            RegisterBossPattern(new AzazelBossPattern(), "feral_alpha", "azazel");
-            RegisterBossPattern(new BehemothBossPattern(), "bulwark_colossus", "behemoth");
-            RegisterBossPattern(new ArachnocortexBossPattern(), "ashen_artillerist", "arachnocortex");
-            RegisterBossPattern(new AgauresBossPattern(), "rift_strider", "agaures");
+            RegisterBossPattern(new AzazelBossPattern(), "feral_alpha", "azazel", "abaddon");
+            RegisterBossPattern(new BehemothBossPattern(), "bulwark_colossus", "behemoth", "annihilator", "aracnorb_queen");
+            RegisterBossPattern(new ArachnocortexBossPattern(), "ashen_artillerist", "arachnocortex", "afrit", "arachnobaron");
+            RegisterBossPattern(new AgauresBossPattern(), "rift_strider", "agaures", "agatho_demon", "arachnophyte");
         }
 
         private void RegisterBossPattern(IEnemyBossPattern pattern, params string[] assetIds)

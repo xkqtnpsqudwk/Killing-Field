@@ -29,6 +29,48 @@ namespace My2DEngine.Game.Config
         /// <summary>보스 등장 연출(인트로) 지속 시간(초). 이 시간 동안 화면에 보스 이름이 표시된다.</summary>
         public const float BossIntroDuration = 2.4f;
 
+        /// <summary>보스가 2페이즈로 전환되는 체력 비율이다.</summary>
+        public const float BossPhaseTwoHealthRatio = 0.66f;
+
+        /// <summary>보스가 3페이즈로 전환되는 체력 비율이다.</summary>
+        public const float BossPhaseThreeHealthRatio = 0.33f;
+
+        /// <summary>보스 페이즈가 하나 올라갈 때마다 특수 패턴 피해/범위 계수에 더하는 값이다.</summary>
+        public const float BossPhasePowerBonusPerPhase = 0.12f;
+
+        /// <summary>보스 2페이즈에서 특수 패턴 예비 동작 시간에 곱하는 값이다.</summary>
+        public const float BossPhaseTwoWindupMultiplier = 0.9f;
+
+        /// <summary>보스 3페이즈에서 특수 패턴 예비 동작 시간에 곱하는 값이다.</summary>
+        public const float BossPhaseThreeWindupMultiplier = 0.78f;
+
+        /// <summary>보스 2페이즈에서 특수/궁극 패턴 재사용 대기시간에 곱하는 값이다.</summary>
+        public const float BossPhaseTwoCooldownMultiplier = 0.88f;
+
+        /// <summary>보스 3페이즈에서 특수/궁극 패턴 재사용 대기시간에 곱하는 값이다.</summary>
+        public const float BossPhaseThreeCooldownMultiplier = 0.72f;
+
+        /// <summary>보스 2페이즈에서 공격 전조 아우라 강도에 더하는 값이다.</summary>
+        public const float BossPhaseTwoTelegraphIntensityBonus = 0.08f;
+
+        /// <summary>보스 3페이즈에서 공격 전조 아우라 강도에 더하는 값이다.</summary>
+        public const float BossPhaseThreeTelegraphIntensityBonus = 0.16f;
+
+        /// <summary>보스 페이즈가 하나 올라갈 때마다 주력 탄막 수에 더하는 값이다.</summary>
+        public const int BossPhaseProjectileBonusPerPhase = 2;
+
+        /// <summary>보스 페이즈가 하나 올라갈 때마다 보조 탄막 수에 더하는 값이다.</summary>
+        public const int BossPhaseMinorProjectileBonusPerPhase = 1;
+
+        /// <summary>보스 페이즈가 하나 올라갈 때마다 투사체 속도 계수에 더하는 값이다.</summary>
+        public const float BossPhaseProjectileSpeedBonusPerPhase = 0.08f;
+
+        /// <summary>보스 페이즈가 하나 올라갈 때마다 투사체 반경 계수에 더하는 값이다.</summary>
+        public const float BossPhaseProjectileRadiusBonusPerPhase = 0.04f;
+
+        /// <summary>보스 페이즈가 하나 올라갈 때마다 돌진 거리에 더하는 비율이다.</summary>
+        public const float BossPhaseDashDistanceBonusPerPhase = 0.18f;
+
         /// <summary>전투 층(휴식 제외) 1회 클리어당 이후 적 최대 체력에 더해지는 성장 배율이다.</summary>
         public const float EnemyHealthGrowthPerClearedCombatFloor = 0.004f;
 
@@ -86,17 +128,20 @@ namespace My2DEngine.Game.Config
         /// <summary>생존 방 증원 1회당 최대 생성 수.</summary>
         public const int SurvivalRoomReinforcementCount = 2;
 
-        /// <summary>열쇠 방 표적 적의 체력 배율.</summary>
-        public const float KeyTargetHealthMultiplier = 1.65f;
+        /// <summary>열쇠 방 표적 적의 체력 배율. 은닉 목표라 일반 적보다 훨씬 오래 버티게 한다.</summary>
+        public const float KeyTargetHealthMultiplier = 3.5f;
 
-        /// <summary>열쇠 방 표적 적의 스케일 배율.</summary>
-        public const float KeyTargetScaleMultiplier = 1.12f;
+        /// <summary>열쇠 방 표적 적의 스케일 배율. 1.0을 유지해 외형만으로 표적을 알 수 없게 한다.</summary>
+        public const float KeyTargetScaleMultiplier = 1.0f;
+
+        /// <summary>열쇠 방 표적이 이 체력 비율 이하로 내려가면 HUD에서 정체가 드러난다.</summary>
+        public const float KeyTargetRevealHealthRatio = 0.80f;
 
         /// <summary>독성 안개 위험 방의 피해 간격(초).</summary>
         public const float ToxicMistDamageInterval = 1.15f;
 
         /// <summary>독성 안개가 한 번에 주는 피해량.</summary>
-        public const float ToxicMistDamage = 4f;
+        public const float ToxicMistDamage = 3f;
 
         /// <summary>플레이어 기본 이동 속도(타일/초).</summary>
         public const float MoveSpeed = 2.5f;
@@ -146,11 +191,23 @@ namespace My2DEngine.Game.Config
         /// <summary>대시가 지속되는 시간(초). 짧을수록 순간적인 돌진 느낌이 강해진다.</summary>
         public const float DashDuration = 0.20f;
 
-        /// <summary>체력 치료제(HealthPack)를 획득했을 때 회복하는 체력량.</summary>
-        public const float HealthPickupAmount = 32f;
-
         /// <summary>플레이어 최대 체력.</summary>
         public const float PlayerHealthMax = 100f;
+
+        /// <summary>플레이어 기본 보호막 최대값.</summary>
+        public const float PlayerShieldMax = 100f;
+
+        /// <summary>피해를 입은 뒤 보호막 회복이 시작되기까지의 기본 대기 시간(초).</summary>
+        public const float PlayerShieldBaseRegenDelay = 10f;
+
+        /// <summary>보호막 회복 지연 시간이 더 이상 줄어들지 않는 최소 시간(초).</summary>
+        public const float PlayerShieldMinRegenDelay = 2f;
+
+        /// <summary>보호막 기본 초당 회복량.</summary>
+        public const float PlayerShieldBaseRegenRate = 1f;
+
+        /// <summary>카드 보너스 적용 후 보호막 초당 회복량 상한.</summary>
+        public const float PlayerShieldMaxRegenRate = 20f;
 
         /// <summary>영구 스탯 체력 1포인트당 최대 체력 증가율.</summary>
         public const float PermanentHealthPerPoint = 0.10f;
@@ -200,20 +257,11 @@ namespace My2DEngine.Game.Config
         public const float WeaponIdleAnimFrameDuration = 0.18f;
         /// <summary>발사/보조 애니메이션 종료 후 사운드를 조금 더 유지하는 tail 시간(초).</summary>
         public const float WeaponSoundTailGrace = 0.14f;
-        /// <summary>스팀팩 사용 시 이동 속도에 곱하는 배율.</summary>
-        public const float StimSpeedMultiplier = 2.0f;
+        /// <summary>휴식 상점에서 카드 구매 시 기본 코인 비용.</summary>
+        public const int RestShopCardBaseCost = 2;
 
-        /// <summary>스팀팩 효과 지속 시간(초).</summary>
-        public const float StimBoostDuration = 6.0f;
-
-        /// <summary>휴식 상점에서 회복 키트를 구매할 때 필요한 코인 수.</summary>
-        public const int RestShopHealthPackCost = 1;
-
-        /// <summary>휴식 상점에서 스팀팩을 구매할 때 필요한 코인 수.</summary>
-        public const int RestShopStimPackCost = 1;
-
-        /// <summary>휴식 상점에서 탄약 보급을 구매할 때 필요한 코인 수.</summary>
-        public const int RestShopAmmoPackCost = 1;
+        /// <summary>휴식 상점 카드 등급 1단계당 추가되는 코인 비용.</summary>
+        public const int RestShopCardCostPerGrade = 1;
 
         /// <summary>보스를 1회 클리어할 때마다 휴식 상점 가격에 더해지는 코인 수.</summary>
         public const int RestShopCostIncreasePerBossClear = 1;

@@ -151,10 +151,8 @@ namespace My2DEngine.Game.Rendering
                 if ((enemy.IsBoss || enemy.IsMiniBoss) && enemy.TelegraphTimer > 0f)
                 {
                     DrawEnemyTelegraphAura(drawStartX, drawEndX, drawStartY, drawEndY,
-                        enemy.BehaviorPattern == EnemyBehaviorPattern.BossRunner
-                            ? Color.FromArgb(180, 110, 150, 255)
-                            : Color.FromArgb(185, 255, 110, 70),
-                        0.22f + Math.Min(0.28f, enemy.TelegraphTimer * 0.35f),
+                        GetEnemyTelegraphColor(enemy),
+                        GetEnemyTelegraphIntensity(enemy),
                         (float)transformY);
                 }
 
@@ -167,7 +165,7 @@ namespace My2DEngine.Game.Rendering
                     if (enemyBarW > 104) enemyBarW = 104;
                     float enemyHealthRatio = enemy.MaxHealth > 0f ? enemy.Health / enemy.MaxHealth : 0f;
                     DrawWorldHealthBar(spriteScreenX, enemyBarY, enemyBarW, 5, enemyHealthRatio,
-                        enemy.IsObjectiveTarget
+                        enemy.IsObjectiveTarget && enemy.ObjectiveTargetRevealed
                             ? Color.FromArgb(245, 255, 220, 65)
                             : enemy.IsBoss
                             ? Color.FromArgb(240, 255, 175, 60)
@@ -200,6 +198,70 @@ namespace My2DEngine.Game.Rendering
             int bottom = Math.Min(frameH - 1, drawEndY + padY);
 
             QueueTelegraphRectRings(left, top, right, bottom, color, intensity, depth);
+        }
+
+        private static Color GetEnemyTelegraphColor(Enemy enemy)
+        {
+            if (enemy != null && enemy.IsBoss)
+            {
+                float ratio = enemy.MaxHealth > 0f ? enemy.Health / enemy.MaxHealth : 1f;
+                if (ratio <= GameConfig.BossPhaseThreeHealthRatio)
+                {
+                    return Color.FromArgb(220, 255, 55, 45);
+                }
+
+                if (ratio <= GameConfig.BossPhaseTwoHealthRatio)
+                {
+                    return Color.FromArgb(205, 255, 155, 55);
+                }
+            }
+
+            return IsRiftStyleTelegraph(enemy)
+                ? Color.FromArgb(180, 110, 150, 255)
+                : Color.FromArgb(185, 255, 110, 70);
+        }
+
+        private static float GetEnemyTelegraphIntensity(Enemy enemy)
+        {
+            if (enemy == null)
+            {
+                return 0.22f;
+            }
+
+            float intensity = 0.22f + Math.Min(0.28f, enemy.TelegraphTimer * 0.35f);
+            if (enemy.IsBoss)
+            {
+                float ratio = enemy.MaxHealth > 0f ? enemy.Health / enemy.MaxHealth : 1f;
+                if (ratio <= GameConfig.BossPhaseThreeHealthRatio)
+                {
+                    intensity += GameConfig.BossPhaseThreeTelegraphIntensityBonus;
+                }
+                else if (ratio <= GameConfig.BossPhaseTwoHealthRatio)
+                {
+                    intensity += GameConfig.BossPhaseTwoTelegraphIntensityBonus;
+                }
+            }
+
+            return Math.Min(0.72f, intensity);
+        }
+
+        private static bool IsRiftStyleTelegraph(Enemy enemy)
+        {
+            if (enemy == null)
+            {
+                return false;
+            }
+
+            switch (enemy.BehaviorPattern)
+            {
+                case EnemyBehaviorPattern.BossRunner:
+                case EnemyBehaviorPattern.BossRiftBlitz:
+                case EnemyBehaviorPattern.BossAgathoDemon:
+                case EnemyBehaviorPattern.BossArachnoFang:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         /// <summary>
@@ -350,7 +412,7 @@ namespace My2DEngine.Game.Rendering
 
         /// <summary>
         /// 픽업의 희귀도에 따라 테두리 색상을 반환한다.
-        /// 스팀팩이나 희귀도가 없는 픽업은 투명 색상을 반환한다.
+        /// 상점 카드는 카드 등급 색상, 일반 픽업은 희귀도 색상을 반환한다.
         /// </summary>
         /// <param name="pickup">희귀도 정보를 가진 보상 픽업.</param>
         /// <returns>희귀도에 해당하는 테두리 색상. 희귀도가 없으면 투명.</returns>
@@ -361,12 +423,18 @@ namespace My2DEngine.Game.Rendering
                 return Color.Transparent;
             }
 
+            if (pickup.Kind == RewardPickupKind.Card && pickup.CardOffer != null)
+            {
+                Color gradeColor = GetCardOfferColor(pickup.CardOffer);
+                return Color.FromArgb(235, gradeColor);
+            }
+
             if (pickup.IsRestChoice)
             {
                 return Color.FromArgb(220, 255, 210, 110);
             }
 
-            if (pickup.Kind == RewardPickupKind.StimPack || pickup.Kind == RewardPickupKind.AmmoPack)
+            if (pickup.Kind == RewardPickupKind.AmmoPack)
             {
                 return Color.Transparent;
             }
@@ -423,11 +491,8 @@ namespace My2DEngine.Game.Rendering
             string itemLabel;
             switch (pickup.Kind)
             {
-                case RewardPickupKind.HealthPack:
-                    itemLabel = "회복";
-                    break;
-                case RewardPickupKind.StimPack:
-                    itemLabel = "스팀";
+                case RewardPickupKind.Card:
+                    itemLabel = GetRestShopCardLabel(pickup.CardOffer);
                     break;
                 case RewardPickupKind.AmmoPack:
                     itemLabel = "탄약";
@@ -450,14 +515,82 @@ namespace My2DEngine.Game.Rendering
 
             switch (pickup.Kind)
             {
-                case RewardPickupKind.HealthPack:
-                    return Color.FromArgb(255, 240, 120, 120);
-                case RewardPickupKind.StimPack:
-                    return Color.FromArgb(255, 155, 240, 175);
+                case RewardPickupKind.Card:
+                    return pickup.CardOffer != null
+                        ? GetCardOfferColor(pickup.CardOffer)
+                        : Color.FromArgb(255, 255, 225, 120);
                 case RewardPickupKind.AmmoPack:
                     return Color.FromArgb(255, 255, 220, 120);
                 default:
                     return Color.FromArgb(255, 220, 220, 220);
+            }
+        }
+
+        private static Color GetCardOfferColor(RewardCardOffer offer)
+        {
+            if (offer == null)
+            {
+                return Color.FromArgb(255, 255, 225, 120);
+            }
+
+            return offer.IsWeaponCard
+                ? CardGradeHelper.GetGradeColor(offer.WeaponGrade)
+                : CardGradeHelper.GetGradeColor(offer.Grade);
+        }
+
+        private static string GetRestShopCardLabel(RewardCardOffer offer)
+        {
+            if (offer == null)
+            {
+                return "카드";
+            }
+
+            CardGrade grade = offer.IsWeaponCard ? offer.WeaponGrade : offer.Grade;
+            string gradeName = CardGradeHelper.GetGradeName(grade);
+            if (offer.IsWeaponCard)
+            {
+                return gradeName + " " + WeaponPresentation.GetDisplayName(offer.WeaponType);
+            }
+
+            return gradeName + " " + GetShortStatName(offer.StatType);
+        }
+
+        private static string GetShortStatName(StatType stat)
+        {
+            switch (stat)
+            {
+                case StatType.MaxHealth:
+                    return "체력";
+                case StatType.MoveSpeed:
+                    return "속도";
+                case StatType.DashCooldown:
+                    return "대시";
+                case StatType.AmmoDropChance:
+                    return "탄드랍";
+                case StatType.Damage:
+                    return "공격";
+                case StatType.CoinDropChance:
+                    return "코인";
+                case StatType.LifeSteal:
+                    return "흡혈";
+                case StatType.DamageReduction:
+                    return "피감";
+                case StatType.ShopDiscount:
+                    return "할인";
+                case StatType.KillHeal:
+                    return "처치회복";
+                case StatType.KillDashCooldownRefund:
+                    return "대시환급";
+                case StatType.CriticalChance:
+                    return "치명";
+                case StatType.CardChoiceBonus:
+                    return "선택+";
+                case StatType.ShieldRegenRate:
+                    return "방패회복";
+                case StatType.ShieldRegenDelayReduction:
+                    return "방패지연";
+                default:
+                    return "스탯";
             }
         }
 

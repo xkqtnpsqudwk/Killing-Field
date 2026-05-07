@@ -125,6 +125,7 @@ namespace My2DEngine.Game.Core
             ResetPlayerState();
             ResetRunEndlessState();
             currentFloor = FinalRoguelikeFloor;
+            restRoomOpportunityCooldownActive = false;
             SetClearedCombatFloorCount(GetEndlessStartingClearedCombatFloorCount());
             SetBossClearEnemyGrowthCount(GetEndlessStartingBossClearCount());
             ApplyCombinedProgressionStats(refillHealth: true, healMaxHealthDelta: false);

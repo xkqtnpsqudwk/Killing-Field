@@ -250,30 +250,17 @@ namespace My2DEngine.Game.Rendering
         }
 
         /// <summary>
-        /// 스팀팩 HUD에 잔여 개수, 부스트 지속 시간, 단축키 힌트 텍스트를 렌더러로 그린다.
+        /// 보유 코인 수를 렌더러로 그린다.
         /// </summary>
         /// <param name="r">텍스트를 그릴 렌더러.</param>
-        /// <param name="player">스팀팩 개수와 부스트 상태를 제공하는 플레이어 상태.</param>
-        private void DrawStimHud(Renderer r, Player player)
+        /// <param name="player">코인 상태를 제공하는 플레이어 상태.</param>
+        private void DrawCoinHud(Renderer r, Player player)
         {
             int panelW = 118;
             int panelX = frameW - panelW - 20;
-            int panelY = frameH - 250;
-            r.DrawText("STIM", panelX + 12, panelY + 9, Color.FromArgb(220, 220, 255, 220), 11f);
-            r.DrawText("x" + player.StimPackCount, panelX + 12, panelY + 27, Color.White, 18f);
-
-            if (player.StimBoostActive)
-            {
-                r.DrawText("BOOST", panelX + 60, panelY + 16, Color.FromArgb(220, 140, 255, 180), 9f);
-                r.DrawText(player.StimBoostTimer.ToString("0.0") + "s", panelX + 60, panelY + 31, Color.White, 11f);
-            }
-            else
-            {
-                r.DrawText("Q", panelX + 78, panelY + 25, Color.FromArgb(210, 210, 210, 210), 13f);
-            }
-
-            r.DrawText("COIN", panelX + 12, panelY + 52, Color.FromArgb(220, 255, 220, 150), 10f);
-            r.DrawText("x" + player.CoinCount, panelX + 56, panelY + 50, Color.White, 14f);
+            int panelY = frameH - 220;
+            r.DrawText("COIN", panelX + 12, panelY + 11, Color.FromArgb(220, 255, 220, 150), 10f);
+            r.DrawText("x" + player.CoinCount, panelX + 56, panelY + 9, Color.White, 16f);
         }
 
         /// <summary>
@@ -490,10 +477,10 @@ namespace My2DEngine.Game.Rendering
         }
 
         /// <summary>
-        /// GPU 경로에서 스팀팩 HUD 패널 배경을 렌더러를 통해 그린다.
+        /// GPU 경로에서 코인 HUD 패널 배경을 렌더러를 통해 그린다.
         /// </summary>
         /// <param name="r">사각형을 그릴 렌더러. null이면 아무것도 그리지 않는다.</param>
-        private void DrawStimHudBackdrop(Renderer r)
+        private void DrawCoinHudBackdrop(Renderer r)
         {
             if (r == null)
             {
@@ -501,10 +488,10 @@ namespace My2DEngine.Game.Rendering
             }
 
             int panelW = 118;
-            int panelH = 82;
+            int panelH = 42;
             int panelX = frameW - panelW - 20;
-            int panelY = frameH - 250;
-            r.DrawRectangle(panelX, panelY, panelW, panelH, Color.FromArgb(185, 26, 40, 26));
+            int panelY = frameH - 220;
+            r.DrawRectangle(panelX, panelY, panelW, panelH, Color.FromArgb(185, 42, 36, 18));
         }
 
         /// <summary>
@@ -627,6 +614,27 @@ namespace My2DEngine.Game.Rendering
             if (ratio < 0f) ratio = 0f;
             if (ratio > 1f) ratio = 1f;
             r.DrawRectangle(x, y, barW * ratio, barH, Color.FromArgb(220, 210, 55, 55));
+        }
+
+        /// <summary>
+        /// GPU 경로에서 플레이어 보호막 바를 화면 좌측 하단에 렌더러를 통해 그린다.
+        /// </summary>
+        private void DrawShieldBar(Renderer r, Player player)
+        {
+            if (r == null || player == null)
+            {
+                return;
+            }
+
+            int barW = 164;
+            int barH = 8;
+            int x = 8;
+            int y = frameH - 52;
+            r.DrawRectangle(x - 2, y - 2, barW + 4, barH + 4, Color.FromArgb(145, 0, 0, 0));
+            float ratio = player.MaxShield > 0f ? player.Shield / player.MaxShield : 0f;
+            if (ratio < 0f) ratio = 0f;
+            if (ratio > 1f) ratio = 1f;
+            r.DrawRectangle(x, y, barW * ratio, barH, Color.FromArgb(220, 82, 185, 235));
         }
 
         /// <summary>
@@ -771,11 +779,6 @@ namespace My2DEngine.Game.Rendering
             if (text.IndexOf("AMMO", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return Color.FromArgb((int)(210f * alpha), 108, 195, 255);
-            }
-
-            if (text.IndexOf("STIM", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return Color.FromArgb((int)(210f * alpha), 112, 255, 175);
             }
 
             return Color.FromArgb((int)(210f * alpha), 255, 105, 95);

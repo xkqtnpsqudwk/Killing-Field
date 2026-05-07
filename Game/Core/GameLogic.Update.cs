@@ -20,10 +20,10 @@ namespace My2DEngine.Game.Core
         /// 매 프레임 호출되는 게임 루프의 핵심 메서드.
         /// <para>처리 순서:</para>
         /// <list type="number">
-        ///   <item>시스템 타이머 갱신(메시지·보스 인트로·플래시·사망 연출·문 애니메이션·무기·스팀·대시·픽업)</item>
+        ///   <item>시스템 타이머 갱신(메시지·보스 인트로·플래시·사망 연출·문 애니메이션·무기·대시·픽업)</item>
         ///   <item>적 AI 업데이트 및 플레이어 피격 콜백 연결</item>
         ///   <item>플레이어 사망 상태일 때 조기 반환(BGM 정지 포함)</item>
-        ///   <item>재장전·스팀팩·이동·상호작용·발사 입력 처리</item>
+        ///   <item>재장전·이동·상호작용·발사 입력 처리</item>
         ///   <item>보상 획득·스테이지 진행·BGM 갱신·상호작용 안내문 갱신</item>
         /// </list>
         /// </summary>
@@ -65,9 +65,9 @@ namespace My2DEngine.Game.Core
 
             mapManager.UpdateDoorAnimations(dt);
             weapon.UpdateTimers(dt);
-            player.UpdateStimBoost(dt);
             player.UpdateDashCooldown(dt);
             player.UpdateDash(dt);
+            player.UpdateShield(dt);
             UpdatePickupTimers(dt);
 
             if (!victory)
@@ -99,7 +99,6 @@ namespace My2DEngine.Game.Core
             HandleBranchInput();
             HandleWeaponSwitchInput();
             HandleSpecialInput();
-            HandleStimInput();
             HandlePlayerMovement(dt);
             HandleInteractInput();
             HandleAutomaticFire(dt);
@@ -291,35 +290,6 @@ namespace My2DEngine.Game.Core
             {
                 deathPresentationProgress = 1f;
             }
-        }
-
-        /// <summary>
-        /// Q 키 입력을 감지하여 스팀팩 사용을 시도한다.
-        /// 스팀팩이 있으면 이동속도 증가 효과를 부여하고 안내 메시지를 표시한다.
-        /// 스팀팩이 없으면 "스팀팩이 없습니다" 메시지를 표시한다.
-        /// </summary>
-        private void HandleStimInput()
-        {
-            if (player.IsDead)
-            {
-                stimKeyHeld = false;
-                return;
-            }
-
-            bool stimHeld = Input.GetKey(Keys.Q);
-            if (stimHeld && !stimKeyHeld)
-            {
-                if (player.UseStimPack())
-                {
-                    SetStageStatus("스팀팩 투여 - 이동속도 증가", 2.2f);
-                }
-                else
-                {
-                    SetStageStatus("스팀팩이 없습니다", 1.5f);
-                }
-            }
-
-            stimKeyHeld = stimHeld;
         }
 
         /// <summary>

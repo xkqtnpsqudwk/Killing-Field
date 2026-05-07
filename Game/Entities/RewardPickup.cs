@@ -23,14 +23,12 @@ namespace My2DEngine.Game
     /// </summary>
     public enum RewardPickupKind
     {
-        /// <summary>응급 치료제. 획득하면 체력이 일정량 회복된다.</summary>
-        HealthPack = 0,
-        /// <summary>스팀팩. 획득하면 StimPackCount가 증가한다.</summary>
-        StimPack = 1,
         /// <summary>공용 탄약 보급. 획득 시 현재 들고 있는 무기의 잔탄을 즉시 보충한다.</summary>
-        AmmoPack = 2,
+        AmmoPack = 0,
         /// <summary>휴식 상점과 런 경제에 사용하는 코인. 획득 시 보유 코인이 증가한다.</summary>
-        Coin = 3,
+        Coin = 1,
+        /// <summary>휴식 상점에서 판매되는 런 카드. 구매 시 카드 효과가 즉시 적용된다.</summary>
+        Card = 2,
     }
 
     /// <summary>
@@ -42,13 +40,13 @@ namespace My2DEngine.Game
         /// <summary>이 전리품이 드롭된 방 ID. 방 클리어 이전에 드롭됐는지 추적하는 데 사용된다.</summary>
         public int RoomId { get; set; }
 
-        /// <summary>전리품 종류(탄약/치료제/스팀팩).</summary>
+        /// <summary>전리품 종류(탄약/코인/카드).</summary>
         public RewardPickupKind Kind { get; set; }
 
         /// <summary>전리품 희귀도. 효과 크기와 UI 색상 결정에 사용된다.</summary>
         public RewardPickupRarity Rarity { get; set; }
 
-        /// <summary>희귀도에 따른 효과 배율. 체력 회복량이나 탄약 지급량 보정에 사용된다.</summary>
+        /// <summary>희귀도에 따른 효과 배율. 탄약 지급량 보정에 사용된다.</summary>
         public float EffectMultiplier { get; set; } = 1f;
 
         /// <summary>전리품 월드 X 좌표.</summary>
@@ -65,6 +63,9 @@ namespace My2DEngine.Game
 
         /// <summary>휴식 룸 상점에서 구매할 때 필요한 코인 비용.</summary>
         public int CoinCost { get; set; }
+
+        /// <summary>카드 상점 픽업이면 구매 시 적용할 카드 제안 데이터.</summary>
+        public RewardCardOffer CardOffer { get; set; }
 
         /// <summary>이 픽업이 제공하는 개수. 코인 픽업 수량 등에 사용된다.</summary>
         public int Amount { get; set; } = 1;

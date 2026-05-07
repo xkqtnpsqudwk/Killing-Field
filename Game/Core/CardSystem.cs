@@ -12,7 +12,16 @@ namespace My2DEngine.Game
         DashCooldown  = 2,
         AmmoDropChance = 3,
         Damage        = 4,
-        CoinDropChance = 5
+        CoinDropChance = 5,
+        LifeSteal     = 6,
+        DamageReduction = 7,
+        ShopDiscount = 8,
+        KillHeal = 9,
+        KillDashCooldownRefund = 10,
+        CriticalChance = 11,
+        CardChoiceBonus = 12,
+        ShieldRegenRate = 13,
+        ShieldRegenDelayReduction = 14
     }
 
     /// <summary>

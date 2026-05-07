@@ -98,9 +98,6 @@ namespace My2DEngine.Game.Core
         /// <summary>이전 프레임에 상호작용 키(E)가 눌려 있었는지 여부. 엣지 트리거 처리에 사용.</summary>
         private bool interactKeyHeld;
 
-        /// <summary>이전 프레임에 스팀팩 키(Q)가 눌려 있었는지 여부. 엣지 트리거 처리에 사용.</summary>
-        private bool stimKeyHeld;
-
         /// <summary>이전 프레임에 대시 키(Ctrl)가 눌려 있었는지 여부. 엣지 트리거 처리에 사용.</summary>
         private bool dashKeyHeld;
 
@@ -253,6 +250,7 @@ namespace My2DEngine.Game.Core
             bgmChannel.StopBackgroundMusic();
             deathMusicStopped = false;
             currentFloor = 0;
+            restRoomOpportunityCooldownActive = false;
             runEnemiesKilled = 0;
             runBossesKilled = 0;
             runStartTime = DateTime.UtcNow;
@@ -399,8 +397,13 @@ namespace My2DEngine.Game.Core
             // 층당 1회용 특수기(HChainGun/DuelBerettas)는 매 층 전환 시 리셋한다.
             weapon.ResetFloorSpecial();
 
-            bool allowRestRoom = preselected != null || ShouldAllowRestRoomAfterCurrentFloor();
+            bool allowRestRoom = preselected != null || ShouldAllowRestRoomForNextSelection();
             RoomTemplate template = preselected ?? RoomTemplateLibrary.SelectForFloor(currentFloor, templateRandom, bossClearGrowthCount, allowRestRoom);
+            if (preselected == null)
+            {
+                restRoomOpportunityCooldownActive = template?.IsRestRoom == true;
+            }
+
             mapManager.LoadRoomFromTemplate(template, out _, out _);
 
             ApplyMapSpawnSettings();

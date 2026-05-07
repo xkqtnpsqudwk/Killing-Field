@@ -69,7 +69,7 @@ namespace My2DEngine.Game.Core
             float fw = GameConfig.GpuWorldMaxRenderWidth;
             float fh = GameConfig.GpuWorldMaxRenderHeight;
             float panelW = 496f;
-            float panelH = 300f;
+            float panelH = 344f;
             float panelX = (fw - panelW) * 0.5f;
             float panelY = (fh - panelH) * 0.5f;
             float panelCenterX = panelX + panelW * 0.5f;
@@ -89,7 +89,7 @@ namespace My2DEngine.Game.Core
             float leftX = panelX + 16f;
             float rightX = panelX + 258f;
             float headerY = panelY + 58f;
-            float lineStep = 15f;
+            float lineStep = 13.5f;
 
             r.DrawText("현재 상태", leftX, headerY, Color.FromArgb(255, 255, 220, 150), 10f);
             r.DrawText("카드 누적", rightX, headerY, Color.FromArgb(255, 255, 220, 150), 10f);
@@ -99,14 +99,17 @@ namespace My2DEngine.Game.Core
             string ammoText = weapon.CurrentAmmo + " / " + weapon.MagazineSize;
 
             DrawPlayerStatsLine(r, leftX, headerY + 24f, $"체력 {player.Health:0} / {player.MaxHealth:0}");
-            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep, $"스태미나 {player.Stamina:0} / {player.MaxStamina:0}");
-            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 2f, $"이동 속도 {player.MoveSpeed:0.00}");
-            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 3f, $"대시 쿨다운 {GameConfig.DashCooldownDuration * player.DashCooldownMult:0.00}s");
-            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 4f, $"현재 무기 {currentWeaponName}");
-            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 5f, $"탄약 {ammoText}");
-            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 6f, $"현재 공격력 {currentWeaponDamage:0.00}");
-            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 7f, $"탄 드랍 확률 +{GetRunStatBonus(StatType.AmmoDropChance) * 100f:0}%");
-            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 8f, $"코인 {player.CoinCount}");
+            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep, $"보호막 {player.Shield:0} / {player.MaxShield:0}");
+            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 2f, $"스태미나 {player.Stamina:0} / {player.MaxStamina:0}");
+            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 3f, $"이동 속도 {player.MoveSpeed:0.00}");
+            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 4f, $"대시 쿨다운 {GameConfig.DashCooldownDuration * player.DashCooldownMult:0.00}s");
+            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 5f, $"현재 무기 {currentWeaponName}");
+            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 6f, $"탄약 {ammoText}");
+            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 7f, $"현재 공격력 {currentWeaponDamage:0.00}");
+            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 8f, $"피해 감소 {GetRunStatBonus(StatType.DamageReduction) * 100f:0}%");
+            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 9f, $"치명타 {GetRunStatBonus(StatType.CriticalChance) * 100f:0}%");
+            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 10f, $"흡혈 {GetEffectiveLifeStealRatio(IsActiveToxicMistRoom()) * 100f:0}%");
+            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 11f, $"코인 {player.CoinCount}");
 
             DrawPlayerStatsLine(r, rightX, headerY + 24f,
                 BuildStatBreakdown("최대 체력", GameConfig.PlayerHealthMax, data.GetHealthBonus(), runStatBonusTotals[(int)StatType.MaxHealth], player.MaxHealth, suffix: string.Empty));
@@ -121,11 +124,19 @@ namespace My2DEngine.Game.Core
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 5f,
                 $"코인 드랍(일반 적)  기본 {NormalEnemyCoinDropChance * 100f:0}% / 카드 +{runStatBonusTotals[(int)StatType.CoinDropChance] * 100f:0}% / 누적 {Math.Min(1f, NormalEnemyCoinDropChance + runStatBonusTotals[(int)StatType.CoinDropChance]) * 100f:0}%");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 6f,
-                $"체력 카드 {runStatPickupCount[(int)StatType.MaxHealth]}회 / 누적 +{runStatBonusTotals[(int)StatType.MaxHealth] * 100f:0}%");
+                $"흡혈  기본 0% / 카드 +{runStatBonusTotals[(int)StatType.LifeSteal] * 100f:0}% / 독안개 {GetEffectiveLifeStealRatio(true) * 100f:0}%");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 7f,
-                $"속도 카드 {runStatPickupCount[(int)StatType.MoveSpeed]}회 / 누적 +{runStatBonusTotals[(int)StatType.MoveSpeed] * 100f:0}%");
+                $"피해 감소 {runStatPickupCount[(int)StatType.DamageReduction]}회 / 누적 {runStatBonusTotals[(int)StatType.DamageReduction] * 100f:0}%");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 8f,
-                $"공격력 {runStatPickupCount[(int)StatType.Damage]}회  탄드랍 {runStatPickupCount[(int)StatType.AmmoDropChance]}회  대시 {runStatPickupCount[(int)StatType.DashCooldown]}회  코인 {runStatPickupCount[(int)StatType.CoinDropChance]}회");
+                $"상점 할인 {runStatPickupCount[(int)StatType.ShopDiscount]}회 / 누적 {runStatBonusTotals[(int)StatType.ShopDiscount] * 100f:0}%");
+            DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 9f,
+                $"처치 회복 {runStatBonusTotals[(int)StatType.KillHeal] * 100f:0}% / 대시 환급 {runStatBonusTotals[(int)StatType.KillDashCooldownRefund] * 100f:0}%");
+            DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 10f,
+                $"치명타 {runStatBonusTotals[(int)StatType.CriticalChance] * 100f:0}% / 선택지 +{(GetRunStatBonus(StatType.CardChoiceBonus) >= 1f ? 1 : 0)}");
+            DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 11f,
+                $"보호막 회복 {GetEffectiveShieldRegenRate():0.#}/s / 지연 {GetEffectiveShieldRegenDelayDuration():0.#}s");
+            DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 12f,
+                $"카드 횟수 체력 {runStatPickupCount[(int)StatType.MaxHealth]} 속도 {runStatPickupCount[(int)StatType.MoveSpeed]} 공격 {runStatPickupCount[(int)StatType.Damage]} 흡혈 {runStatPickupCount[(int)StatType.LifeSteal]}");
 
             r.DrawRectangle(panelX + 18f, panelY + panelH - 46f, panelW - 36f, 1f, Color.FromArgb(110, 180, 180, 180));
             r.DrawTextCenteredShadow(

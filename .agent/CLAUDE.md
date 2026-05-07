@@ -139,7 +139,7 @@ GameLogic (코디네이터)
 | `GameConfig` | Game/Config/ | 정적 밸런스 상수 (모든 수치값의 진실의 원천) |
 | `EnemyCatalog` | Game/Entities/ | 적 아키타입 정적 카탈로그 |
 | `GameAudioService` | Game/Audio/ | 오디오 시스템 퍼사드 |
-| `RewardPickup` | Game/Entities/ | 드롭 아이템 (체력팩, 탄약, 스탯 카드) |
+| `RewardPickup` | Game/Entities/ | 드롭 아이템 (탄약, 코인, 스탯 카드) |
 | `EnemyProjectile` | Game/Entities/ | 적·플레이어 발사체 |
 | `PermanentProgressionData` | Game/ | 런 간 영구 스탯 데이터 |
 
@@ -198,6 +198,7 @@ Vector2 Direction      // 바라보는 방향 (단위벡터)
 Vector2 Plane          // 레이캐스팅 카메라 평면 (Direction과 수직)
 float Health           // 현재 체력
 float MaxHealth        // 체력 상한
+float Shield           // 현재 보호막
 float Stamina          // 현재 스태미나
 bool IsDead            // 사망 플래그
 float Radius = 0.1f    // 충돌 원 반지름
@@ -207,6 +208,8 @@ float Radius = 0.1f    // 충돌 원 반지름
 | 항목 | 값 |
 |---|---|
 | 기본 체력 | 100 |
+| 기본 보호막 | 100 |
+| 보호막 회복 | 피해 후 10s 지연, 기본 1/s |
 | 스태미나 최대 | 100 |
 | 스태미나 소모 (질주) | 15/s |
 | 스태미나 회복 | 15/s (1.35s 딜레이) |
@@ -228,7 +231,6 @@ float Radius = 0.1f    // 충돌 원 반지름
 | 마우스 | 시야 회전 (감도 0.003 rad/pixel) |
 | 1~5 | 무기 선택 |
 | E | 상호작용 (문 열기 등) |
-| Q | 스팀팩 사용 |
 | LMB | 발사 |
 
 ---
@@ -325,17 +327,11 @@ Easy, Normal, Hard  // 적 배율 조정
 
 ### 런 내 보상
 - 룸 클리어 후 무기 업그레이드 카드 또는 스탯 카드 선택
-- **StatType:** `MaxHealth, MoveSpeed, Damage, AmmoDropChance, DashCooldown`
+- **StatType:** `MaxHealth, MoveSpeed, DashCooldown, AmmoDropChance, Damage, CoinDropChance, LifeSteal, DamageReduction, ShopDiscount, KillHeal, KillDashCooldownRefund, CriticalChance, CardChoiceBonus, ShieldRegenRate, ShieldRegenDelayReduction`
 
 ### 영구 진행 (PermanentProgressionData)
 - 런 클리어 후 언락 포인트로 영구 스탯 투자
 - **영구 스탯:** `Health, MoveSpeed, PistolDamage, Sense, Luck`
-
-### 스팀팩 (Stimpack)
-- 효과: 이동속도 2×, 6초 지속, 사용 시 체력 회복
-- 적 사망 시 드롭
-
----
 
 ## 11. 설계 패턴
 

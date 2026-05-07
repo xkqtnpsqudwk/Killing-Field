@@ -191,8 +191,61 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            enemy.TakeDamage(damage);
+            float finalDamage = ApplyCriticalDamage(damage);
+            float healthBefore = Math.Max(0f, enemy.Health);
+            enemy.TakeDamage(finalDamage);
+            float healthAfter = Math.Max(0f, enemy.Health);
+            ApplyPlayerLifeSteal(healthBefore - healthAfter);
             RegisterEnemyHitFeedback(!enemy.Alive);
+        }
+
+        private float ApplyCriticalDamage(float damage)
+        {
+            float criticalChance = Math.Max(0f, Math.Min(1f, GetRunStatBonus(StatType.CriticalChance)));
+            if (criticalChance <= 0f || rewardRandom.NextDouble() >= criticalChance)
+            {
+                return damage;
+            }
+
+            return damage * 2f;
+        }
+
+        private void ApplyPlayerLifeSteal(float dealtDamage)
+        {
+            ApplyPlayerLifeSteal(dealtDamage, IsActiveToxicMistRoom());
+        }
+
+        private void ApplyPlayerLifeSteal(float dealtDamage, bool toxicMistPenaltyActive)
+        {
+            if (player == null || player.IsDead || dealtDamage <= 0f || player.Health >= player.MaxHealth)
+            {
+                return;
+            }
+
+            float lifeStealRatio = GetEffectiveLifeStealRatio(toxicMistPenaltyActive);
+            if (lifeStealRatio <= 0f)
+            {
+                return;
+            }
+
+            float healAmount = dealtDamage * lifeStealRatio;
+            if (healAmount <= 0f)
+            {
+                return;
+            }
+
+            player.Health = Math.Min(player.MaxHealth, Math.Max(0f, player.Health) + healAmount);
+        }
+
+        private float GetEffectiveLifeStealRatio(bool toxicMistPenaltyActive)
+        {
+            float ratio = Math.Max(0f, Math.Min(1f, GetRunStatBonus(StatType.LifeSteal)));
+            if (toxicMistPenaltyActive)
+            {
+                ratio *= 0.5f;
+            }
+
+            return Math.Max(0f, Math.Min(1f, ratio));
         }
 
         /// <summary>명중이면 흰색 히트마커, 처치이면 강화 히트마커가 표시되도록 타이머를 갱신한다.</summary>
@@ -370,9 +423,19 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            player.TakeDamage(damage);
+            float reducedDamage = GetIncomingDamageAfterReduction(damage);
+            if (reducedDamage <= 0f)
+            {
+                return;
+            }
 
-            float flashStrength = damage / 18f;
+            float healthDamage = player.AbsorbShieldDamage(reducedDamage);
+            if (healthDamage > 0f)
+            {
+                player.TakeDamage(healthDamage);
+            }
+
+            float flashStrength = reducedDamage / 18f;
             if (flashStrength < 0.35f) flashStrength = 0.35f;
             if (flashStrength > 1.2f)  flashStrength = 1.2f;
 
@@ -402,6 +465,17 @@ namespace My2DEngine.Game.Core
                     ? (rightDot >= 0f ? -1f : 1f)
                     : 1f;
             }
+        }
+
+        private float GetIncomingDamageAfterReduction(float damage)
+        {
+            if (damage <= 0f)
+            {
+                return 0f;
+            }
+
+            float reduction = Math.Max(0f, Math.Min(0.65f, GetRunStatBonus(StatType.DamageReduction)));
+            return Math.Max(0f, damage * (1f - reduction));
         }
     }
 }
