@@ -1,0 +1,494 @@
+Killing Field 프로젝트로 공부하면 좋은 내용 정리
+작성 기준: 현재 프로젝트 구조와 실제 구현 흐름
+
+이 프로젝트는 단순한 WinForms 게임이 아니라, 직접 만든 2D/2.5D 엔진, 레이캐스팅 렌더링, D3D11 백엔드,
+로그라이크 진행, 카드 보상, 적 AI, 보스 패턴, 저장소, 테스트까지 들어간 학습용으로 매우 좋은 코드베이스다.
+아래 순서대로 보면 "게임이 어떻게 한 프레임씩 돌아가는지"부터 "컨텐츠와 밸런스를 어떻게 확장하는지"까지 자연스럽게 연결된다.
+
+
+1. C# / .NET 기본기와 프로젝트 구조
+
+공부 목표:
+- .sln, .csproj, 프로젝트 참조 구조 이해
+- namespace, partial class, property, enum, struct 사용법 익히기
+- 코드가 Engine / Game / Form으로 나뉘는 이유 이해
+
+중점 파일:
+- My2DEngine.sln
+- My2DEngine.csproj
+- Engine/My2DEngine.Engine.csproj
+- Game/My2DEngine.Game.csproj
+- Program.cs
+- Form1.cs
+
+볼 포인트:
+- 실행 진입점이 Program.cs에서 Form1로 이어지는 흐름
+- Engine 프로젝트와 Game 프로젝트가 역할을 나누는 방식
+- GameLogic, MapManager, EnemyManager처럼 partial class로 큰 클래스를 나눈 방식
+
+작은 실습:
+- 솔루션 전체 빌드 구조를 그림으로 정리하기
+- Form1 partial 파일들이 어떤 책임을 나눠 갖는지 표로 정리하기
+
+
+2. WinForms 기반 게임 루프와 입력 처리
+
+공부 목표:
+- 일반 업무용 WinForms 앱과 게임 루프의 차이 이해
+- 프레임마다 Update / Render가 호출되는 구조 이해
+- 키보드, 마우스 입력을 게임 좌표와 게임 상태로 변환하는 방식 이해
+
+중점 파일:
+- Engine/Hosting/GameHost.cs
+- Engine/Core/Time.cs
+- Engine/Input/Input.cs
+- Form1.Input.cs
+- Form1.StateMachine.cs
+- Game/Core/GameLogic.Update.cs
+
+볼 포인트:
+- Time.DeltaTime을 이용해 프레임 독립적으로 움직이는 구조
+- 입력 상태를 즉시 처리하지 않고 GameLogic으로 넘기는 방식
+- 카드 보상, 분기 선택, 사망 화면 같은 UI 상태가 입력을 가로채는 방식
+
+작은 실습:
+- Update() 안의 처리 순서를 주석 없이 직접 설명해보기
+- 특정 UI가 열렸을 때 발사/이동 입력이 막히는 경로 추적하기
+
+
+3. 플레이어 이동, 충돌, 대시, 스태미나
+
+공부 목표:
+- 2D 벡터로 이동 방향을 합성하고 정규화하는 방식 이해
+- 원형 충돌과 벽 충돌 처리 이해
+- 대시, 스태미나, 보호막처럼 시간 기반 상태를 관리하는 방법 익히기
+
+중점 파일:
+- Game/Entities/Player.cs
+- Game/Systems/CollisionSystem.cs
+- Game/Core/GameLogic.Update.cs
+- Game/Config/GameConfig.cs
+
+볼 포인트:
+- Direction / Plane / Position의 역할
+- collision.TryMovePlayer가 벽 통과를 막는 방식
+- 대시 중 일반 이동을 끊고 DashDir 방향으로만 이동시키는 구조
+- 보호막 회복 지연과 회복 속도 카드가 어떻게 연결되는지
+
+작은 실습:
+- 대시 쿨다운 계산식을 직접 손으로 계산해보기
+- CollisionStepSize를 키우거나 줄이면 어떤 문제가 생길지 예측하기
+
+
+4. 레이캐스팅 렌더링 기초
+
+공부 목표:
+- 2D 타일맵을 1인칭 3D처럼 보이게 만드는 레이캐스팅 원리 이해
+- 카메라 방향 벡터와 시야면(plane)의 의미 이해
+- 화면의 각 세로줄마다 벽 거리를 계산하는 DDA 알고리즘 이해
+
+중점 파일:
+- Game/Rendering/RaycastRenderer.cs
+- Game/Rendering/RaycastRenderer.World.cs
+- Game/Rendering/WorldData/WorldRenderDataBuilder.cs
+- Engine/Math/Vector2.cs
+- Game/Entities/Player.cs
+
+볼 포인트:
+- 화면 x좌표가 cameraX로 변환되는 과정
+- rayDirX / rayDirY가 각 열의 시선 방향이 되는 과정
+- perpWallDist로 어안 왜곡을 줄이는 이유
+- 벽 텍스처 좌표 texX를 계산하는 방식
+
+작은 실습:
+- FOV 값을 바꿨을 때 Plane 길이가 왜 tan(FOV/2)가 되는지 정리하기
+- DDA 반복문이 벽 타일을 만날 때까지 어떻게 진행되는지 작은 격자로 손으로 추적하기
+
+
+5. D3D11 렌더링 백엔드
+
+공부 목표:
+- CPU에서 만든 렌더 명령이 GPU 백엔드로 넘어가는 구조 이해
+- Direct3D11 디바이스, 렌더 타깃, 텍스처 업로드, presenter 개념 익히기
+- 엔진 추상화와 플랫폼별 구현을 분리하는 방법 배우기
+
+중점 파일:
+- Engine/Rendering/Renderer.cs
+- Engine/Rendering/Abstractions/RenderCommands.cs
+- Engine/Rendering/Backends/D3D11/D3D11DeviceResources.cs
+- Engine/Rendering/Backends/D3D11/D3D11OverlayPresenter.cs
+- Engine/Rendering/Backends/D3D11/World/D3D11WorldRaycastPresenter.cs
+- Engine/Rendering/Backends/D3D11/World/D3D11WorldSpritePresenter.cs
+- Engine/Rendering/Backends/D3D11/World/D3D11WorldBeamPresenter.cs
+
+볼 포인트:
+- Renderer가 게임 코드에 GPU 세부 구현을 직접 노출하지 않는 방식
+- RenderWorldCommand가 벽, 스프라이트, 빔 데이터를 묶는 방식
+- 월드 렌더링과 UI 오버레이 렌더링이 분리되는 이유
+
+작은 실습:
+- "게임 코드 -> RenderCommand -> D3D11 Presenter" 흐름을 한 장으로 그리기
+- 스프라이트 아틀라스가 매 프레임 전부 업로드되지 않도록 DirtyRect를 쓰는 이유 설명하기
+
+
+6. 텍스처, 스프라이트, 애니메이션 자원 관리
+
+공부 목표:
+- 이미지 파일을 런타임 스프라이트 데이터로 로드하는 방식 이해
+- 적/무기/보스 이미지가 카탈로그와 key로 연결되는 구조 이해
+- 스프라이트 시트 애니메이션의 프레임 인덱싱 방식 익히기
+
+중점 파일:
+- Game/Rendering/TextureManager.cs
+- Game/Rendering/TextureManager.Assets.cs
+- Game/Rendering/TextureManager.Animations.cs
+- Game/Rendering/SpriteSheetCatalog.cs
+- Game/Entities/EnemyAssetProfiles.cs
+- Game/Entities/EnemyCatalog.cs
+
+볼 포인트:
+- asset id, sprite variant key, EnemyType이 어떻게 연결되는지
+- 하나의 이미지가 다른 역할의 적으로 재사용될 수 있는 구조
+- 무기 오버레이 애니메이션과 적 스폰 애니메이션의 처리 차이
+
+작은 실습:
+- 신규 적 이미지 하나를 연결할 때 필요한 파일/카탈로그 변경 목록 작성하기
+- 기존 적 하나의 sprite variant key가 렌더링까지 도달하는 흐름 추적하기
+
+
+7. 무기, 발사, 피해 계산
+
+공부 목표:
+- 입력이 실제 발사 판정과 탄약 소비로 확정되는 흐름 이해
+- 무기별 다른 발사 방식 단일화 방법 배우기
+- 피해 증가, 치명타, 흡혈, 보호막, 피해 감소의 적용 순서 이해
+
+중점 파일:
+- Game/Entities/Weapon.cs
+- Game/Entities/WeaponType.cs
+- Game/Core/GameLogic.Combat.cs
+- Game/Core/GameLogic.Projectiles.cs
+- Game/Config/GameConfig.cs
+
+볼 포인트:
+- PendingShot을 통해 입력과 실제 발사 판정을 분리한 이유
+- BearKiller, HChainGun, AutoCannon, DuelBerettas가 같은 인터페이스 안에서 다르게 동작하는 방식
+- ApplyOutgoingDamageModifiers -> ApplyCriticalDamage -> ApplyPlayerLifeSteal 흐름
+- OnPlayerDamaged에서 피해 감소, 보호막, 체력 피해가 적용되는 순서
+
+작은 실습:
+- 100 피해가 들어올 때 피해 감소 30%, 보호막 40이 있으면 체력이 얼마나 줄어드는지 계산하기
+- 치명타와 조건부 피해 증가가 동시에 있을 때 최종 피해 계산식 정리하기
+
+
+8. 카드 보상, 스탯 카드, 상점 밸런스
+
+공부 목표:
+- 카드 후보 풀, 등급 확률, 상한, 중복 방지 구조 이해
+- 행운 스탯이 카드 등급 확률에 영향을 주는 방식 이해
+- 상점 가격, 할인, 구매 중복 방지, 보상 등급 보정 구조 익히기
+
+중점 파일:
+- Game/Core/CardSystem.cs
+- Game/Core/GameLogic.CardReward.cs
+- Game/Core/GameLogic.PersistentStats.cs
+- Game/Core/GameLogic.StageFlow.cs
+- Game/Config/GameConfig.cs
+
+볼 포인트:
+- RewardStatTypes 배열과 StatType enum의 관계
+- GetStatBonusCap이 밸런스 안정장치 역할을 하는 방식
+- LuckGradeWeights 테이블이 등급 확률을 만드는 방식
+- 극한 난이도 방과 휴식 상점이 "현재 가능한 최고 등급 +1"을 주는 방식
+
+작은 실습:
+- 새 스탯 카드를 하나 추가하려면 enum, 후보 풀, 상한, 적용 로직 중 어디를 고쳐야 하는지 체크리스트 만들기
+- 행운 레벨 0, 5, 10에서 카드 등급 확률이 어떻게 달라지는지 비교하기
+
+
+9. 로그라이크 방 진행과 난이도 보상
+
+공부 목표:
+- 방 템플릿, 방 목표, 위험 요소, 보급 형태가 난이도와 보상에 연결되는 방식 이해
+- 일반 방, 생존 방, 열쇠 방, 보스 방, 상점 방의 진행 차이 이해
+- 분기 선택이 다음 층 생성에 영향을 주는 구조 익히기
+
+중점 파일:
+- Game/Map/RoomTemplate.cs
+- Game/Map/MapManager.RoomTemplate.cs
+- Game/Core/GameLogic.StageFlow.cs
+- Game/Core/GameLogic.StageFlow.Progression.cs
+- Game/Core/GameLogic.Branch.cs
+
+볼 포인트:
+- RoomObjectiveKind와 RoomHazardKind가 플레이 규칙을 바꾸는 방식
+- 방 클리어 후 카드 보상, 분기 선택, 출구 이동으로 이어지는 흐름
+- 상점 방이 연속 노출되지 않도록 기회 단위 쿨다운을 둔 방식
+- 극한 난이도 방이 카드 최소 등급을 보정하는 방식
+
+작은 실습:
+- 현재 방 생성 규칙을 "방 형태 + 보급 형태 + 독 안개 여부"로 나누어 표로 정리하기
+- 특정 방 템플릿이 플레이어에게 어떤 리스크와 보상을 주는지 평가하기
+
+
+10. 적 AI 상태 머신
+
+공부 목표:
+- Patrol, Investigate, Search, Combat, Windup, Recover, Stunned 상태 전환 이해
+- 시야와 소리 자극으로 적이 플레이어를 추적하는 방식 이해
+- 보스 패턴과 일반 AI가 어떻게 공존하는지 익히기
+
+중점 파일:
+- Game/Systems/EnemyManager.cs
+- Game/Systems/EnemyManager.StateMachine.cs
+- Game/Systems/EnemyManager.Movement.cs
+- Game/Systems/EnemyManager.Projectiles.cs
+- Game/Systems/EnemyManager.BossPatterns.cs
+- Game/Systems/BossPatterns/*.cs
+- Game/Core/GameLogic.EnemyStimuli.cs
+
+볼 포인트:
+- PerceptionContext가 시야/소리 정보를 묶는 방식
+- LastKnownPlayer와 MemoryTimer가 수색 행동을 만드는 방식
+- Windup과 Recover를 둬서 공격 전조와 후딜을 표현하는 방식
+- 보스 전용 패턴이 일반 적 AI와 충돌하지 않도록 분리된 방식
+
+작은 실습:
+- 적 한 마리가 플레이어를 보고, 놓치고, 수색하다 순찰로 돌아가는 상태 전환 다이어그램 그리기
+- 소리 자극이 없을 때와 있을 때의 추적 차이 설명하기
+
+
+11. 적 스폰, 아키타입, 변형 적
+
+공부 목표:
+- 템플릿의 SpawnPoint가 실제 Enemy 인스턴스로 바뀌는 흐름 이해
+- EnemyDefinition, EnemyArchetype, EnemyAiProfile의 역할 구분
+- 같은 이미지/기본 타입을 다른 역할의 적으로 변형하는 방법 배우기
+
+중점 파일:
+- Game/Systems/EnemyManager.Spawning.cs
+- Game/Entities/EnemyDefinition.cs
+- Game/Entities/EnemyCatalog.cs
+- Game/Entities/EnemyAssetProfiles.cs
+- Game/Config/EnemyEncounterCatalog.cs
+
+볼 포인트:
+- 스폰 위치가 벽, 플레이어, 기존 적과 겹치면 다른 후보 위치를 시도하는 방식
+- 난이도 배율과 개별 스폰 배율이 EnemyDefinition에 합쳐지는 방식
+- ObjectiveTarget 플래그가 열쇠 방 목표에 연결되는 방식
+- 보스 아키타입을 정예/일반으로 재사용할 때 보스 패턴을 제거하는 이유
+
+작은 실습:
+- 신규 적을 추가할 때 필요한 데이터 흐름을 "카탈로그 -> 스폰 -> 렌더링 -> AI" 순서로 추적하기
+- zombie_scientist 같은 이미지 재사용 적의 역할 변경 포인트 정리하기
+
+
+12. 맵 생성, 문, 룸 연결
+
+공부 목표:
+- 타일맵 기반 공간 생성 방식 이해
+- 방을 파내고, 문을 배치하고, 연결 정보를 만드는 구조 익히기
+- 문 애니메이션과 상호작용 조건이 게임 진행과 연결되는 방식 이해
+
+중점 파일:
+- Game/Map/MapManager.cs
+- Game/Map/MapManager.Generation.cs
+- Game/Map/MapManager.Generation.Decor.cs
+- Game/Map/MapManager.Doors.cs
+- Game/Map/StageFlow.cs
+- Game/Core/GameLogic.StageFlow.cs
+
+볼 포인트:
+- map 배열과 textureIds 배열의 차이
+- 문 타일 타입과 문 열림 진행도 관리
+- TargetRoomId == -1 같은 특수 값으로 층 출구를 표현하는 방식
+- 방 클리어 상태가 문 상호작용 가능 여부에 영향을 주는 흐름
+
+작은 실습:
+- 방 하나가 생성되어 플레이어가 입장하고 클리어 후 문을 여는 흐름을 단계별로 적기
+- 맵 배열에서 벽/바닥/문이 어떤 값으로 구분되는지 정리하기
+
+
+13. UI, HUD, 사망 화면, 런 요약
+
+공부 목표:
+- 게임 상태에 따라 HUD와 오버레이를 다르게 그리는 방식 이해
+- 카드 보상, 분기 선택, 영구 스탯, 사망 화면처럼 마우스가 필요한 UI 처리 이해
+- 런 요약 데이터를 화면에 표시하기 위해 스냅샷을 만드는 이유 이해
+
+중점 파일:
+- Form1.UI.cs
+- Form1.DebugHud.cs
+- Game/Core/GameLogic.Snapshot.cs
+- Game/Core/RunSummarySnapshot.cs
+- Game/Core/GameLogic.PlayerStatsOverlay.cs
+- Game/Core/GameLogic.PersistentStats.cs
+
+볼 포인트:
+- 게임 렌더와 UI 오버레이가 분리되는 방식
+- deathPresentationProgress로 사망 연출을 부드럽게 만드는 방식
+- 런 종료 시각을 고정해 사망 화면에서 플레이 시간이 계속 증가하지 않게 하는 방식
+
+작은 실습:
+- 사망 화면에 표시되는 값이 어느 필드에서 오는지 추적하기
+- 오버레이 UI가 열렸을 때 마우스 캡처가 어떻게 바뀌는지 확인하기
+
+
+14. 오디오 시스템
+
+공부 목표:
+- 효과음과 배경음악을 분리해 관리하는 이유 이해
+- 반복 사운드, 무기 사운드 tail, BGM 전환 조건 이해
+- 사운드 별칭과 파일 경로를 분리하는 방식 익히기
+
+중점 파일:
+- Game/Audio/BackgroundSoundManager.cs
+- Game/Audio/EffectSoundManager.cs
+- Game/Audio/SoundAudioCommon.cs
+- Game/Config/GameConfig.cs
+- Game/Core/GameLogic.Combat.cs
+
+볼 포인트:
+- 무기별 발사/재장전/루프 사운드가 어떻게 호출되는지
+- 보스/미니보스/일반 전투 상태에 따라 BGM이 바뀌는 구조
+- 사망 시 BGM을 멈추고 중복 정지를 막는 플래그 처리
+
+작은 실습:
+- 새 효과음을 추가할 때 alias, path, 호출 위치를 어디에 둘지 정리하기
+
+
+15. 저장, 영구 성장, 런 기록
+
+공부 목표:
+- 게임 진행 데이터를 메모리 상태와 저장 데이터로 나누는 방법 이해
+- SQLite 저장소 패턴 이해
+- Sanitize 메서드로 저장 데이터 안정성을 보장하는 이유 익히기
+
+중점 파일:
+- Game/Core/PermanentProgressionData.cs
+- Game/Core/SqliteProgressionRepository.cs
+- Game/Core/RunRecord.cs
+- Game/Core/RunSaveData.cs
+- Game/Core/GameLogic.PersistentStats.cs
+
+볼 포인트:
+- 저장 데이터가 로드될 때 범위를 다시 정리하는 이유
+- 영구 스탯과 런 중 카드 스탯을 합성하되 저장 위치를 분리하는 방식
+- 런 결과를 중복 기록하지 않도록 플래그를 두는 방식
+
+작은 실습:
+- 저장 데이터에 새 항목을 추가할 때 필요한 변경점을 목록화하기
+- 잘못된 저장값이 들어왔을 때 Sanitize가 어떤 역할을 해야 하는지 정리하기
+
+
+16. 테스트와 밸런스 리포트
+
+공부 목표:
+- 게임처럼 수동 확인이 많은 프로젝트에서도 자동 테스트가 왜 필요한지 이해
+- 스모크 테스트와 밸런스 스냅샷의 역할 구분
+- 기능 추가 후 최소한 어떤 검증을 해야 하는지 습관화하기
+
+중점 파일:
+- My2DEngine.SmokeTests/Program.cs
+- My2DEngine.SmokeTests/GameLogicSmokeValidator.cs
+- My2DEngine.SmokeTests/BalanceSnapshotReporter.cs
+
+볼 포인트:
+- 런타임 전체를 켜지 않고 핵심 데이터/규칙을 검증하는 방식
+- 카드, 적, 무기 밸런스를 수치로 출력해 비교하는 방식
+- 빌드 성공과 실제 게임 규칙 검증은 다르다는 점
+
+작은 실습:
+- 새 카드 하나를 추가했을 때 스모크 테스트가 어떤 문제를 잡아줘야 하는지 적기
+- 밸런스 리포트에 추가하고 싶은 수치 하나를 정해보기
+
+
+17. 코드 관리, 주석, 리팩터링
+
+공부 목표:
+- 큰 클래스를 partial로 나눌 때의 장단점 이해
+- 주석을 "무엇을 하는지"보다 "왜 이렇게 하는지" 중심으로 쓰는 습관 익히기
+- 기능 확장 후 코드 정리와 검증을 같이 하는 흐름 익히기
+
+중점 파일:
+- Form1.*.cs
+- Game/Core/GameLogic.*.cs
+- Game/Systems/EnemyManager.*.cs
+- Engine/Rendering/**/*.cs
+
+볼 포인트:
+- 기능별 partial 파일 이름이 탐색성을 높이는 방식
+- GameConfig에 밸런스 상수를 모아둔 장점과 단점
+- 카드, 적, 방 템플릿처럼 "데이터 추가"와 "코드 수정"이 섞인 구조에서 실수하기 쉬운 지점
+
+작은 실습:
+- 최근 추가한 기능 하나를 골라 "수정 파일, 핵심 의도, 검증 방법"을 5줄로 기록하기
+- 긴 메서드 하나를 골라 책임 단위로 나눌 수 있는지 판단해보기
+
+
+추천 학습 순서
+
+1단계: 전체 흐름 잡기
+- Program.cs
+- Form1.cs / Form1.StateMachine.cs
+- Engine/Hosting/GameHost.cs
+- Game/Core/GameLogic.Update.cs
+
+2단계: 플레이 감각 이해
+- Game/Entities/Player.cs
+- Game/Systems/CollisionSystem.cs
+- Game/Entities/Weapon.cs
+- Game/Core/GameLogic.Combat.cs
+
+3단계: 로그라이크 규칙 이해
+- Game/Core/GameLogic.CardReward.cs
+- Game/Core/GameLogic.StageFlow.Progression.cs
+- Game/Core/GameLogic.Branch.cs
+- Game/Map/RoomTemplate.cs
+
+4단계: 적과 보스 이해
+- Game/Entities/Enemy.cs
+- Game/Systems/EnemyManager.StateMachine.cs
+- Game/Systems/EnemyManager.Spawning.cs
+- Game/Systems/BossPatterns/*.cs
+
+5단계: 렌더링 이해
+- Game/Rendering/WorldData/WorldRenderDataBuilder.cs
+- Engine/Rendering/Renderer.cs
+- Engine/Rendering/Backends/D3D11/World/*.cs
+
+6단계: 저장/테스트/운영 감각
+- Game/Core/SqliteProgressionRepository.cs
+- Game/Core/PermanentProgressionData.cs
+- My2DEngine.SmokeTests/*.cs
+
+
+특히 집중하면 좋은 핵심 질문
+
+- 한 프레임에서 입력, 이동, 적 AI, 발사, 보상, 렌더링은 어떤 순서로 처리되는가?
+- 어떤 데이터는 GameConfig에 있고, 어떤 데이터는 카탈로그/템플릿에 있는가?
+- 신규 적, 신규 카드, 신규 방을 추가할 때 각각 수정해야 하는 파일은 어떻게 달라지는가?
+- 플레이어에게 유리한 효과와 불리한 환경 효과는 어떤 순서로 계산되는가?
+- "게임이 된다"와 "밸런스가 좋다"를 코드에서 어떻게 분리해 생각할 수 있는가?
+- 렌더링 코드는 게임 규칙을 몰라도 동작하도록 충분히 분리되어 있는가?
+- 저장 데이터가 오래된 버전이어도 게임이 깨지지 않게 하려면 어디에서 방어해야 하는가?
+
+
+장기적으로 도전해볼 개선 과제
+
+- 카드/적/방 템플릿을 코드가 아니라 JSON 같은 데이터 파일로 분리하기
+- WorldRenderDataBuilder의 깨진 주석/인코딩을 정리하고 렌더 파이프라인 문서화하기
+- EnemyManager 상태 머신을 다이어그램으로 문서화하기
+- 밸런스 스냅샷을 CSV로 저장해 변경 전후를 비교하기
+- 런 리플레이나 디버그 시드 고정 기능을 만들어 밸런스 테스트를 재현 가능하게 하기
+- GameConfig 상수를 카테고리별 클래스로 나누거나 설정 파일로 이동하기
+- UI 입력 처리와 게임 입력 처리를 더 명확한 상태 머신으로 분리하기
+
+
+마무리
+
+이 프로젝트를 공부할 때 가장 좋은 방식은 "기능 하나를 정하고 끝까지 추적하는 것"이다.
+예를 들어 '독 안개 방'을 고르면 방 템플릿, 방 활성화, 타이머, 피해 적용, 흡혈 감소, HUD 오버레이까지 따라가면 된다.
+'신규 적'을 고르면 카탈로그, 스폰, AI, 이미지, 렌더링, 처치 보상까지 이어진다.
+
+즉, 파일을 하나씩 외우기보다 기능 단위로 경로를 추적하는 식으로 공부하면 이 코드베이스에서 훨씬 많은 것을 배울 수 있다.
