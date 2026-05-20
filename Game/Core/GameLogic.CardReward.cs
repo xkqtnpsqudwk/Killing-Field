@@ -17,7 +17,7 @@ namespace My2DEngine.Game.Core
     {
         /// <summary>룸 클리어 후 카드가 실제로 나타나기까지 대기하는 시간(초).</summary>
         private const float CardRewardRevealDelaySeconds = 2f;
-        private const int RunStatCount = 15;
+        private static readonly int RunStatCount = Enum.GetValues(typeof(StatType)).Length;
         private const int BaseCardRewardOfferCount = 3;
         private const int MaxCardRewardOfferCount = 4;
         private const int CardChoiceBonusMinFloor = 10;
@@ -38,7 +38,9 @@ namespace My2DEngine.Game.Core
             StatType.CriticalChance,
             StatType.CardChoiceBonus,
             StatType.ShieldRegenRate,
-            StatType.ShieldRegenDelayReduction
+            StatType.ShieldRegenDelayReduction,
+            StatType.ShieldedDamage,
+            StatType.DashStrikeDamage
         };
 
         // ── 카드 보상 상태 ──────────────────────────────────────────────
@@ -521,6 +523,10 @@ namespace My2DEngine.Game.Core
                     return Math.Max(0f, GameConfig.PlayerShieldMaxRegenRate - GameConfig.PlayerShieldBaseRegenRate);
                 case StatType.ShieldRegenDelayReduction:
                     return 1f - (GameConfig.PlayerShieldMinRegenDelay / GameConfig.PlayerShieldBaseRegenDelay);
+                case StatType.ShieldedDamage:
+                    return GameConfig.ShieldedDamageBonusCap;
+                case StatType.DashStrikeDamage:
+                    return GameConfig.DashStrikeDamageBonusCap;
                 default:
                     return float.PositiveInfinity;
             }
@@ -953,6 +959,10 @@ namespace My2DEngine.Game.Core
                     return Math.Min(value, Math.Max(0f, GameConfig.PlayerShieldMaxRegenRate - GameConfig.PlayerShieldBaseRegenRate));
                 case StatType.ShieldRegenDelayReduction:
                     return Math.Min(value, 1f - (GameConfig.PlayerShieldMinRegenDelay / GameConfig.PlayerShieldBaseRegenDelay));
+                case StatType.ShieldedDamage:
+                    return Math.Min(value, GameConfig.ShieldedDamageBonusCap);
+                case StatType.DashStrikeDamage:
+                    return Math.Min(value, GameConfig.DashStrikeDamageBonusCap);
                 default:
                     return value;
             }
@@ -1002,6 +1012,7 @@ namespace My2DEngine.Game.Core
             ResetCardDisplayState();
             weaponCardPoolCount = 0;
             cardChoiceBonusOffered = false;
+            dashStrikeWindowTimer = 0f;
             for (int i = 0; i < runStatGrade.Length; i++)
             {
                 runStatGrade[i] = -1;
@@ -1055,6 +1066,8 @@ namespace My2DEngine.Game.Core
                 case StatType.CardChoiceBonus: return "카드 선택지 증가";
                 case StatType.ShieldRegenRate: return "보호막 회복 속도";
                 case StatType.ShieldRegenDelayReduction: return "보호막 회복 지연";
+                case StatType.ShieldedDamage: return "보호막 피해 증폭";
+                case StatType.DashStrikeDamage: return "대시 후 피해";
                 default:                   return "???";
             }
         }

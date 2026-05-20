@@ -254,6 +254,9 @@ namespace My2DEngine.Game.Core
             runEnemiesKilled = 0;
             runBossesKilled = 0;
             runStartTime = DateTime.UtcNow;
+            runEnded = false;
+            runEndedAtUtc = default;
+            runResultRecorded = false;
             ResetEnemyGrowthProgression();
             ResetCardRunState();
             ResetPlayerState();

@@ -137,6 +137,15 @@ namespace My2DEngine.Game.Config
         /// <summary>열쇠 방 표적이 이 체력 비율 이하로 내려가면 HUD에서 정체가 드러난다.</summary>
         public const float KeyTargetRevealHealthRatio = 0.80f;
 
+        /// <summary>보호막이 남아 있을 때 적용되는 조건부 피해 증가 카드의 최대 누적값.</summary>
+        public const float ShieldedDamageBonusCap = 0.50f;
+
+        /// <summary>대시 직후 피해 증가 카드의 최대 누적값.</summary>
+        public const float DashStrikeDamageBonusCap = 0.50f;
+
+        /// <summary>대시 직후 피해 증가 카드가 발동하는 시간 창(초).</summary>
+        public const float DashStrikeDamageWindow = 1.2f;
+
         /// <summary>독성 안개 위험 방의 피해 간격(초).</summary>
         public const float ToxicMistDamageInterval = 1.15f;
 

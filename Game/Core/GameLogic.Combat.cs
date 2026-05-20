@@ -22,6 +22,7 @@ namespace My2DEngine.Game.Core
         private const float WeaponStatusDuration = 0.72f;
         private const float WeaponStatusRepeatDelay = 0.24f;
         private const float PickupToastDuration = 1.35f;
+        private float dashStrikeWindowTimer;
 
         /// <summary>
         /// 보류 중인 발사 요청을 실제 탄 소비·판정·반동·사운드·적 피격으로 확정한다.
@@ -191,7 +192,8 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            float finalDamage = ApplyCriticalDamage(damage);
+            float modifiedDamage = ApplyOutgoingDamageModifiers(damage);
+            float finalDamage = ApplyCriticalDamage(modifiedDamage);
             float healthBefore = Math.Max(0f, enemy.Health);
             enemy.TakeDamage(finalDamage);
             float healthAfter = Math.Max(0f, enemy.Health);
@@ -208,6 +210,49 @@ namespace My2DEngine.Game.Core
             }
 
             return damage * 2f;
+        }
+
+        private float ApplyOutgoingDamageModifiers(float damage)
+        {
+            if (damage <= 0f)
+            {
+                return 0f;
+            }
+
+            float multiplier = 1f;
+            if (player != null && player.Shield > 0f)
+            {
+                multiplier += Math.Max(0f, Math.Min(
+                    GameConfig.ShieldedDamageBonusCap,
+                    GetRunStatBonus(StatType.ShieldedDamage)));
+            }
+
+            if (dashStrikeWindowTimer > 0f)
+            {
+                multiplier += Math.Max(0f, Math.Min(
+                    GameConfig.DashStrikeDamageBonusCap,
+                    GetRunStatBonus(StatType.DashStrikeDamage)));
+            }
+
+            return Math.Max(0f, damage * multiplier);
+        }
+
+        private void StartDashStrikeWindow()
+        {
+            dashStrikeWindowTimer = GetRunStatBonus(StatType.DashStrikeDamage) > 0f
+                ? GameConfig.DashStrikeDamageWindow
+                : 0f;
+        }
+
+        private void UpdateDashStrikeWindow(float dt)
+        {
+            if (dashStrikeWindowTimer <= 0f)
+            {
+                dashStrikeWindowTimer = 0f;
+                return;
+            }
+
+            dashStrikeWindowTimer = Math.Max(0f, dashStrikeWindowTimer - Math.Max(0f, dt));
         }
 
         private void ApplyPlayerLifeSteal(float dealtDamage)
@@ -459,6 +504,7 @@ namespace My2DEngine.Game.Core
 
             if (player.IsDead && deathPresentationProgress <= 0f)
             {
+                MarkRunEndedIfNeeded();
                 Vector2 right = new Vector2(-player.Direction.Y, player.Direction.X);
                 float rightDot = (playerDamageFlashDirX * right.X) + (playerDamageFlashDirY * right.Y);
                 deathRollDirection = (System.Math.Abs(rightDot) > 0.08f)

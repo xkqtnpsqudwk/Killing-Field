@@ -67,6 +67,7 @@ namespace My2DEngine.Game.Core
             weapon.UpdateTimers(dt);
             player.UpdateDashCooldown(dt);
             player.UpdateDash(dt);
+            UpdateDashStrikeWindow(dt);
             player.UpdateShield(dt);
             UpdatePickupTimers(dt);
 
@@ -80,6 +81,7 @@ namespace My2DEngine.Game.Core
 
             if (player.IsDead)
             {
+                MarkRunEndedIfNeeded();
                 weapon.PendingShot = false;
                 weapon.FireButtonHeld = false;
                 StopLoopingWeaponEffects();
@@ -215,6 +217,7 @@ namespace My2DEngine.Game.Core
 
             float invLen = 1f / (float)Math.Sqrt(dashLenSq);
             player.StartDash(dashX * invLen, dashY * invLen);
+            StartDashStrikeWindow();
             EmitEnemyAlertSound(player.Position.X, player.Position.Y, 6.5f, dashX * invLen, dashY * invLen);
             playerRecoilShakeTimer = Math.Min(0.22f, Math.Max(playerRecoilShakeTimer, 0.12f));
             playerRecoilShakePower = Math.Min(0.45f, Math.Max(playerRecoilShakePower, 0.2f));

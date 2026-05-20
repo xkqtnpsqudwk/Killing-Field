@@ -136,6 +136,8 @@ namespace My2DEngine.Game.Core
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 11f,
                 $"보호막 회복 {GetEffectiveShieldRegenRate():0.#}/s / 지연 {GetEffectiveShieldRegenDelayDuration():0.#}s");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 12f,
+                $"조건부 피해 보호막 +{runStatBonusTotals[(int)StatType.ShieldedDamage] * 100f:0}% / 대시 +{runStatBonusTotals[(int)StatType.DashStrikeDamage] * 100f:0}%");
+            DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 13f,
                 $"카드 횟수 체력 {runStatPickupCount[(int)StatType.MaxHealth]} 속도 {runStatPickupCount[(int)StatType.MoveSpeed]} 공격 {runStatPickupCount[(int)StatType.Damage]} 흡혈 {runStatPickupCount[(int)StatType.LifeSteal]}");
 
             r.DrawRectangle(panelX + 18f, panelY + panelH - 46f, panelW - 36f, 1f, Color.FromArgb(110, 180, 180, 180));

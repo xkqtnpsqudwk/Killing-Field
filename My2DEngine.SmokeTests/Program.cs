@@ -31,12 +31,21 @@ namespace My2DEngine.SmokeTests
         {
             try
             {
+                if (args != null &&
+                    args.Length > 0 &&
+                    string.Equals(args[0], "--balance-snapshot", StringComparison.OrdinalIgnoreCase))
+                {
+                    BalanceSnapshotReporter.Write(Console.Out);
+                    return 0;
+                }
+
                 RunBootSmokeCheck();
                 RunEnemyVariantSmokeCheck();
                 RunRemovedRecoveryPickupSmokeCheck();
                 RunRoguelikeStartSmokeCheck(GameLogic.DifficultyPreset.Easy, "roguelike start easy");
                 RunRoguelikeStartSmokeCheck(GameLogic.DifficultyPreset.Normal, "roguelike start normal");
                 RunRoguelikeStartSmokeCheck(GameLogic.DifficultyPreset.Hard, "roguelike start hard");
+                RunSaveContinueSmokeCheck();
                 RunRoomObjectiveTemplateSmokeCheck();
                 RunKeyTargetRevealSmokeCheck();
                 RunRoomDifficultyRewardSmokeCheck();
@@ -46,6 +55,7 @@ namespace My2DEngine.SmokeTests
                 RunRestRoomBranchCooldownSmokeCheck();
                 RunLifeStealStatSmokeCheck();
                 RunExpandedStatCardSmokeCheck();
+                RunDeathSummarySmokeCheck();
                 RunAutoCannonProjectileSmokeCheck();
                 Console.WriteLine("Smoke checks passed.");
                 return 0;
@@ -330,6 +340,30 @@ namespace My2DEngine.SmokeTests
             {
                 throw new InvalidOperationException(
                     "Smoke check failed for room objectives: key target should not use scale as an obvious visual marker.");
+            }
+        }
+
+        /// <summary>
+        /// 런 저장/이어하기 경로가 현재 카드 스탯 직렬화 스키마와 함께 동작하는지 검증한다.
+        /// </summary>
+        private static void RunSaveContinueSmokeCheck()
+        {
+            var world = new GameLogic();
+            try
+            {
+                world.StartRoguelikeRun();
+                world.SaveRunProgress();
+                if (!world.HasRunSave())
+                {
+                    throw new InvalidOperationException("Smoke check failed for run save: saved run was not detected.");
+                }
+
+                world.ContinueRun();
+                GameLogicSmokeValidator.Validate(world, "continue saved run");
+            }
+            finally
+            {
+                world.DeleteRunProgress();
             }
         }
 
@@ -716,7 +750,9 @@ namespace My2DEngine.SmokeTests
                 StatType.CriticalChance,
                 StatType.CardChoiceBonus,
                 StatType.ShieldRegenRate,
-                StatType.ShieldRegenDelayReduction
+                StatType.ShieldRegenDelayReduction,
+                StatType.ShieldedDamage,
+                StatType.DashStrikeDamage
             };
 
             for (int i = 0; i < expectedStats.Length; i++)
@@ -735,6 +771,8 @@ namespace My2DEngine.SmokeTests
             AssertNearlyEqual(1f, world.ClampRunStatBonusSmokeSnapshot(StatType.CardChoiceBonus, 2f), "card choice cap");
             AssertNearlyEqual(19f, world.ClampRunStatBonusSmokeSnapshot(StatType.ShieldRegenRate, 99f), "shield regen rate cap");
             AssertNearlyEqual(0.80f, world.ClampRunStatBonusSmokeSnapshot(StatType.ShieldRegenDelayReduction, 1f), "shield regen delay cap");
+            AssertNearlyEqual(GameConfig.ShieldedDamageBonusCap, world.ClampRunStatBonusSmokeSnapshot(StatType.ShieldedDamage, 1f), "shielded damage cap");
+            AssertNearlyEqual(GameConfig.DashStrikeDamageBonusCap, world.ClampRunStatBonusSmokeSnapshot(StatType.DashStrikeDamage, 1f), "dash strike damage cap");
 
             if (world.IsStatOfferAvailableSmokeSnapshot(StatType.CardChoiceBonus, floor: 5, cardChoiceOffered: false, currentBonus: 0f))
             {
@@ -804,6 +842,34 @@ namespace My2DEngine.SmokeTests
                 regenDelayReduction: 0.90f);
             AssertNearlyEqual(GameConfig.PlayerShieldMaxRegenRate, shieldSettings.RegenRate, "shield regen rate max");
             AssertNearlyEqual(GameConfig.PlayerShieldMinRegenDelay, shieldSettings.RegenDelayDuration, "shield regen delay min");
+
+            AssertNearlyEqual(100f, world.GetOutgoingDamageSmokeSnapshot(
+                baseDamage: 100f,
+                shield: 0f,
+                shieldedDamageBonus: 0.20f,
+                dashStrikeDamageBonus: 0f,
+                dashStrikeWindowActive: false), "shielded damage inactive without shield");
+
+            AssertNearlyEqual(120f, world.GetOutgoingDamageSmokeSnapshot(
+                baseDamage: 100f,
+                shield: 50f,
+                shieldedDamageBonus: 0.20f,
+                dashStrikeDamageBonus: 0f,
+                dashStrikeWindowActive: false), "shielded damage active");
+
+            AssertNearlyEqual(115f, world.GetOutgoingDamageSmokeSnapshot(
+                baseDamage: 100f,
+                shield: 0f,
+                shieldedDamageBonus: 0f,
+                dashStrikeDamageBonus: 0.15f,
+                dashStrikeWindowActive: true), "dash strike damage active");
+
+            AssertNearlyEqual(135f, world.GetOutgoingDamageSmokeSnapshot(
+                baseDamage: 100f,
+                shield: 50f,
+                shieldedDamageBonus: 0.20f,
+                dashStrikeDamageBonus: 0.15f,
+                dashStrikeWindowActive: true), "conditional damage stacks additively");
         }
 
         private static void AssertNearlyEqual(float expected, float actual, string scenarioName)
@@ -812,6 +878,35 @@ namespace My2DEngine.SmokeTests
             {
                 throw new InvalidOperationException(
                     "Smoke check failed for " + scenarioName + ": expected " + expected + ", got " + actual + ".");
+            }
+        }
+
+        private static void RunDeathSummarySmokeCheck()
+        {
+            var world = new GameLogic();
+            RunSummarySnapshot summary = world.CreateRunSummarySmokeSnapshot(7, 23, 2, 125);
+            if (summary.FloorReached != 7 ||
+                summary.EnemiesKilled != 23 ||
+                summary.BossesKilled != 2 ||
+                summary.DurationSeconds < 124 ||
+                summary.DurationSeconds > 126)
+            {
+                throw new InvalidOperationException("Smoke check failed for death summary: summary values are incorrect.");
+            }
+
+            RunSummarySnapshot clamped = world.CreateRunSummarySmokeSnapshot(-3, -5, -1, -20);
+            if (clamped.FloorReached != 0 ||
+                clamped.EnemiesKilled != 0 ||
+                clamped.BossesKilled != 0 ||
+                clamped.DurationSeconds != 0)
+            {
+                throw new InvalidOperationException("Smoke check failed for death summary: negative values were not clamped.");
+            }
+
+            RunSummarySnapshot ended = world.CreateEndedRunSummarySmokeSnapshot(8, 30, 3, 140, 600);
+            if (ended.DurationSeconds != 140)
+            {
+                throw new InvalidOperationException("Smoke check failed for death summary: death-screen wait time changed run duration.");
             }
         }
 

@@ -101,7 +101,7 @@ namespace My2DEngine.Game.Rendering
             float panelY = frameH * 0.39f;
             r.DrawTextCenteredShadow("YOU DIED", frameW * 0.5f, panelY + 42f,
                 Color.FromArgb((int)(255f * uiFade), 255, 218, 218), 30f);
-            r.DrawTextCenteredShadow("Go to menu and start again", frameW * 0.5f, panelY + 88f,
+            r.DrawTextCenteredShadow("Run terminated", frameW * 0.5f, panelY + 88f,
                 Color.FromArgb((int)(235f * uiFade), 255, 245, 245), 14f);
         }
 

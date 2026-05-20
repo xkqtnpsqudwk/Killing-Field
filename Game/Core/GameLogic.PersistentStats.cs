@@ -19,6 +19,9 @@ namespace My2DEngine.Game.Core
         private int runEnemiesKilled;
         private int runBossesKilled;
         private DateTime runStartTime;
+        private bool runEnded;
+        private DateTime runEndedAtUtc;
+        private bool runResultRecorded;
         private bool permanentStatsUiActive;
         private bool permanentStatsToggleHeld;
         private bool permanentStatKey1Held;
@@ -475,6 +478,8 @@ namespace My2DEngine.Game.Core
                 BonusCardChoiceBonus = GetRunStatBonus(StatType.CardChoiceBonus),
                 BonusShieldRegenRate = GetRunStatBonus(StatType.ShieldRegenRate),
                 BonusShieldRegenDelayReduction = GetRunStatBonus(StatType.ShieldRegenDelayReduction),
+                BonusShieldedDamage = GetRunStatBonus(StatType.ShieldedDamage),
+                BonusDashStrikeDamage = GetRunStatBonus(StatType.DashStrikeDamage),
                 PlayerShield = player.Shield,
                 ShieldRegenDelayTimer = player.ShieldRegenDelayTimer,
                 CardChoiceBonusOffered = cardChoiceBonusOffered,
@@ -508,6 +513,9 @@ namespace My2DEngine.Game.Core
             runEnemiesKilled = 0;
             runBossesKilled = 0;
             runStartTime = DateTime.UtcNow;
+            runEnded = false;
+            runEndedAtUtc = default;
+            runResultRecorded = false;
 
             currentFloor = save.Floor - 1; // TransitionToNextFloor 에서 +1 됨
             restRoomOpportunityCooldownActive = save.RestRoomOpportunityCooldownActive;
@@ -534,6 +542,8 @@ namespace My2DEngine.Game.Core
             runStatBonusTotals[(int)StatType.CardChoiceBonus] = save.BonusCardChoiceBonus;
             runStatBonusTotals[(int)StatType.ShieldRegenRate] = save.BonusShieldRegenRate;
             runStatBonusTotals[(int)StatType.ShieldRegenDelayReduction] = save.BonusShieldRegenDelayReduction;
+            runStatBonusTotals[(int)StatType.ShieldedDamage] = save.BonusShieldedDamage;
+            runStatBonusTotals[(int)StatType.DashStrikeDamage] = save.BonusDashStrikeDamage;
             cardChoiceBonusOffered = save.CardChoiceBonusOffered || save.BonusCardChoiceBonus >= 1f;
             RestoreIntArray(save.RunStatGradeState, runStatGrade, -1);
             RestoreIntArray(save.RunStatPickupState, runStatPickupCount, 0);
@@ -593,9 +603,14 @@ namespace My2DEngine.Game.Core
 
         public void RecordRunResult()
         {
-            if (currentFloor <= 0) return;
+            if (currentFloor <= 0 || runResultRecorded) return;
 
-            int seconds = (int)(DateTime.UtcNow - runStartTime).TotalSeconds;
+            if (player != null && player.IsDead)
+            {
+                MarkRunEndedIfNeeded();
+            }
+
+            int seconds = GetCurrentRunDurationSeconds();
             var record = new RunRecord
             {
                 FloorReached    = currentFloor,
@@ -605,6 +620,54 @@ namespace My2DEngine.Game.Core
                 EndedAt         = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
             };
             progressionRepository.SaveRunRecord(record);
+            runResultRecorded = true;
+        }
+
+        public RunSummarySnapshot CreateRunSummarySnapshot()
+        {
+            if (player != null && player.IsDead)
+            {
+                MarkRunEndedIfNeeded();
+            }
+
+            return new RunSummarySnapshot(
+                Math.Max(0, currentFloor),
+                Math.Max(0, runEnemiesKilled),
+                Math.Max(0, runBossesKilled),
+                GetCurrentRunDurationSeconds());
+        }
+
+        private int GetCurrentRunDurationSeconds()
+        {
+            if (runStartTime == default)
+            {
+                return 0;
+            }
+
+            DateTime endTime = runEnded ? runEndedAtUtc : DateTime.UtcNow;
+            double seconds = (endTime - runStartTime).TotalSeconds;
+            if (seconds <= 0d)
+            {
+                return 0;
+            }
+
+            if (seconds >= int.MaxValue)
+            {
+                return int.MaxValue;
+            }
+
+            return (int)seconds;
+        }
+
+        private void MarkRunEndedIfNeeded()
+        {
+            if (runEnded)
+            {
+                return;
+            }
+
+            runEndedAtUtc = DateTime.UtcNow;
+            runEnded = true;
         }
 
         public RunRecord[] LoadRunRecords(int limit = 20) => progressionRepository.LoadRunRecords(limit);

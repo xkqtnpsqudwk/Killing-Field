@@ -589,6 +589,10 @@ namespace My2DEngine.Game.Rendering
                     return "방패회복";
                 case StatType.ShieldRegenDelayReduction:
                     return "방패지연";
+                case StatType.ShieldedDamage:
+                    return "방패공격";
+                case StatType.DashStrikeDamage:
+                    return "대시공격";
                 default:
                     return "스탯";
             }

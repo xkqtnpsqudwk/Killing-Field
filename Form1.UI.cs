@@ -27,6 +27,7 @@ namespace My2DEngine
             UpdateMenuLayout(width, height);
             UpdateModeLayout(width, height);
             UpdatePauseLayout(width, height);
+            UpdateDeathLayout(width, height);
             UpdateSettingsLayout(width, height);
         }
 
@@ -133,6 +134,55 @@ namespace My2DEngine
             DrawMenuButton(r, pauseResumeRect, "게임 계속");
             DrawMenuButton(r, pauseSettingsRect, "설정");
             DrawMenuButton(r, pauseMenuRect, "메인메뉴");
+        }
+
+        private void DrawDeathOverlay(Renderer r, int width, int height)
+        {
+            r.DrawRectangle(0, 0, width, height, Color.FromArgb(185, 0, 0, 0));
+
+            int panelW = Math.Min(540, Math.Max(380, width - 120));
+            int panelH = 340;
+            int panelX = (width - panelW) / 2;
+            int panelY = (height - panelH) / 2;
+            float cx = width * 0.5f;
+
+            r.DrawRectangle(panelX, panelY, panelW, panelH, Color.FromArgb(236, 24, 20, 20));
+            r.DrawRectangle(panelX, panelY, panelW, 4, Color.FromArgb(230, 160, 38, 38));
+            r.DrawRectangle(panelX + 24, panelY + 86, panelW - 48, 1, Color.FromArgb(100, 255, 255, 255));
+
+            r.DrawTextCenteredShadow("사망", cx, panelY + 34, Color.FromArgb(255, 255, 222, 222), 26f);
+            r.DrawTextCenteredShadow("런 요약", cx, panelY + 72, Color.FromArgb(230, 230, 230, 230), 12f);
+
+            WorldRunSummarySnapshot summary = CaptureWorldRunSummarySnapshot();
+            int rowX = panelX + 58;
+            int valueX = panelX + panelW - 58;
+            int rowY = panelY + 116;
+            int rowGap = 34;
+            DrawDeathSummaryRow(r, "도달 층", $"{summary.FloorReached}층", rowX, valueX, rowY);
+            DrawDeathSummaryRow(r, "처치한 적", $"{summary.EnemiesKilled}명", rowX, valueX, rowY + rowGap);
+            DrawDeathSummaryRow(r, "처치한 보스", $"{summary.BossesKilled}명", rowX, valueX, rowY + rowGap * 2);
+            DrawDeathSummaryRow(r, "플레이 시간", FormatDuration(summary.DurationSeconds), rowX, valueX, rowY + rowGap * 3);
+
+            DrawMenuButton(
+                r,
+                deathRestartRect,
+                "재시작",
+                deathRestartRect.Contains(lastMousePosition)
+                    ? Color.FromArgb(230, 130, 48, 42)
+                    : Color.FromArgb(215, 92, 36, 34));
+            DrawMenuButton(
+                r,
+                deathMenuRect,
+                "메인메뉴",
+                deathMenuRect.Contains(lastMousePosition)
+                    ? Color.FromArgb(230, 70, 84, 108)
+                    : Color.FromArgb(215, 44, 54, 74));
+        }
+
+        private void DrawDeathSummaryRow(Renderer r, string label, string value, int labelX, int valueX, int y)
+        {
+            r.DrawText(label, labelX, y, Color.FromArgb(205, 188, 188, 188), 12f);
+            r.DrawText(value, valueX - 120, y, Color.FromArgb(245, 245, 245, 245), 12f);
         }
 
         /// <summary>
@@ -371,6 +421,20 @@ namespace My2DEngine
             pauseMenuRect = new Rectangle(centerX - buttonW / 2, startY + (buttonH + spacing) * 2, buttonW, buttonH);
         }
 
+        private void UpdateDeathLayout(int width, int height)
+        {
+            int panelW = Math.Min(540, Math.Max(380, width - 120));
+            int panelH = 340;
+            int panelX = (width - panelW) / 2;
+            int panelY = (height - panelH) / 2;
+            int buttonH = 50;
+            int buttonW = Math.Min(210, (panelW - 78) / 2);
+            int buttonY = panelY + panelH - 76;
+
+            deathRestartRect = new Rectangle(panelX + 28, buttonY, buttonW, buttonH);
+            deathMenuRect = new Rectangle(panelX + panelW - 28 - buttonW, buttonY, buttonW, buttonH);
+        }
+
         /// <summary>
         /// 설정 화면 컨트롤들의 위치와 크기를 현재 창 크기에 맞게 계산한다.
         /// FOV 슬라이더, 감도 슬라이더, 창 크기 이전/다음 버튼, 뒤로 버튼의 영역을 설정한다.
@@ -497,6 +561,25 @@ namespace My2DEngine
             {
                 GoToMenu();
             }
+        }
+
+        private bool HandleDeathClick(Point location)
+        {
+            EnsureUiLayout(ClientSize.Width, ClientSize.Height);
+
+            if (deathRestartRect.Contains(location))
+            {
+                RestartDeadRun();
+                return true;
+            }
+
+            if (deathMenuRect.Contains(location))
+            {
+                GoToMenu();
+                return true;
+            }
+
+            return true;
         }
 
         /// <summary>

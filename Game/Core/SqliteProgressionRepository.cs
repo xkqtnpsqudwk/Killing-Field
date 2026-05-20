@@ -112,6 +112,8 @@ namespace My2DEngine.Game.Core
                             bonus_card_choice_bonus REAL NOT NULL DEFAULT 0,
                             bonus_shield_regen_rate REAL NOT NULL DEFAULT 0,
                             bonus_shield_regen_delay REAL NOT NULL DEFAULT 0,
+                            bonus_shielded_damage REAL NOT NULL DEFAULT 0,
+                            bonus_dash_strike_damage REAL NOT NULL DEFAULT 0,
                             player_shield       REAL    NOT NULL DEFAULT 100,
                             shield_regen_delay_timer REAL NOT NULL DEFAULT 0,
                             card_choice_bonus_offered INTEGER NOT NULL DEFAULT 0,
@@ -142,6 +144,8 @@ namespace My2DEngine.Game.Core
                 EnsureColumnExists(conn, "run_save", "bonus_card_choice_bonus", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "bonus_shield_regen_rate", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "bonus_shield_regen_delay", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_shielded_damage", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_dash_strike_damage", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "player_shield", "REAL NOT NULL DEFAULT 100");
                 EnsureColumnExists(conn, "run_save", "shield_regen_delay_timer", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "card_choice_bonus_offered", "INTEGER NOT NULL DEFAULT 0");
@@ -218,6 +222,7 @@ namespace My2DEngine.Game.Core
                                bonus_damage_reduction, bonus_shop_discount, bonus_kill_heal,
                                bonus_kill_dash_refund, bonus_crit_chance, bonus_card_choice_bonus,
                                bonus_shield_regen_rate, bonus_shield_regen_delay,
+                               bonus_shielded_damage, bonus_dash_strike_damage,
                                player_shield, shield_regen_delay_timer, card_choice_bonus_offered,
                                combat_floor_clears, boss_clear_growth, owned_weapons_mask, coin_count,
                                weapon_card_pool_count, rest_room_cooldown, current_weapon_type,
@@ -248,20 +253,22 @@ namespace My2DEngine.Game.Core
                             BonusCardChoiceBonus = (float)reader.GetDouble(14),
                             BonusShieldRegenRate = (float)reader.GetDouble(15),
                             BonusShieldRegenDelayReduction = (float)reader.GetDouble(16),
-                            PlayerShield = (float)reader.GetDouble(17),
-                            ShieldRegenDelayTimer = (float)reader.GetDouble(18),
-                            CardChoiceBonusOffered = reader.GetInt32(19) != 0,
-                            ClearedCombatFloorCount = reader.GetInt32(20),
-                            BossClearGrowthCount = reader.GetInt32(21),
-                            OwnedWeaponsMask    = reader.GetInt32(22),
-                            CoinCount           = reader.GetInt32(23),
-                            WeaponCardPoolCount = reader.GetInt32(24),
-                            RestRoomOpportunityCooldownActive = reader.GetInt32(25) != 0,
-                            CurrentWeaponType   = reader.GetInt32(26),
-                            WeaponAmmoState     = reader.GetString(27),
-                            WeaponUpgradeState  = reader.GetString(28),
-                            RunStatGradeState   = reader.GetString(29),
-                            RunStatPickupState  = reader.GetString(30),
+                            BonusShieldedDamage = (float)reader.GetDouble(17),
+                            BonusDashStrikeDamage = (float)reader.GetDouble(18),
+                            PlayerShield = (float)reader.GetDouble(19),
+                            ShieldRegenDelayTimer = (float)reader.GetDouble(20),
+                            CardChoiceBonusOffered = reader.GetInt32(21) != 0,
+                            ClearedCombatFloorCount = reader.GetInt32(22),
+                            BossClearGrowthCount = reader.GetInt32(23),
+                            OwnedWeaponsMask    = reader.GetInt32(24),
+                            CoinCount           = reader.GetInt32(25),
+                            WeaponCardPoolCount = reader.GetInt32(26),
+                            RestRoomOpportunityCooldownActive = reader.GetInt32(27) != 0,
+                            CurrentWeaponType   = reader.GetInt32(28),
+                            WeaponAmmoState     = reader.GetString(29),
+                            WeaponUpgradeState  = reader.GetString(30),
+                            RunStatGradeState   = reader.GetString(31),
+                            RunStatPickupState  = reader.GetString(32),
                         };
                     }
                 }
@@ -289,6 +296,7 @@ namespace My2DEngine.Game.Core
                              bonus_damage_reduction, bonus_shop_discount, bonus_kill_heal,
                              bonus_kill_dash_refund, bonus_crit_chance, bonus_card_choice_bonus,
                              bonus_shield_regen_rate, bonus_shield_regen_delay,
+                             bonus_shielded_damage, bonus_dash_strike_damage,
                              player_shield, shield_regen_delay_timer, card_choice_bonus_offered,
                              combat_floor_clears, boss_clear_growth, owned_weapons_mask, coin_count,
                              weapon_card_pool_count, rest_room_cooldown, current_weapon_type,
@@ -296,7 +304,7 @@ namespace My2DEngine.Game.Core
                              run_stat_grade_state, run_stat_pickup_state, saved_at)
                         VALUES
                             (1, @fl, @ph, @bh, @bm, @bd, @ba, @bdc, @bcd, @bls,
-                             @bdr, @bsd, @bkh, @bkdr, @bcc, @bcb, @bsrr, @bsrd, @ps, @srdt, @bcbo,
+                             @bdr, @bsd, @bkh, @bkdr, @bcc, @bcb, @bsrr, @bsrd, @bsdm, @bdsd, @ps, @srdt, @bcbo,
                              @cf, @bg, @ow, @cc,
                              @wcp, @rrc, @cwt, @was, @wus, @rgs, @rps, @sa)";
 
@@ -317,6 +325,8 @@ namespace My2DEngine.Game.Core
                     cmd.Parameters.AddWithValue("@bcb", data.BonusCardChoiceBonus);
                     cmd.Parameters.AddWithValue("@bsrr", data.BonusShieldRegenRate);
                     cmd.Parameters.AddWithValue("@bsrd", data.BonusShieldRegenDelayReduction);
+                    cmd.Parameters.AddWithValue("@bsdm", data.BonusShieldedDamage);
+                    cmd.Parameters.AddWithValue("@bdsd", data.BonusDashStrikeDamage);
                     cmd.Parameters.AddWithValue("@ps", data.PlayerShield);
                     cmd.Parameters.AddWithValue("@srdt", data.ShieldRegenDelayTimer);
                     cmd.Parameters.AddWithValue("@bcbo", data.CardChoiceBonusOffered ? 1 : 0);

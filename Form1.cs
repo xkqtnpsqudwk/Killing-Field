@@ -125,6 +125,10 @@ namespace My2DEngine
         private Rectangle pauseSettingsRect;
         /// <summary>일시정지 화면의 "메인메뉴" 버튼 영역.</summary>
         private Rectangle pauseMenuRect;
+        /// <summary>사망 화면의 "재시작" 버튼 영역.</summary>
+        private Rectangle deathRestartRect;
+        /// <summary>사망 화면의 "메인메뉴" 버튼 영역.</summary>
+        private Rectangle deathMenuRect;
 
         /// <summary>FOV 슬라이더를 드래그 중인지 여부.</summary>
         private bool draggingFov;

@@ -21,7 +21,9 @@ namespace My2DEngine.Game
         CriticalChance = 11,
         CardChoiceBonus = 12,
         ShieldRegenRate = 13,
-        ShieldRegenDelayReduction = 14
+        ShieldRegenDelayReduction = 14,
+        ShieldedDamage = 15,
+        DashStrikeDamage = 16
     }
 
     /// <summary>

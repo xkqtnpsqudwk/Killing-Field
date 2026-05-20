@@ -1,3 +1,4 @@
+using System;
 using My2DEngine.Engine.Math;
 using My2DEngine.Game.Config;
 using My2DEngine.Game.Map;
@@ -271,6 +272,8 @@ namespace My2DEngine.Game.Core
             float previousShieldRegenTimer = player.ShieldRegenDelayTimer;
             float previousDamageReduction = runStatBonusTotals[(int)StatType.DamageReduction];
             float previousDashTimer = player.DashTimer;
+            bool previousRunEnded = runEnded;
+            DateTime previousRunEndedAtUtc = runEndedAtUtc;
             try
             {
                 player.MaxHealth = maxHealth;
@@ -298,6 +301,8 @@ namespace My2DEngine.Game.Core
                 player.RestoreShieldState(previousShield, previousShieldRegenTimer);
                 player.DashTimer = previousDashTimer;
                 runStatBonusTotals[(int)StatType.DamageReduction] = previousDamageReduction;
+                runEnded = previousRunEnded;
+                runEndedAtUtc = previousRunEndedAtUtc;
             }
         }
 
@@ -381,6 +386,108 @@ namespace My2DEngine.Game.Core
                 player.Health = previousHealth;
                 player.IsDead = previousIsDead;
                 runStatBonusTotals[(int)StatType.LifeSteal] = previousLifeSteal;
+            }
+        }
+
+        internal float GetOutgoingDamageSmokeSnapshot(
+            float baseDamage,
+            float shield,
+            float shieldedDamageBonus,
+            float dashStrikeDamageBonus,
+            bool dashStrikeWindowActive)
+        {
+            float previousShield = player.Shield;
+            float previousMaxShield = player.MaxShield;
+            float previousShieldRegenRate = player.ShieldRegenRate;
+            float previousShieldRegenDelay = player.ShieldRegenDelayDuration;
+            float previousShieldRegenTimer = player.ShieldRegenDelayTimer;
+            float previousShieldedDamage = runStatBonusTotals[(int)StatType.ShieldedDamage];
+            float previousDashStrikeDamage = runStatBonusTotals[(int)StatType.DashStrikeDamage];
+            float previousDashStrikeTimer = dashStrikeWindowTimer;
+            try
+            {
+                player.ConfigureShield(GameConfig.PlayerShieldMax, GameConfig.PlayerShieldBaseRegenRate, GameConfig.PlayerShieldBaseRegenDelay);
+                player.RestoreShieldState(shield, 0f);
+                runStatBonusTotals[(int)StatType.ShieldedDamage] = shieldedDamageBonus;
+                runStatBonusTotals[(int)StatType.DashStrikeDamage] = dashStrikeDamageBonus;
+                dashStrikeWindowTimer = dashStrikeWindowActive ? GameConfig.DashStrikeDamageWindow : 0f;
+                return ApplyOutgoingDamageModifiers(baseDamage);
+            }
+            finally
+            {
+                player.ConfigureShield(previousMaxShield, previousShieldRegenRate, previousShieldRegenDelay);
+                player.RestoreShieldState(previousShield, previousShieldRegenTimer);
+                runStatBonusTotals[(int)StatType.ShieldedDamage] = previousShieldedDamage;
+                runStatBonusTotals[(int)StatType.DashStrikeDamage] = previousDashStrikeDamage;
+                dashStrikeWindowTimer = previousDashStrikeTimer;
+            }
+        }
+
+        internal RunSummarySnapshot CreateRunSummarySmokeSnapshot(
+            int floorReached,
+            int enemiesKilled,
+            int bossesKilled,
+            int elapsedSeconds)
+        {
+            int previousFloor = currentFloor;
+            int previousEnemiesKilled = runEnemiesKilled;
+            int previousBossesKilled = runBossesKilled;
+            DateTime previousRunStartTime = runStartTime;
+            bool previousRunEnded = runEnded;
+            DateTime previousRunEndedAtUtc = runEndedAtUtc;
+            try
+            {
+                currentFloor = floorReached;
+                runEnemiesKilled = enemiesKilled;
+                runBossesKilled = bossesKilled;
+                runStartTime = DateTime.UtcNow.AddSeconds(-elapsedSeconds);
+                runEnded = false;
+                runEndedAtUtc = default;
+                return CreateRunSummarySnapshot();
+            }
+            finally
+            {
+                currentFloor = previousFloor;
+                runEnemiesKilled = previousEnemiesKilled;
+                runBossesKilled = previousBossesKilled;
+                runStartTime = previousRunStartTime;
+                runEnded = previousRunEnded;
+                runEndedAtUtc = previousRunEndedAtUtc;
+            }
+        }
+
+        internal RunSummarySnapshot CreateEndedRunSummarySmokeSnapshot(
+            int floorReached,
+            int enemiesKilled,
+            int bossesKilled,
+            int elapsedSeconds,
+            int secondsAfterDeath)
+        {
+            int previousFloor = currentFloor;
+            int previousEnemiesKilled = runEnemiesKilled;
+            int previousBossesKilled = runBossesKilled;
+            DateTime previousRunStartTime = runStartTime;
+            bool previousRunEnded = runEnded;
+            DateTime previousRunEndedAtUtc = runEndedAtUtc;
+            try
+            {
+                DateTime now = DateTime.UtcNow;
+                currentFloor = floorReached;
+                runEnemiesKilled = enemiesKilled;
+                runBossesKilled = bossesKilled;
+                runStartTime = now.AddSeconds(-(elapsedSeconds + secondsAfterDeath));
+                runEndedAtUtc = runStartTime.AddSeconds(elapsedSeconds);
+                runEnded = true;
+                return CreateRunSummarySnapshot();
+            }
+            finally
+            {
+                currentFloor = previousFloor;
+                runEnemiesKilled = previousEnemiesKilled;
+                runBossesKilled = previousBossesKilled;
+                runStartTime = previousRunStartTime;
+                runEnded = previousRunEnded;
+                runEndedAtUtc = previousRunEndedAtUtc;
             }
         }
     }

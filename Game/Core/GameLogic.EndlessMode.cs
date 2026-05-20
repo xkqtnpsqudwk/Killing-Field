@@ -121,6 +121,12 @@ namespace My2DEngine.Game.Core
 
             bgmChannel.StopBackgroundMusic();
             deathMusicStopped = false;
+            runEnemiesKilled = 0;
+            runBossesKilled = 0;
+            runStartTime = DateTime.UtcNow;
+            runEnded = false;
+            runEndedAtUtc = default;
+            runResultRecorded = false;
             ResetCardRunState();
             ResetPlayerState();
             ResetRunEndlessState();

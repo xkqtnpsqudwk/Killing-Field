@@ -145,6 +145,13 @@ namespace My2DEngine
             InvalidateUiLayoutCache();
         }
 
+        private void RestartDeadRun()
+        {
+            CompleteDeadRunForRestart();
+            StartSession(SessionLaunchMode.Normal);
+            InvalidateUiLayoutCache();
+        }
+
         /// <summary>
         /// 다음 페인트에서 UI 레이아웃을 다시 계산하도록 캐시를 무효화한다.
         /// </summary>

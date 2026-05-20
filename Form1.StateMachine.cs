@@ -246,10 +246,20 @@ namespace My2DEngine
             public override void Render(Renderer renderer)
             {
                 Owner.DrawScaledGameWorld(renderer);
+                if (Owner.HasDeathOverlay)
+                {
+                    Owner.DrawDeathOverlay(renderer, Owner.ClientSize.Width, Owner.ClientSize.Height);
+                }
             }
 
             public override void HandleEscape()
             {
+                if (Owner.HasDeathOverlay)
+                {
+                    Owner.GoToMenu();
+                    return;
+                }
+
                 Owner.EnterPause();
             }
 

@@ -26,11 +26,18 @@ namespace My2DEngine
             int DurationSeconds,
             string EndedAt);
 
+        private readonly record struct WorldRunSummarySnapshot(
+            int FloorReached,
+            int EnemiesKilled,
+            int BossesKilled,
+            int DurationSeconds);
+
         /// <summary>게임 월드 상태 업데이트와 렌더링을 담당하는 게임 로직 인스턴스.</summary>
         private readonly GameLogic world = new();
 
         private bool HasPermanentStatsOverlay => world.PermanentStatsUiActive;
-        private bool HasMouseSelectableOverlay => world.MouseSelectableOverlayActive;
+        private bool HasMouseSelectableOverlay => world.MouseSelectableOverlayActive || HasDeathOverlay;
+        private bool HasDeathOverlay => world.IsPlayerDead;
         private bool HasCardRewardOverlay => world.CardRewardActive;
         private bool HasBranchSelectionOverlay => world.BranchSelectionActive;
         private bool CanContinueSavedRun => world.HasRunSave();
@@ -116,6 +123,18 @@ namespace My2DEngine
             world.StopBackgroundMusic();
         }
 
+        private void CompleteDeadRunForRestart()
+        {
+            if (!world.IsPlayerDead)
+            {
+                return;
+            }
+
+            world.RecordRunResult();
+            world.DeleteRunProgress();
+            world.StopBackgroundMusic();
+        }
+
         private void SetWorldFovDegrees(float value)
         {
             world.SetFovDegrees(value);
@@ -196,6 +215,16 @@ namespace My2DEngine
             return snapshots;
         }
 
+        private WorldRunSummarySnapshot CaptureWorldRunSummarySnapshot()
+        {
+            RunSummarySnapshot summary = world.CreateRunSummarySnapshot();
+            return new WorldRunSummarySnapshot(
+                summary.FloorReached,
+                summary.EnemiesKilled,
+                summary.BossesKilled,
+                summary.DurationSeconds);
+        }
+
         private void BeginWorldPrimaryFire()
         {
             world.FireButtonDown();
@@ -213,6 +242,11 @@ namespace My2DEngine
 
         private bool TryHandleWorldOverlayClick(Point clientLocation)
         {
+            if (HasDeathOverlay)
+            {
+                return HandleDeathClick(clientLocation);
+            }
+
             if (ClientSize.Width <= 0 || ClientSize.Height <= 0)
             {
                 return false;
