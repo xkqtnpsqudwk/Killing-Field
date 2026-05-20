@@ -22,6 +22,8 @@ namespace My2DEngine.Game.Core
         private const float WeaponStatusDuration = 0.72f;
         private const float WeaponStatusRepeatDelay = 0.24f;
         private const float PickupToastDuration = 1.35f;
+
+        /// <summary>대시 직후 피해 증가 카드가 유효한 남은 시간(초).</summary>
         private float dashStrikeWindowTimer;
 
         /// <summary>
@@ -170,6 +172,7 @@ namespace My2DEngine.Game.Core
                 if (collision != null && distance > enemy.Radius &&
                     !collision.HasLineOfSight(centerX, centerY, enemy.X, enemy.Y, distance))
                 {
+                    // 폭발도 벽 뒤 적까지 관통하지 않도록 중심점과 적 사이 시야를 확인한다.
                     continue;
                 }
 
@@ -219,6 +222,8 @@ namespace My2DEngine.Game.Core
                 return 0f;
             }
 
+            // 조건부 피해 카드는 서로 합산한 뒤 원 피해에 한 번만 곱한다.
+            // 각 카드의 개별 상한은 GameConfig에서 관리한다.
             float multiplier = 1f;
             if (player != null && player.Shield > 0f)
             {
@@ -287,6 +292,7 @@ namespace My2DEngine.Game.Core
             float ratio = Math.Max(0f, Math.Min(1f, GetRunStatBonus(StatType.LifeSteal)));
             if (toxicMistPenaltyActive)
             {
+                // 독 안개 방에서는 흡혈 효율을 절반으로 줄여 환경 위험이 무력화되지 않게 한다.
                 ratio *= 0.5f;
             }
 
@@ -414,6 +420,8 @@ namespace My2DEngine.Game.Core
                 float forward = (dx * player.Direction.X + dy * player.Direction.Y) / dist;
                 if (forward < 0.75f) continue;
 
+                // lateral은 플레이어 전방 벡터에 수직인 거리다.
+                // 거리가 멀수록 약간의 조준 보정을 허용해 픽셀 단위 떨림으로 빗나가는 일을 줄인다.
                 float lateral = Math.Abs(dx * player.Direction.Y - dy * player.Direction.X);
                 float allowed = spreadRadius + dist * 0.03f;
                 if (lateral > allowed) continue;
@@ -468,6 +476,8 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
+            // 피해 감소를 먼저 적용하고, 남은 피해를 보호막이 흡수한 뒤 체력에 전달한다.
+            // 피격 연출 강도는 실제 체력 피해가 아니라 감소 후 총 피해를 기준으로 잡아 보호막 피격도 읽히게 한다.
             float reducedDamage = GetIncomingDamageAfterReduction(damage);
             if (reducedDamage <= 0f)
             {

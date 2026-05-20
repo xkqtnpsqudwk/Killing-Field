@@ -412,6 +412,9 @@ float4 PSMain(float4 position : SV_POSITION, float2 localTexcoord : TEXCOORD0, f
             {
                 WorldBeamInstance instance = command.Beams[i];
                 int baseIndex = i * 16;
+
+                // 인스턴스 데이터는 BeamConstants가 아니라 VSInput 인스턴스 버퍼 레이아웃에 맞춘다.
+                // transform/tint/params/source 네 개 float4 슬롯이 inputLayout에 순서대로 바인딩된다.
                 instanceDataBuffer[baseIndex + 0] = instance.PositionX;
                 instanceDataBuffer[baseIndex + 1] = instance.PositionY;
                 instanceDataBuffer[baseIndex + 2] = instance.Scale;

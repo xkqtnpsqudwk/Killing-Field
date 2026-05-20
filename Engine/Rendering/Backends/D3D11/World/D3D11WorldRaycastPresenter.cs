@@ -787,6 +787,9 @@ float4 PSMain(float4 position : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET
                 columnGeometryView?.Dispose();
                 columnGeometryView = null;
                 columnGeometryTexture?.Dispose();
+
+                // ColumnGeometryTexture는 2행 텍스처다.
+                // Row 0에는 주 벽 컬럼, Row 1에는 계단 수직면/수평면 보조 데이터를 넣는다.
                 columnGeometryTexture = CreateFloat4Texture(command.ColumnCount, 2); // Row 0: 벽, Row 1: 계단 면
                 columnGeometryView = device.CreateShaderResourceView(columnGeometryTexture, null);
 
@@ -805,6 +808,8 @@ float4 PSMain(float4 position : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET
                 columnTextureWidth = command.ColumnCount;
             }
 
+            // 열 데이터는 플레이어 위치/문 진행도에 따라 매 프레임 바뀌므로 항상 갱신한다.
+            // 텍스처 크기만 재사용하고 내용은 CPU 레이캐스트 결과를 그대로 덮어쓴다.
             context.UpdateSubresource(command.WallColumnGeometry, columnGeometryTexture, 0, command.ColumnCount * sizeof(float) * 4, command.WallColumnGeometry.Length * sizeof(float), null);
             context.UpdateSubresource(command.WallColumnMaterial, columnMaterialTexture, 0, command.ColumnCount * sizeof(int) * 4, command.WallColumnMaterial.Length * sizeof(int), null);
             context.UpdateSubresource(command.WallColumnDoorProgress, columnDoorProgressTexture, 0, command.ColumnCount * sizeof(float), command.WallColumnDoorProgress.Length * sizeof(float), null);
@@ -843,6 +848,8 @@ float4 PSMain(float4 position : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET
             int nextWallAtlasHash = ComputeHash(command.WallTextureAtlasPixels);
             if (nextWallAtlasHash != wallAtlasHash)
             {
+                // 벽 아틀라스는 보통 층 전환 때만 바뀐다.
+                // 해시가 같으면 큰 텍스처 업로드를 건너뛰어 프레임 스파이크를 줄인다.
                 context.UpdateSubresource(command.WallTextureAtlasPixels, wallAtlasTexture, 0, command.WallTextureAtlasWidth * sizeof(int), command.WallTextureAtlasPixels.Length * sizeof(int), null);
                 wallAtlasHash = nextWallAtlasHash;
             }
@@ -850,6 +857,7 @@ float4 PSMain(float4 position : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET
             int nextDoorTextureHash = ComputeHash(command.DoorOpenTexturePixels);
             if (nextDoorTextureHash != doorTextureHash)
             {
+                // 문 열림 텍스처도 atlas와 같은 정책을 따른다. 문 애니메이션 진행도는 별도 float 텍스처에 있다.
                 context.UpdateSubresource(command.DoorOpenTexturePixels, doorOpenTexture, 0, command.DoorOpenTextureWidth * sizeof(int), command.DoorOpenTexturePixels.Length * sizeof(int), null);
                 doorTextureHash = nextDoorTextureHash;
             }

@@ -5,7 +5,7 @@ namespace My2DEngine
 {
     /// <summary>
     /// Form1의 UI 렌더링 partial 클래스.
-    /// 메인 메뉴, 모드 선택, 설정, 일시정지 오버레이의 레이아웃 계산과 드로우를 담당한다.
+    /// 메인 메뉴, 모드 선택, 설정, 기록, 일시정지/사망 오버레이의 레이아웃 계산과 드로우를 담당한다.
     /// </summary>
     public partial class Form1
     {
@@ -136,6 +136,13 @@ namespace My2DEngine
             DrawMenuButton(r, pauseMenuRect, "메인메뉴");
         }
 
+        /// <summary>
+        /// 사망 후 게임 월드 위에 런 요약과 다음 행동 버튼을 그린다.
+        /// 런 요약은 GameLogic의 종료 시점 고정 스냅샷을 사용해 화면에 머문 시간이 플레이 시간에 섞이지 않게 한다.
+        /// </summary>
+        /// <param name="r">드로우 명령을 받을 렌더러 인스턴스.</param>
+        /// <param name="width">클라이언트 영역 너비.</param>
+        /// <param name="height">클라이언트 영역 높이.</param>
         private void DrawDeathOverlay(Renderer r, int width, int height)
         {
             r.DrawRectangle(0, 0, width, height, Color.FromArgb(185, 0, 0, 0));
@@ -179,6 +186,9 @@ namespace My2DEngine
                     : Color.FromArgb(215, 44, 54, 74));
         }
 
+        /// <summary>
+        /// 사망 화면의 요약 라벨/값 한 줄을 같은 열 위치에 맞춰 그린다.
+        /// </summary>
         private void DrawDeathSummaryRow(Renderer r, string label, string value, int labelX, int valueX, int y)
         {
             r.DrawText(label, labelX, y, Color.FromArgb(205, 188, 188, 188), 12f);
@@ -397,6 +407,9 @@ namespace My2DEngine
             modeBackRect    = new Rectangle(centerX - 96, panelY + panelH - 62, 192, 46);
         }
 
+        /// <summary>
+        /// 이어하기 버튼 표시 여부에 따라 모드 선택 패널 높이를 조정한다.
+        /// </summary>
         private int GetModePanelHeight()
         {
             return CanContinueSavedRun ? 490 : 420;
@@ -421,6 +434,12 @@ namespace My2DEngine
             pauseMenuRect = new Rectangle(centerX - buttonW / 2, startY + (buttonH + spacing) * 2, buttonW, buttonH);
         }
 
+        /// <summary>
+        /// 사망 오버레이의 버튼 영역을 현재 창 크기에 맞춰 계산한다.
+        /// 버튼 위치는 DrawDeathOverlay의 패널 계산과 같은 식을 사용해야 클릭 영역과 렌더 위치가 어긋나지 않는다.
+        /// </summary>
+        /// <param name="width">클라이언트 영역 너비.</param>
+        /// <param name="height">클라이언트 영역 높이.</param>
         private void UpdateDeathLayout(int width, int height)
         {
             int panelW = Math.Min(540, Math.Max(380, width - 120));
@@ -563,6 +582,12 @@ namespace My2DEngine
             }
         }
 
+        /// <summary>
+        /// 사망 오버레이 클릭을 처리한다.
+        /// 버튼 밖 클릭도 소비해 사망 상태에서 월드 발사 입력으로 떨어지지 않게 한다.
+        /// </summary>
+        /// <param name="location">클릭한 클라이언트 좌표.</param>
+        /// <returns>사망 오버레이가 클릭을 소비했으면 true.</returns>
         private bool HandleDeathClick(Point location)
         {
             EnsureUiLayout(ClientSize.Width, ClientSize.Height);

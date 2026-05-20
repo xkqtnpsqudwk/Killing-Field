@@ -17,11 +17,24 @@ namespace My2DEngine.Game.Core
     {
         /// <summary>룸 클리어 후 카드가 실제로 나타나기까지 대기하는 시간(초).</summary>
         private const float CardRewardRevealDelaySeconds = 2f;
+
+        /// <summary>런 스탯 배열 크기. StatType enum 값과 1:1로 맞춰 인덱싱한다.</summary>
         private static readonly int RunStatCount = Enum.GetValues(typeof(StatType)).Length;
+
+        /// <summary>기본 카드 보상 선택지 수.</summary>
         private const int BaseCardRewardOfferCount = 3;
+
+        /// <summary>카드 선택지 증가 스탯까지 반영한 최대 선택지 수.</summary>
         private const int MaxCardRewardOfferCount = 4;
+
+        /// <summary>카드 선택지 증가 카드가 등장할 수 있는 최소 층.</summary>
         private const int CardChoiceBonusMinFloor = 10;
 
+        /// <summary>
+        /// 일반 스탯 카드 후보 풀.
+        /// 이 배열에 들어간 순서가 확률을 직접 바꾸지는 않지만,
+        /// 카드 추가/제거 시 IsStatOfferAvailable과 GetStatBonusCap도 함께 맞춰야 한다.
+        /// </summary>
         private static readonly StatType[] RewardStatTypes =
         {
             StatType.MaxHealth,
@@ -147,6 +160,8 @@ namespace My2DEngine.Game.Core
             ClearCurrentCardOffers();
             int offerSlotCount = GetCardRewardOfferSlotCount();
 
+            // 보스 보상은 무기 업그레이드가 우선이다.
+            // 더 이상 줄 무기 카드가 없으면 같은 슬롯 수를 스탯 카드로 채운다.
             if (cardRewardWasBossRoom)
             {
                 GenerateBossWeaponOffers(offerSlotCount);
@@ -229,6 +244,8 @@ namespace My2DEngine.Game.Core
                 candidates.Add(StatType.Damage);
             }
 
+            // 먼저 이번 보상 안에서 중복되지 않는 등급을 고르고,
+            // 방 난이도 보너스/극한 보상 최소 등급을 그 뒤에 적용한다.
             List<CardGrade> availableGrades = BuildAvailableStatOfferGrades(candidates, usedStatOfferKeys);
             CardGrade offerGrade = availableGrades.Count > 0
                 ? RollStatOfferGrade(availableGrades)
@@ -255,6 +272,8 @@ namespace My2DEngine.Game.Core
                 return Array.Empty<RewardCardOffer>();
             }
 
+            // 상점은 현재 행운으로 자연 등장 가능한 최고 등급보다 한 단계 높은 카드만 판다.
+            // usedStatOfferKeys로 같은 스탯+등급 카드가 한 상점에 중복 진열되는 것을 막는다.
             CardGrade offerGrade = GetRestShopCardGrade();
             var offers = new List<RewardCardOffer>(desiredCount);
             var usedStatOfferKeys = new HashSet<int>();
@@ -337,6 +356,8 @@ namespace My2DEngine.Game.Core
                 return grade;
             }
 
+            // 허용 가능한 등급만 건너뛰며 올린다.
+            // 후보 스탯이 이미 상한에 걸린 등급은 선택하지 않아 빈 보상을 피한다.
             CardGrade result = grade;
             for (int i = 0; i < boost && (int)result < (int)CardGrade.Red; i++)
             {
@@ -463,6 +484,7 @@ namespace My2DEngine.Game.Core
             const float epsilon = 0.0001f;
             if (stat == StatType.CardChoiceBonus)
             {
+                // 선택지 증가 카드는 런의 흐름을 크게 바꾸므로 낮은 층과 재등장을 모두 차단한다.
                 if (currentFloor < CardChoiceBonusMinFloor || cardChoiceBonusOffered)
                 {
                     return false;
@@ -481,6 +503,7 @@ namespace My2DEngine.Game.Core
         {
             float baseBonus = GetBaseStatCardBonus(stat, grade);
             float remaining = GetRemainingStatBonusCap(stat);
+            // 상한에 거의 도달한 스탯은 카드 등급보다 실제 증가량이 작아질 수 있다.
             return Math.Max(0f, Math.Min(baseBonus, remaining));
         }
 
@@ -575,7 +598,8 @@ namespace My2DEngine.Game.Core
             PermanentProgressionData data = permanentProgression ?? PermanentProgressionData.CreateDefault();
             int luckLevel = Math.Max(0, Math.Min(10, data.GetLuckLevel()));
 
-            // White(0)부터 Red(4)까지 Luck 테이블 전체 범위로 순수 확률 롤
+            // White(0)부터 Red(4)까지 Luck 테이블 전체 범위로 순수 확률 롤.
+            // allowedGrades가 있으면 이미 중복/상한 때문에 제시할 수 없는 등급은 확률 합산에서 제외한다.
             int total = 0;
             for (int g = 0; g <= (int)CardGrade.Red; g++)
             {
@@ -650,6 +674,7 @@ namespace My2DEngine.Game.Core
                 return false;
             }
 
+            // 무기 카드는 같은 보상 묶음 안에서 중복되지 않도록 뽑은 후보를 제거한다.
             int uniqueCount = Math.Min(desiredCount, candidates.Count);
             offers = new RewardCardOffer[uniqueCount];
             for (int i = 0; i < uniqueCount; i++)
@@ -907,6 +932,7 @@ namespace My2DEngine.Game.Core
                 : GetEffectiveStatOfferBonus(stat, grade);
             float nextTotal = Math.Max(0f, currentTotal + bonus);
             float cappedTotal = GetStatBonusCap(stat);
+            // 저장된 누적값과 신규 보너스를 모두 다시 클램프해 세이브/밸런스 변경 후에도 음수나 상한 초과가 남지 않게 한다.
             if (!float.IsPositiveInfinity(cappedTotal))
             {
                 nextTotal = Math.Min(cappedTotal, nextTotal);

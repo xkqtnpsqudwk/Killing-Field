@@ -7,6 +7,10 @@ namespace My2DEngine
 {
     public partial class Form1
     {
+        /// <summary>
+        /// 설정 UI가 편집하는 값의 폼 계층 스냅샷.
+        /// GameSettings를 그대로 노출하지 않고 Form1이 필요한 항목만 보관한다.
+        /// </summary>
         private readonly record struct WorldSettingsSnapshot(
             float FovDegrees,
             float MouseSensitivity,
@@ -14,11 +18,13 @@ namespace My2DEngine
             int SfxVolume,
             int WindowSizePresetIndex);
 
+        /// <summary>디버그 HUD가 표시할 월드 렌더링 진단 정보.</summary>
         private readonly record struct WorldDebugSnapshot(
             bool UsesGpuWorldRendering,
             string WorldStatus,
             string LaserStatus);
 
+        /// <summary>기록 화면의 행 하나에 필요한 런 기록 정보.</summary>
         private readonly record struct WorldRunRecordSnapshot(
             int FloorReached,
             int EnemiesKilled,
@@ -26,6 +32,7 @@ namespace My2DEngine
             int DurationSeconds,
             string EndedAt);
 
+        /// <summary>사망 화면에 즉시 보여줄 현재 런 요약 정보.</summary>
         private readonly record struct WorldRunSummarySnapshot(
             int FloorReached,
             int EnemiesKilled,
@@ -35,12 +42,19 @@ namespace My2DEngine
         /// <summary>게임 월드 상태 업데이트와 렌더링을 담당하는 게임 로직 인스턴스.</summary>
         private readonly GameLogic world = new();
 
+        /// <summary>메뉴 위에 영구 스탯 UI가 열려 있는지 여부.</summary>
         private bool HasPermanentStatsOverlay => world.PermanentStatsUiActive;
+        /// <summary>현재 플레이 화면에서 마우스 커서로 선택해야 하는 오버레이가 있는지 여부.</summary>
         private bool HasMouseSelectableOverlay => world.MouseSelectableOverlayActive || HasDeathOverlay;
+        /// <summary>플레이어가 사망해 Form 사망 오버레이를 띄워야 하는지 여부.</summary>
         private bool HasDeathOverlay => world.IsPlayerDead;
+        /// <summary>카드 보상 선택 UI가 열려 있는지 여부.</summary>
         private bool HasCardRewardOverlay => world.CardRewardActive;
+        /// <summary>다음 방 분기 선택 UI가 열려 있는지 여부.</summary>
         private bool HasBranchSelectionOverlay => world.BranchSelectionActive;
+        /// <summary>저장된 런이 있어 이어하기 버튼을 표시할 수 있는지 여부.</summary>
         private bool CanContinueSavedRun => world.HasRunSave();
+        /// <summary>영구 진행도 기준으로 무한 모드를 시작할 수 있는지 여부.</summary>
         private bool CanStartEndlessRun => world.IsEndlessModeUnlocked();
 
         private void DisposeWorld()
@@ -110,6 +124,7 @@ namespace My2DEngine
                 return;
             }
 
+            // 살아서 메뉴로 나가면 이어하기를 위해 저장하고, 죽은 런은 기록으로 확정한 뒤 저장 슬롯을 비운다.
             if (world.IsPlayerDead)
             {
                 world.RecordRunResult();
@@ -252,6 +267,7 @@ namespace My2DEngine
                 return false;
             }
 
+            // 월드 오버레이는 내부 640x360 렌더 좌표를 기준으로 배치되어 있어 클라이언트 좌표를 역스케일한다.
             float gameX = clientLocation.X * GameRenderWidth / (float)ClientSize.Width;
             float gameY = clientLocation.Y * GameRenderHeight / (float)ClientSize.Height;
 

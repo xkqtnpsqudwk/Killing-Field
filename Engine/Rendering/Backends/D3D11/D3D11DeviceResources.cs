@@ -230,10 +230,16 @@ namespace My2DEngine.Engine.Rendering.Backends.D3D11
                 lastColumnCount = command.ColumnCount;
                 lastEnemySpriteCount = command.EnemySpritePass.SpriteCount;
                 lastMiscSpriteCount = command.MiscSpritePass.SpriteCount;
+
+                // 1단계: CPU 레이캐스트가 만든 열 단위 데이터를 내부 씬 텍스처에 벽/바닥/천장으로 굽는다.
                 long worldStart = Stopwatch.GetTimestamp();
                 worldPresenter.RenderScene(d3dContext, command);
                 currentWorldMs = ElapsedMilliseconds(worldStart);
+
+                // 2단계: 흔들림/죽음 연출용 회전·스케일·오프셋을 적용해 최종 백 버퍼에 합성한다.
                 worldPresenter.CompositeScene(d3dContext, renderTargetView, surfaceInfo.Width, surfaceInfo.Height, command);
+
+                // 3단계: 적 스프라이트는 체력바/전조 표시 등 전투 정보가 섞이므로 별도 패스로 유지한다.
                 if (command.EnemySpritePass.Sprites != null && command.EnemySpritePass.SpriteCount > 0)
                 {
                     EnsureEnemyWorldSpritePresenter();
@@ -251,6 +257,8 @@ namespace My2DEngine.Engine.Rendering.Backends.D3D11
                     enemyWorldSpritePresenter?.ReleaseTransientResources();
                     currentSpriteMs = 0f;
                 }
+
+                // 4단계: 투사체와 픽업은 적과 라이프사이클이 달라 별도 아틀라스·인스턴스 버퍼를 사용한다.
                 if (command.MiscSpritePass.Sprites != null && command.MiscSpritePass.SpriteCount > 0)
                 {
                     EnsureMiscWorldSpritePresenter();
@@ -267,6 +275,8 @@ namespace My2DEngine.Engine.Rendering.Backends.D3D11
                 {
                     miscWorldSpritePresenter?.ReleaseTransientResources();
                 }
+
+                // 5단계: 레이저/빔은 텍스처 스프라이트가 아니라 절차적 글로우 쿼드라 별도 presenter에서 처리한다.
                 if (command.Beams != null && command.BeamCount > 0)
                 {
                     EnsureWorldBeamPresenter();

@@ -6,6 +6,10 @@ namespace My2DEngine
 {
     public partial class Form1
     {
+        /// <summary>
+        /// 렌더 백엔드에서 수집한 프레임 단위 GPU/업로드 진단 정보.
+        /// D3D11 구현 타입을 UI 코드에 직접 퍼뜨리지 않기 위한 폼 전용 DTO다.
+        /// </summary>
         private readonly record struct RenderDebugSnapshot(
             bool IsAvailable,
             string PathDescription,
@@ -19,6 +23,10 @@ namespace My2DEngine
             int ColumnCount,
             int SpriteCount);
 
+        /// <summary>
+        /// 디버그 HUD가 실제로 그릴 문자열 묶음.
+        /// 렌더 루프 안에서는 문자열 조합과 백엔드 조회가 흩어지지 않도록 한 번에 캡처한다.
+        /// </summary>
         private readonly record struct DebugHudSnapshot(
             string BackendText,
             string PathText,

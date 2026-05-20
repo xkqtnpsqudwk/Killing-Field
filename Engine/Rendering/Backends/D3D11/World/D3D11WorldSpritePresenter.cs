@@ -562,6 +562,8 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float2
 
                     int sourceOffset = ((rectY * command.SpriteAtlasWidth) + rectX) * sizeof(int);
                     var targetBox = new Box(rectX, rectY, 0, rectX + rectWidth, rectY + rectHeight, 1);
+                    // UpdateSubresource의 row pitch는 전체 아틀라스 한 줄의 바이트 수다.
+                    // dirty rect 시작 주소만 이동시키고 pitch는 원본 배열의 전체 너비를 유지해야 각 행이 올바르게 건너뛴다.
                     context.UpdateSubresource(
                         spriteAtlasTexture,
                         0,
@@ -654,6 +656,9 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float2
             {
                 WorldSpriteInstance instance = command.Sprites[i];
                 int baseIndex = i * 20;
+
+                // 이 배열 레이아웃은 HLSL VSInput의 인스턴스 시맨틱 순서와 1:1로 대응한다.
+                // 필드 순서를 바꾸면 inputLayout과 shader input도 같이 바꿔야 한다.
                 instanceDataBuffer[baseIndex + 0] = instance.PositionX;
                 instanceDataBuffer[baseIndex + 1] = instance.PositionY;
                 instanceDataBuffer[baseIndex + 2] = instance.Scale;

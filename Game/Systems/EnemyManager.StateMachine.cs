@@ -40,6 +40,8 @@ namespace My2DEngine.Game.Systems
                 PerceptionContext perception = BuildPerceptionContext(enemy, playerPosition, playerDead, collision);
                 UpdateEnemyAwareness(enemy, perception);
 
+                // 기절은 어떤 AI 상태보다 우선한다.
+                // 타이머가 끝나면 마지막으로 기억한 플레이어 위치를 기준으로 수색/순찰로 복귀한다.
                 if (enemy.StunTimer > 0f)
                 {
                     UpdateStunnedState(enemy, dt);
@@ -107,6 +109,7 @@ namespace My2DEngine.Game.Systems
 
         private void RememberTarget(Enemy enemy, float targetX, float targetY, float dirX, float dirY, bool fromSight)
         {
+            // 플레이어가 이동 중이면 마지막 위치 변화량을 우선 사용해 수색 방향을 더 자연스럽게 유지한다.
             float travelX = targetX - enemy.LastKnownPlayerX;
             float travelY = targetY - enemy.LastKnownPlayerY;
             if ((travelX * travelX) + (travelY * travelY) > 0.01f)
@@ -129,6 +132,7 @@ namespace My2DEngine.Game.Systems
                 float memoryDirY = enemy.LastKnownDirY;
                 if ((memoryDirX * memoryDirX) + (memoryDirY * memoryDirY) > 0.001f)
                 {
+                    // 이전 기억 방향을 일부 섞어 적이 매 프레임 급격히 방향을 바꾸지 않게 한다.
                     dirX = (memoryDirX * 0.35f) + (dirX * 0.65f);
                     dirY = (memoryDirY * 0.35f) + (dirY * 0.65f);
                     Normalize(ref dirX, ref dirY);
@@ -257,6 +261,8 @@ namespace My2DEngine.Game.Systems
         {
             if (!perception.CanSeePlayer)
             {
+                // 시야를 잃은 전투 적은 즉시 순찰로 돌아가지 않고,
+                // 소리나 마지막 기억 위치를 통해 조사/수색 상태로 이어진다.
                 if (perception.HeardSound)
                 {
                     EnterInvestigateState(enemy, perception.HeardX, perception.HeardY);

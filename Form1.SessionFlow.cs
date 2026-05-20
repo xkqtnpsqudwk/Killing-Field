@@ -4,8 +4,11 @@ namespace My2DEngine
     {
         private enum SessionLaunchMode
         {
+            /// <summary>1층부터 새 로그라이크 런 시작.</summary>
             Normal,
+            /// <summary>저장된 진행도를 불러와 이어하기.</summary>
             Continue,
+            /// <summary>최종층 이후 해금되는 무한 모드 시작.</summary>
             Endless
         }
 
@@ -44,6 +47,7 @@ namespace My2DEngine
         /// <param name="launchMode">세션 시작 모드.</param>
         private void StartSession(SessionLaunchMode launchMode)
         {
+            // 실제 월드 초기화는 Form1.World에 위임하고, 여기서는 세션 시작 경로와 상태 전환만 관리한다.
             switch (launchMode)
             {
                 case SessionLaunchMode.Normal:
@@ -118,6 +122,7 @@ namespace My2DEngine
         /// <param name="state">전환할 비플레이 상태.</param>
         private void EnterMenuState(GameState state)
         {
+            // 설정 화면에서만 settingsFromPause가 의미 있다. 다른 메뉴 화면으로 이동하면 이전 출처 정보를 버린다.
             if (state != GameState.Settings)
             {
                 settingsFromPause = false;

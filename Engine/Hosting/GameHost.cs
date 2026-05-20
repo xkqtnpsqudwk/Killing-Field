@@ -178,6 +178,8 @@ namespace My2DEngine.Engine.Hosting
             {
                 try
                 {
+                    // Win32 HWND가 바뀌면 스왑체인도 새 HWND에 묶어야 하므로 재생성이 필요하다.
+                    // 단순 크기 변경은 아래 Resize 경로에서 백 버퍼만 교체한다.
                     d3d11Backend = RenderBackendFactory.CreateD3D11(surfaceInfo);
                     ReplacePersistentBackend(d3d11Backend, surfaceInfo.WindowHandle);
                 }
@@ -202,6 +204,8 @@ namespace My2DEngine.Engine.Hosting
 
             if (d3d11Backend == null || !d3d11Backend.IsInitialized)
             {
+                // 생성자 자체는 성공했지만 내부 장치 초기화가 실패한 경우도 있다.
+                // 이 상태는 런타임 오류처럼 다음 프레임마다 반복하지 않고 backoff를 적용한다.
                 ResetToDx11Retry(
                     d3d11Backend?.InitializationError ?? "Direct3D11 backend failed to initialize.",
                     true);
@@ -245,6 +249,8 @@ namespace My2DEngine.Engine.Hosting
             BackendStatusMessage = statusMessage;
             if (applyRetryBackoff)
             {
+                // 실패 직후 즉시 재시도하면 장치 생성/해제 루프가 프레임마다 반복된다.
+                // backoff 동안은 상태 메시지만 유지하고, 다음 ResolveBackend 호출에서 재시도한다.
                 nextD3D11RetryTimeUtc = DateTime.UtcNow + D3D11RetryBackoff;
             }
         }

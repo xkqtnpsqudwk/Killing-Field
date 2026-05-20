@@ -12,24 +12,55 @@ namespace My2DEngine.Game.Core
     /// </summary>
     public partial class GameLogic
     {
+        /// <summary>영구 성장 데이터를 SQLite 파일에 저장하고 불러오는 저장소.</summary>
         private readonly SqliteProgressionRepository progressionRepository = new SqliteProgressionRepository();
 
+        /// <summary>현재 프로필의 영구 성장 상태. null이면 기본값으로 폴백한다.</summary>
         private PermanentProgressionData permanentProgression;
 
+        /// <summary>이번 런에서 처치한 일반/정예/보스 포함 총 적 수.</summary>
         private int runEnemiesKilled;
+
+        /// <summary>이번 런에서 처치한 정예 또는 보스 수.</summary>
         private int runBossesKilled;
+
+        /// <summary>이번 런 시작 시각. 사망/요약 화면의 플레이 시간 계산에 사용한다.</summary>
         private DateTime runStartTime;
+
+        /// <summary>런 종료 처리를 이미 수행했는지 여부.</summary>
         private bool runEnded;
+
+        /// <summary>런 종료 시각(UTC). 사망 화면에서 시간이 계속 늘어나지 않도록 고정한다.</summary>
         private DateTime runEndedAtUtc;
+
+        /// <summary>현재 런 결과를 저장소에 이미 기록했는지 여부.</summary>
         private bool runResultRecorded;
+
+        /// <summary>영구 스탯 배분 UI가 열려 있는지 여부.</summary>
         private bool permanentStatsUiActive;
+
+        /// <summary>I 키 토글을 한 번만 처리하기 위한 이전 프레임 입력 상태.</summary>
         private bool permanentStatsToggleHeld;
+
+        /// <summary>영구 스탯 카드 1번 키의 엣지 트리거 상태.</summary>
         private bool permanentStatKey1Held;
+
+        /// <summary>영구 스탯 카드 2번 키의 엣지 트리거 상태.</summary>
         private bool permanentStatKey2Held;
+
+        /// <summary>영구 스탯 카드 3번 키의 엣지 트리거 상태.</summary>
         private bool permanentStatKey3Held;
+
+        /// <summary>영구 스탯 카드 4번 키의 엣지 트리거 상태.</summary>
         private bool permanentStatKey4Held;
+
+        /// <summary>영구 스탯 카드 5번 키의 엣지 트리거 상태.</summary>
         private bool permanentStatKey5Held;
+
+        /// <summary>마우스 클릭으로 영구 스탯을 선택할 때 처리할 게임 좌표 X (-1이면 미처리).</summary>
         private float pendingPermanentStatClickX = -1f;
+
+        /// <summary>마우스 클릭으로 영구 스탯을 선택할 때 처리할 게임 좌표 Y.</summary>
         private float pendingPermanentStatClickY = -1f;
 
         private void LoadPermanentProgression()
@@ -55,6 +86,8 @@ namespace My2DEngine.Game.Core
             PermanentProgressionData data = permanentProgression ?? PermanentProgressionData.CreateDefault();
             data.Sanitize();
 
+            // 영구 성장과 런 카드 보너스를 한곳에서 다시 합성한다.
+            // 카드 선택, 런 시작, 저장 데이터 로드 후 모두 이 경로를 거쳐 파생 스탯을 동기화한다.
             float previousMaxHealth = player.MaxHealth;
             float previousHealth = player.Health;
             float newMaxHealth = GameConfig.PlayerHealthMax * (1f + data.GetHealthBonus() + GetRunStatBonus(StatType.MaxHealth));
@@ -89,11 +122,13 @@ namespace My2DEngine.Game.Core
         private float GetEffectiveShieldRegenRate()
         {
             float bonus = Math.Max(0f, GetRunStatBonus(StatType.ShieldRegenRate));
+            // 보호막 회복 속도 카드는 기본 회복량에 더해지고, 전역 상한에서 멈춘다.
             return Math.Min(GameConfig.PlayerShieldMaxRegenRate, GameConfig.PlayerShieldBaseRegenRate + bonus);
         }
 
         private float GetEffectiveShieldRegenDelayDuration()
         {
+            // 지연 감소는 비율 카드지만 최소 2초 지연은 반드시 남겨 전투 중 즉시 회복을 막는다.
             float reduction = Math.Max(0f, Math.Min(
                 1f - (GameConfig.PlayerShieldMinRegenDelay / GameConfig.PlayerShieldBaseRegenDelay),
                 GetRunStatBonus(StatType.ShieldRegenDelayReduction)));

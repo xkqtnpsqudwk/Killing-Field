@@ -120,9 +120,12 @@ namespace My2DEngine.Game.Core
             switch (activeRoom.ObjectiveKind)
             {
                 case RoomObjectiveKind.Survive:
+                    // 생존 방은 적을 모두 잡는 것이 목표가 아니다.
+                    // 타이머가 끝나면 남은 적을 정리하고 방을 클리어한다.
                     activeState.ObjectiveTimer = Math.Max(0f, activeState.ObjectiveTimer - Math.Max(0f, dt));
                     return activeState.ObjectiveTimer <= 0f;
                 case RoomObjectiveKind.KeyTarget:
+                    // 열쇠 방은 일반 적 수가 아니라 ObjectiveTarget 플래그가 붙은 표적만 본다.
                     return enemyManager.CountAliveObjectiveTargets() <= 0;
                 default:
                     return enemyManager.CountAliveEnemies() <= 0;
@@ -211,6 +214,7 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
+            // 독 안개는 방 전체 효과이므로 특정 적/투사체 위치가 아니라 방 중앙을 피해 방향 기준으로 쓴다.
             activeState.HazardTickTimer -= Math.Max(0f, dt);
             if (activeState.HazardTickTimer > 0f)
             {
@@ -228,6 +232,8 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
+            // 생존 방은 플레이어가 시간을 버티는 동안 일정 수의 적 압박을 유지한다.
+            // 이미 목표 수 이상이면 타이머를 과도하게 누적하지 않도록 상한만 잡는다.
             int targetAlive = GameConfig.SurvivalRoomTargetAliveEnemies +
                 (activeRoom.IsMiniBossRoom ? GameConfig.SurvivalRoomEliteTargetAliveBonus : 0);
             int alive = enemyManager.CountAliveEnemies();
@@ -277,6 +283,8 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
+            // 처치 회복은 최대 체력이 아니라 잃은 체력 기준이다.
+            // 체력이 많이 깎인 상황일수록 가치가 커지지만 상한은 10%로 제한한다.
             float killHealRatio = Math.Max(0f, Math.Min(0.10f, GetRunStatBonus(StatType.KillHeal)));
             if (killHealRatio > 0f && player.Health < player.MaxHealth)
             {
@@ -287,6 +295,7 @@ namespace My2DEngine.Game.Core
             float dashRefundRatio = Math.Max(0f, Math.Min(0.25f, GetRunStatBonus(StatType.KillDashCooldownRefund)));
             if (dashRefundRatio > 0f && player.DashCooldownTimer > 0f)
             {
+                // 남은 쿨다운을 비율로 줄여 방금 대시한 직후일수록 환급량이 크다.
                 player.DashCooldownTimer = Math.Max(0f, player.DashCooldownTimer * (1f - dashRefundRatio));
             }
         }
@@ -382,6 +391,7 @@ namespace My2DEngine.Game.Core
             StageRoom room = enemy == null
                 ? FindCurrentStageRoom()
                 : FindStageRoomAtPosition(enemy.X, enemy.Y) ?? FindCurrentStageRoom();
+            // 보급 부족 방은 전투 중 드랍을 막지만, 방 클리어 보상 등 다른 보상 체계까지 막지는 않는다.
             return room != null && room.HazardKind == RoomHazardKind.SupplyShortage && room.State.Activated && !room.State.Cleared;
         }
 
@@ -514,11 +524,13 @@ namespace My2DEngine.Game.Core
         {
             if (room.ObjectiveKind == RoomObjectiveKind.Survive)
             {
+                // 생존 방은 목표 시간과 첫 증원 타이머를 방 활성화 시점에 고정한다.
                 state.ObjectiveTimer = Math.Max(1f, room.ObjectiveDuration);
                 state.ReinforcementTimer = Math.Min(1.2f, GameConfig.SurvivalRoomReinforcementInterval);
             }
             else if (room.ObjectiveKind == RoomObjectiveKind.KeyTarget && enemyManager.CountAliveObjectiveTargets() <= 0)
             {
+                // 데이터 오류나 스폰 실패로 표적이 없으면 진행이 막히지 않도록 일반 처치 방으로 폴백한다.
                 room.ObjectiveKind = RoomObjectiveKind.EliminateAll;
             }
 

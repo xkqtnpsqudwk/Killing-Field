@@ -234,6 +234,7 @@ namespace My2DEngine.Game
         {
             if (isSprinting)
             {
+                // 달리는 동안에는 즉시 회복 지연을 갱신해 짧게 끊어 달려도 바로 차오르지 않게 한다.
                 Stamina -= GameConfig.StaminaDrainPerSec * dt;
                 if (Stamina < 0f) Stamina = 0f;
                 StaminaRecoverTimer = GameConfig.StaminaRecoverDelay;
@@ -242,6 +243,7 @@ namespace My2DEngine.Game
             {
                 if (StaminaRecoverTimer > 0f)
                 {
+                    // 회복 지연이 끝난 뒤에만 실제 회복을 시작한다.
                     StaminaRecoverTimer -= dt;
                     if (StaminaRecoverTimer < 0f) StaminaRecoverTimer = 0f;
                 }
@@ -262,6 +264,7 @@ namespace My2DEngine.Game
 
             if (Shield >= MaxShield)
             {
+                // 완충 상태에서는 지연 타이머를 비워 다음 피격 후 새 지연만 남도록 한다.
                 Shield = MaxShield;
                 ShieldRegenDelayTimer = 0f;
                 return;
@@ -269,6 +272,7 @@ namespace My2DEngine.Game
 
             if (ShieldRegenDelayTimer > 0f)
             {
+                // 피해를 입은 뒤 일정 시간은 보호막이 회복되지 않는다.
                 ShieldRegenDelayTimer -= dt;
                 if (ShieldRegenDelayTimer < 0f)
                 {
@@ -347,6 +351,8 @@ namespace My2DEngine.Game
 
         public void ConfigureShield(float maxShield, float regenRate, float regenDelayDuration)
         {
+            // 카드/영구 성장 재적용 중에도 현재 보호막은 새 최대치 안으로만 보정한다.
+            // 최대치가 커졌다고 즉시 완충하지 않으므로 전투 중 스탯 적용이 과한 회복이 되지 않는다.
             MaxShield = System.Math.Max(0f, maxShield);
             Shield = System.Math.Max(0f, System.Math.Min(MaxShield, Shield));
             ShieldRegenRate = System.Math.Max(0f, regenRate);

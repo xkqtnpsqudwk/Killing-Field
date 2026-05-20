@@ -15,6 +15,7 @@ namespace My2DEngine.Game.Systems
     {
         private bool TrySpawnStageEnemy(List<Enemy> list, StageRoom room, StageSpawnPoint spawn, Vector2 playerPosition, CollisionSystem collision, bool allowNearPlayer = false)
         {
+            // StageSpawnPoint는 템플릿 데이터이고, 실제 런타임 적은 아키타입/난이도/랭크 보정을 합성해 만든다.
             EnemyArchetype archetype = ResolveArchetype(spawn);
             EnemyDefinition adjusted = BuildAdjustedDefinition(spawn, archetype);
             EnemyRank rank = GetSpawnRank(spawn, archetype);
@@ -35,6 +36,7 @@ namespace My2DEngine.Game.Systems
                 return true;
             }
 
+            // 지정 좌표가 벽/플레이어/다른 적과 겹치면 주변 후보 오프셋을 순서대로 시도한다.
             for (int i = 0; i < StageSpawnOffsets.Length; i++)
             {
                 PointF offset = StageSpawnOffsets[i];
@@ -128,6 +130,7 @@ namespace My2DEngine.Game.Systems
             EnemySoundProfile soundProfile = null,
             bool isObjectiveTarget = false)
         {
+            // 스폰 유효성 검사는 벽 충돌, 플레이어와의 최소 거리, 기존 적과의 겹침 순서로 빠르게 탈락시킨다.
             if (collision == null || collision.IsWallRadius(x, y, definition.Radius, 0.08f))
             {
                 return false;
@@ -204,6 +207,8 @@ namespace My2DEngine.Game.Systems
         {
             EnemyDefinition baseDefinition = ApplyDifficultyMultipliers(archetype.CreateDefinition());
 
+            // 일반 적은 같은 템플릿에서도 체력/속도를 약간 흔들어 반복 방의 리듬을 덜 고정적으로 만든다.
+            // 정예/보스는 설계값이 중요하므로 랜덤 편차를 주지 않는다.
             float healthVariance = 1f;
             float speedVariance = 1f;
             if (GetSpawnRank(spawn, archetype) == EnemyRank.Normal)
@@ -310,6 +315,7 @@ namespace My2DEngine.Game.Systems
                 return profile;
             }
 
+            // 보스 아키타입을 정예/일반 변형으로 재사용할 때는 전용 보스 패턴을 제거한다.
             return StripBossPatternProfile(profile, rank);
         }
 

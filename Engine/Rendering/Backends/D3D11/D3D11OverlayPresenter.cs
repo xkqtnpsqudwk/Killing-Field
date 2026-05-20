@@ -780,6 +780,8 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
             int dstY = atlasPage.CursorY;
             DrawGlyphIntoAtlas(atlasPage, glyph, dstX, dstY);
 
+            // UV는 RectangleF의 Width/Height가 "우하단 좌표"가 아니라 "영역 크기"인 형태로 저장된다.
+            // DrawQuad 쪽에서 x/y + width/height로 실제 u1/v1을 계산한다.
             glyph.UvRect = new RectangleF(
                 dstX / (float)atlasPage.Width,
                 dstY / (float)atlasPage.Height,

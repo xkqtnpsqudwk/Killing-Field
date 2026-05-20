@@ -128,6 +128,9 @@ namespace My2DEngine.Engine.Rendering
         {
             float drawW = w;
             float drawH = h;
+
+            // Renderer의 공통 좌표 규칙은 "게임 내부 좌표에 오프셋을 더한 뒤 최종 창 스케일을 적용"이다.
+            // 이 순서를 유지해야 내부 640x360 기준 UI와 실제 창 좌표계 UI가 같은 API를 공유할 수 있다.
             x += screenOffsetX;
             y += screenOffsetY;
             x *= presentationScaleX;
@@ -163,6 +166,9 @@ namespace My2DEngine.Engine.Rendering
 
             float drawW = w;
             float drawH = h;
+
+            // 이미지도 사각형과 같은 좌표 변환 규칙을 따른다.
+            // backend는 이미 최종 픽셀 좌표만 받으므로 여기서 모든 Form/Game 좌표계를 정리한다.
             x += screenOffsetX;
             y += screenOffsetY;
             x *= presentationScaleX;
@@ -203,6 +209,8 @@ namespace My2DEngine.Engine.Rendering
                 X = x,
                 Y = y,
                 Color = color,
+                // 폰트 크기는 세로 픽셀 밀도 기준으로만 스케일한다.
+                // X/Y 스케일이 달라져도 글자 폭을 별도로 늘리지 않아 텍스트 왜곡을 피한다.
                 Size = size * presentationScaleY
             });
         }
@@ -226,6 +234,9 @@ namespace My2DEngine.Engine.Rendering
             centerX = (centerX + screenOffsetX) * presentationScaleX;
             centerY = (centerY + screenOffsetY) * presentationScaleY;
             float scaledSize = size * presentationScaleY;
+
+            // 중앙 정렬은 backend의 실제 텍스트 측정값에 의존한다.
+            // DirectWrite/GDI 계열 백엔드마다 글리프 폭이 다를 수 있으므로 추정식으로 맞추지 않는다.
             SizeF measure = backend.MeasureText(text, scaledSize);
             float x = centerX - (measure.Width * 0.5f);
             float y = centerY - (measure.Height * 0.5f);
@@ -263,6 +274,8 @@ namespace My2DEngine.Engine.Rendering
             float x = centerX - (measure.Width * 0.5f);
             float y = centerY - (measure.Height * 0.5f);
 
+            // 그림자는 별도 DrawText 명령 두 번으로 만든다.
+            // backend에 텍스트 스타일 개념을 추가하지 않고도 모든 렌더 경로에서 동일한 효과를 낼 수 있다.
             backend.DrawText(new RenderTextCommand
             {
                 Text = text,
