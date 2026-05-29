@@ -210,6 +210,12 @@ namespace My2DEngine.Game.Rendering
                 hudShieldBarFrame = null;
                 hudStaminaBarFrame?.Dispose();
                 hudStaminaBarFrame = null;
+                DisposeImageArray(hudHealthBarFrames);
+                hudHealthBarFrames = null;
+                DisposeImageArray(hudShieldBarFrames);
+                hudShieldBarFrames = null;
+                DisposeImageArray(hudStaminaBarFrames);
+                hudStaminaBarFrames = null;
                 hudCoinPanel?.Dispose();
                 hudCoinPanel = null;
                 hudAmmoPanel?.Dispose();
@@ -272,6 +278,15 @@ namespace My2DEngine.Game.Rendering
         private Image hudCoinPanel;
         private Image hudAmmoPanel;
 
+        /// <summary>
+        /// 체력/보호막/스태미나 게이지의 채움 단계별 프레임 시퀀스.
+        /// 인덱스 0=빈(0%) … 마지막=가득(100%). ratio로 한 장을 골라 그대로 그린다.
+        /// 시퀀스가 없으면 null이며, 이 경우 단일 틀(hud*BarFrame) + 코드 채움으로 폴백한다.
+        /// </summary>
+        private Image[] hudHealthBarFrames;
+        private Image[] hudShieldBarFrames;
+        private Image[] hudStaminaBarFrames;
+
         /// <summary>HUD 게이지/패널 틀 이미지를 로드할 때 줄여 보관할 목표 너비(픽셀). 원본 2508px를 메모리 절약 위해 축소한다.</summary>
         private const int HudFrameTargetWidth = 512;
 
@@ -285,6 +300,10 @@ namespace My2DEngine.Game.Rendering
             hudMessagePanel = LoadOptionalHudImage(Path.Combine(dir, "ButtonFrameHover.png"));
 
             // 게이지/패널 틀은 GPT 원본이 흰 배경(누끼 전)일 수 있어 로드 시 자동 누끼 + 축소한다.
+            // 게이지는 채움 단계별 시퀀스(_0.._N)가 있으면 우선 사용하고, 없으면 단일 틀로 폴백한다.
+            hudHealthBarFrames = LoadCutoutHudSequence(dir, "HealthBar", HudFrameTargetWidth);
+            hudShieldBarFrames = LoadCutoutHudSequence(dir, "ShieldBar", HudFrameTargetWidth);
+            hudStaminaBarFrames = LoadCutoutHudSequence(dir, "StaminaBar", HudFrameTargetWidth);
             hudHealthBarFrame = LoadCutoutHudImage(Path.Combine(dir, "HealthBar.png"), HudFrameTargetWidth);
             hudShieldBarFrame = LoadCutoutHudImage(Path.Combine(dir, "ShieldBar.png"), HudFrameTargetWidth);
             hudStaminaBarFrame = LoadCutoutHudImage(Path.Combine(dir, "StaminaBar.png"), HudFrameTargetWidth);
@@ -295,6 +314,48 @@ namespace My2DEngine.Game.Rendering
         private static Image LoadOptionalHudImage(string path)
         {
             return File.Exists(path) ? Image.FromFile(path) : null;
+        }
+
+        /// <summary>
+        /// {baseName}_0.png 부터 번호가 끊길 때까지 순서대로 누끼+축소 로드해 프레임 배열로 반환한다.
+        /// 첫 프레임(_0)이 없으면 null을 반환한다(시퀀스 미사용으로 폴백).
+        /// </summary>
+        private static Image[] LoadCutoutHudSequence(string dir, string baseName, int targetWidth)
+        {
+            var frames = new List<Image>();
+            for (int i = 0; ; i++)
+            {
+                string path = Path.Combine(dir, baseName + "_" + i + ".png");
+                if (!File.Exists(path))
+                {
+                    break;
+                }
+
+                Image img = LoadCutoutHudImage(path, targetWidth);
+                if (img == null)
+                {
+                    break;
+                }
+
+                frames.Add(img);
+            }
+
+            return frames.Count > 0 ? frames.ToArray() : null;
+        }
+
+        /// <summary>이미지 배열의 모든 원소를 안전하게 해제한다. null 배열/원소는 무시한다.</summary>
+        private static void DisposeImageArray(Image[] images)
+        {
+            if (images == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < images.Length; i++)
+            {
+                images[i]?.Dispose();
+                images[i] = null;
+            }
         }
 
         /// <summary>
@@ -426,14 +487,23 @@ namespace My2DEngine.Game.Rendering
         /// <summary>진행 중 알림 메시지 배경용 패널 틀(호버 버튼 프레임 재사용). 없으면 null(단색 fallback).</summary>
         public Image GetMessagePanel() => hudMessagePanel;
 
-        /// <summary>체력 게이지 빈 틀 이미지. 없으면 null(코드 단색 fallback).</summary>
+        /// <summary>체력 게이지 빈 틀 이미지(시퀀스 없을 때 폴백). 없으면 null(코드 단색 fallback).</summary>
         public Image GetHealthBarFrame() => hudHealthBarFrame;
 
-        /// <summary>보호막 게이지 빈 틀 이미지. 없으면 null.</summary>
+        /// <summary>보호막 게이지 빈 틀 이미지(시퀀스 없을 때 폴백). 없으면 null.</summary>
         public Image GetShieldBarFrame() => hudShieldBarFrame;
 
-        /// <summary>스태미나 게이지 빈 틀 이미지. 없으면 null.</summary>
+        /// <summary>스태미나 게이지 빈 틀 이미지(시퀀스 없을 때 폴백). 없으면 null.</summary>
         public Image GetStaminaBarFrame() => hudStaminaBarFrame;
+
+        /// <summary>체력 게이지 채움 단계 시퀀스(0=빈 … 마지막=가득). 없으면 null.</summary>
+        public Image[] GetHealthBarFrames() => hudHealthBarFrames;
+
+        /// <summary>보호막 게이지 채움 단계 시퀀스. 없으면 null.</summary>
+        public Image[] GetShieldBarFrames() => hudShieldBarFrames;
+
+        /// <summary>스태미나 게이지 채움 단계 시퀀스. 없으면 null.</summary>
+        public Image[] GetStaminaBarFrames() => hudStaminaBarFrames;
 
         /// <summary>코인 패널 틀 이미지. 없으면 null.</summary>
         public Image GetCoinPanel() => hudCoinPanel;

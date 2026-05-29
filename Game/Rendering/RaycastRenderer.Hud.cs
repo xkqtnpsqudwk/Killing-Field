@@ -22,14 +22,14 @@ namespace My2DEngine.Game.Rendering
         private const int MiniMapCellSize = 11;
 
         // === 이미지 틀 기반 HUD 게이지(체력/보호막/스태미나) 레이아웃 (내부 렌더 해상도 기준) ===
-        /// <summary>게이지 바 이미지 너비. 이미지가 4:1 비율이라 높이는 약 1/4.</summary>
+        /// <summary>게이지 바 이미지 너비. 채움 단계 시퀀스 아트가 약 3.19:1(1903×596)이라 높이를 그에 맞춘다.</summary>
         private const float GaugeBarW = 152f;
-        private const float GaugeBarH = 38f;
+        private const float GaugeBarH = 47f;
         private const float GaugeBarX = 10f;
-        private const float GaugeBarGap = 4f;
+        private const float GaugeBarGap = 3f;
         private const float GaugeBarBottomMargin = 8f;
 
-        // 게이지 바 이미지 안에서 동적 채움이 들어갈 내부 표시창(정규화 0~1 UV). 캡처로 튜닝.
+        // 단일 틀 폴백에서 동적 채움이 들어갈 내부 표시창(정규화 0~1 UV). 시퀀스 사용 시에는 무시된다.
         private const float GaugeFillU0 = 0.225f;
         private const float GaugeFillU1 = 0.735f;
         private const float GaugeFillV0 = 0.40f;
@@ -65,15 +65,35 @@ namespace My2DEngine.Game.Rendering
         }
 
         /// <summary>
-        /// 게이지 빈 틀 이미지를 그린 뒤, 내부 표시창을 어둡게 덮어 구워진 세그먼트를 가리고,
-        /// ratio만큼 채움 색을 칠한다.
+        /// 게이지를 그린다. 채움 단계 시퀀스(seq)가 있으면 ratio에 해당하는 프레임을 골라 그대로 그리고,
+        /// 없으면 단일 틀(single) + 내부 표시창 어둡게 덮기 + ratio 채움(코드 채움)으로 폴백한다.
         /// </summary>
-        private void DrawGaugeFrame(Renderer r, Image frame, float ratio, Color fill, float bx, float by, float bw, float bh)
+        private void DrawGauge(Renderer r, Image[] seq, Image single, float ratio, Color fill, float bx, float by, float bw, float bh)
         {
             if (ratio < 0f) ratio = 0f;
             if (ratio > 1f) ratio = 1f;
 
-            r.DrawImage(frame, bx, by, bw, bh);
+            // 채움 단계 시퀀스: ratio로 프레임 한 장 선택 후 그대로 그림(채움이 아트에 구워져 있음).
+            if (seq != null && seq.Length > 0)
+            {
+                int idx = (int)Math.Round(ratio * (seq.Length - 1));
+                if (idx < 0) idx = 0;
+                if (idx >= seq.Length) idx = seq.Length - 1;
+                Image f = seq[idx] ?? single;
+                if (f != null)
+                {
+                    r.DrawImage(f, bx, by, bw, bh);
+                }
+                return;
+            }
+
+            // 폴백: 단일 틀 + 내부 표시창 어둡게 덮어 구워진 세그먼트 가린 뒤 ratio만큼 채움.
+            if (single == null)
+            {
+                return;
+            }
+
+            r.DrawImage(single, bx, by, bw, bh);
 
             float wx0 = bx + (GaugeFillU0 * bw);
             float wx1 = bx + (GaugeFillU1 * bw);
@@ -82,14 +102,12 @@ namespace My2DEngine.Game.Rendering
             float ww = wx1 - wx0;
             float wh = wy1 - wy0;
 
-            // 구워진 밝은 세그먼트를 가리는 어두운 홈.
             r.DrawRectangle(wx0, wy0, ww, wh, Color.FromArgb(250, 14, 14, 16));
 
             if (ratio > 0f)
             {
                 float fw = ww * ratio;
                 r.DrawRectangle(wx0, wy0, fw, wh, fill);
-                // 상단 광택 하이라이트.
                 r.DrawRectangle(wx0, wy0, fw, wh * 0.42f, Color.FromArgb(60, 255, 255, 255));
             }
         }
@@ -797,11 +815,12 @@ namespace My2DEngine.Game.Rendering
             }
 
             float ratio = player.MaxHealth > 0f ? player.Health / player.MaxHealth : 0f;
+            Image[] seq = textureManager?.GetHealthBarFrames();
             Image frame = textureManager?.GetHealthBarFrame();
-            if (frame != null)
+            if (seq != null || frame != null)
             {
                 GetGaugeRect(1, out float bx, out float by, out float bw, out float bh);
-                DrawGaugeFrame(r, frame, ratio, Color.FromArgb(240, 222, 58, 52), bx, by, bw, bh);
+                DrawGauge(r, seq, frame, ratio, Color.FromArgb(240, 222, 58, 52), bx, by, bw, bh);
                 return;
             }
 
@@ -827,11 +846,12 @@ namespace My2DEngine.Game.Rendering
             }
 
             float ratio = player.MaxShield > 0f ? player.Shield / player.MaxShield : 0f;
+            Image[] seq = textureManager?.GetShieldBarFrames();
             Image frame = textureManager?.GetShieldBarFrame();
-            if (frame != null)
+            if (seq != null || frame != null)
             {
                 GetGaugeRect(2, out float bx, out float by, out float bw, out float bh);
-                DrawGaugeFrame(r, frame, ratio, Color.FromArgb(240, 86, 178, 232), bx, by, bw, bh);
+                DrawGauge(r, seq, frame, ratio, Color.FromArgb(240, 86, 178, 232), bx, by, bw, bh);
                 return;
             }
 
@@ -859,12 +879,13 @@ namespace My2DEngine.Game.Rendering
             }
 
             float ratio = player.MaxStamina > 0f ? player.Stamina / player.MaxStamina : 0f;
+            Image[] seq = textureManager?.GetStaminaBarFrames();
             Image frame = textureManager?.GetStaminaBarFrame();
-            if (frame != null)
+            if (seq != null || frame != null)
             {
                 GetGaugeRect(0, out float bx, out float by, out float bw, out float bh);
-                // 스태미나 틀 아트는 호박색이라 채움도 호박색으로 맞춘다.
-                DrawGaugeFrame(r, frame, ratio, Color.FromArgb(240, 242, 156, 44), bx, by, bw, bh);
+                // 스태미나 틀 아트는 호박색이라 폴백 채움도 호박색으로 맞춘다.
+                DrawGauge(r, seq, frame, ratio, Color.FromArgb(240, 242, 156, 44), bx, by, bw, bh);
                 return;
             }
 
