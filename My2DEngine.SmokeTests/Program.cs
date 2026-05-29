@@ -60,6 +60,7 @@ namespace My2DEngine.SmokeTests
                 RunNewSynergyCardsSmokeCheck();
                 RunLuckCoinBonusSmokeCheck();
                 RunMoveSpeedDashSynergySmokeCheck();
+                RunLayoutBehaviorChecks();
                 Console.WriteLine("Smoke checks passed.");
                 return 0;
             }
@@ -1154,6 +1155,66 @@ namespace My2DEngine.SmokeTests
 
             if (!world.GetMoveSpeedDashSynergySmokeSnapshot(5))
                 throw new InvalidOperationException("Smoke check failed for move speed dash synergy: should activate at 5 points.");
+        }
+
+        /// <summary>
+        /// 방 레이아웃 기반 행동 패턴 편향이 적 아키타입이 지원하는 패턴 범위를 절대 벗어나지 않는지 검증한다.
+        /// 모든 전투 방 스폰의 BehaviorPatternPool은 해당 아키타입 풀의 부분집합이어야 하며,
+        /// 적어도 한 번은 레이아웃 편향으로 풀이 실제로 좁혀져야 한다(연계가 무력화되지 않았음을 보장).
+        /// </summary>
+        private static void RunLayoutBehaviorChecks()
+        {
+            bool sawNarrowedPool = false;
+
+            for (int floor = 1; floor <= 60; floor++)
+            {
+                for (int seed = 0; seed < 8; seed++)
+                {
+                    RoomTemplate template = RoomTemplateLibrary.SelectForFloor(floor, new Random(floor * 131 + seed * 17 + 3));
+                    if (template.IsBossRoom || template.IsRestRoom || template.Spawns == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (StageSpawnPoint spawn in template.Spawns)
+                    {
+                        if (spawn == null || spawn.BehaviorPatternPool == null || spawn.BehaviorPatternPool.Length == 0)
+                        {
+                            continue;
+                        }
+
+                        EnemyArchetype archetype = EnemyCatalog.Resolve(spawn.EnemyAssetId, spawn.Type);
+                        EnemyBehaviorPattern[] archetypePool = archetype.BehaviorPatternPool;
+                        if (archetypePool == null || archetypePool.Length == 0)
+                        {
+                            throw new InvalidOperationException(
+                                "Smoke check failed for layout behavior bias: spawn '" + spawn.EnemyAssetId +
+                                "' has a behavior pool but its archetype has none.");
+                        }
+
+                        foreach (EnemyBehaviorPattern p in spawn.BehaviorPatternPool)
+                        {
+                            if (Array.IndexOf(archetypePool, p) < 0)
+                            {
+                                throw new InvalidOperationException(
+                                    "Smoke check failed for layout behavior bias: pattern '" + p +
+                                    "' is not supported by archetype '" + spawn.EnemyAssetId + "'.");
+                            }
+                        }
+
+                        if (spawn.BehaviorPatternPool.Length < archetypePool.Length)
+                        {
+                            sawNarrowedPool = true;
+                        }
+                    }
+                }
+            }
+
+            if (!sawNarrowedPool)
+            {
+                throw new InvalidOperationException(
+                    "Smoke check failed for layout behavior bias: no spawn pool was ever narrowed — the wiring is inert.");
+            }
         }
 
         /// <summary>
