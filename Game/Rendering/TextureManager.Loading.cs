@@ -981,28 +981,32 @@ namespace My2DEngine.Game.Rendering
 
             using (Bitmap argbBitmap = CreateArgbBitmapCopy(bitmap))
             {
-                int size = GameConfig.TextureSize;
-                Color[] data = new Color[size * size];
-                Rectangle rect = new Rectangle(0, 0, size, size);
+                // 비트맵 실제 크기를 따라 읽는다. 스프라이트는 64², 월드 텍스처는 WorldTextureSize²로
+                // 호출되므로 특정 크기를 가정하면(과거 64 하드코딩) 큰 비트맵의 일부만 읽혀
+                // 나머지 슬롯이 폴백 패턴(빨간 체커보드 등)으로 남는다.
+                int width = argbBitmap.Width;
+                int height = argbBitmap.Height;
+                Color[] data = new Color[width * height];
+                Rectangle rect = new Rectangle(0, 0, width, height);
                 BitmapData bitmapData = argbBitmap.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
 
                 try
                 {
-                    int byteCount = Math.Abs(bitmapData.Stride) * size;
+                    int byteCount = Math.Abs(bitmapData.Stride) * height;
                     byte[] raw = new byte[byteCount];
                     Marshal.Copy(bitmapData.Scan0, raw, 0, byteCount);
 
-                    for (int y = 0; y < size; y++)
+                    for (int y = 0; y < height; y++)
                     {
                         int rowStart = y * bitmapData.Stride;
-                        for (int x = 0; x < size; x++)
+                        for (int x = 0; x < width; x++)
                         {
                             int src = rowStart + (x * 4);
                             byte b = raw[src];
                             byte g = raw[src + 1];
                             byte r = raw[src + 2];
                             byte a = raw[src + 3];
-                            data[y * size + x] = Color.FromArgb(a, r, g, b);
+                            data[y * width + x] = Color.FromArgb(a, r, g, b);
                         }
                     }
                 }
