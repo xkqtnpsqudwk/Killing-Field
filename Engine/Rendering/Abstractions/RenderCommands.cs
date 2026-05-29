@@ -34,6 +34,16 @@ namespace My2DEngine.Engine.Rendering.Abstractions
         public float Width;
         /// <summary>그릴 목적지 높이(픽셀). 원본과 다르면 스케일링된다.</summary>
         public float Height;
+        /// <summary>샘플링할 소스 영역 좌측 상단 U(0~1). 전체 이미지는 0.</summary>
+        public float U0;
+        /// <summary>샘플링할 소스 영역 좌측 상단 V(0~1). 전체 이미지는 0.</summary>
+        public float V0;
+        /// <summary>샘플링할 소스 영역 우측 하단 U(0~1). 전체 이미지는 1.</summary>
+        public float U1;
+        /// <summary>샘플링할 소스 영역 우측 하단 V(0~1). 전체 이미지는 1.</summary>
+        public float V1;
+        /// <summary>이미지에 곱할 색조/불투명도. 흰색 불투명(255,255,255,255)이면 원본 그대로 그린다.</summary>
+        public Color Tint;
     }
 
     /// <summary>

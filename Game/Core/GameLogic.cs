@@ -161,6 +161,9 @@ namespace My2DEngine.Game.Core
         /// <summary>사망 후 BGM 정지 처리를 한 번만 수행하기 위한 플래그.</summary>
         private bool deathMusicStopped;
 
+        /// <summary>첫 런 조작 안내 오버레이가 표시되는 남은 시간(초). 0이면 표시 안 함.</summary>
+        private float controlsTutorialTimer;
+
         /// <summary>현재 LMG가 연사 준비 상태인지 여부. 필요 시 준비 지연을 거칠 수 있으나 Heavy Chaingun은 즉시 진입한다.</summary>
         private bool lmgSpinActive;
 
@@ -813,7 +816,7 @@ namespace My2DEngine.Game.Core
         {
             cachedRenderer = r;
             renderer.Render(r, screenWidth, screenHeight, player, weapon, rewardPickups, playerProjectiles, enemyManager.GetBossEnemy(),
-                bossIntroTimer, stageStatusMessage, interactPromptText, victory,
+                bossIntroTimer, stageStatusMessage, GetStageStatusAlpha(), interactPromptText, victory,
                 playerDamageFlashTimer, playerDamageFlashDirX, playerDamageFlashDirY,
                 playerDamageShakeTimer, playerDamageShakePower,
                 playerRecoilShakeTimer, playerRecoilShakePower,
@@ -829,6 +832,7 @@ namespace My2DEngine.Game.Core
             DrawPermanentStatsUI(r);
             DrawPlayerStatsOverlay(r);
             DrawEndingSequenceUI(r);
+            DrawControlsTutorialOverlay(r);
         }
 
         /// <summary>

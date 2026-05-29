@@ -44,9 +44,9 @@ namespace My2DEngine.Game.Core
                         INSERT OR REPLACE INTO permanent_progression
                             (id, unspent_points, health_points, move_speed_points,
                              sense_value, luck_value, pistol_damage_points,
-                             endless_mode_unlocked, updated_at)
+                             endless_mode_unlocked, has_seen_controls, updated_at)
                         VALUES
-                            (1, @up, @hp, @ms, @sv, @lv, @pd, @em, @ua)";
+                            (1, @up, @hp, @ms, @sv, @lv, @pd, @em, @hsc, @ua)";
 
                     cmd.Parameters.AddWithValue("@up", data.UnspentPoints);
                     cmd.Parameters.AddWithValue("@hp", data.HealthPoints);
@@ -55,6 +55,7 @@ namespace My2DEngine.Game.Core
                     cmd.Parameters.AddWithValue("@lv", data.LuckValue);
                     cmd.Parameters.AddWithValue("@pd", data.PistolDamagePoints);
                     cmd.Parameters.AddWithValue("@em", data.EndlessModeUnlocked ? 1 : 0);
+                    cmd.Parameters.AddWithValue("@hsc", data.HasSeenControls ? 1 : 0);
                     cmd.Parameters.AddWithValue("@ua", DateTime.UtcNow.ToString("o"));
 
                     cmd.ExecuteNonQuery();
@@ -85,6 +86,7 @@ namespace My2DEngine.Game.Core
                             luck_value            REAL    NOT NULL DEFAULT 0.0,
                             pistol_damage_points  INTEGER NOT NULL DEFAULT 0,
                             endless_mode_unlocked INTEGER NOT NULL DEFAULT 0,
+                            has_seen_controls     INTEGER NOT NULL DEFAULT 0,
                             updated_at            TEXT    NOT NULL DEFAULT ''
                         )";
                     cmd.ExecuteNonQuery();
@@ -146,6 +148,11 @@ namespace My2DEngine.Game.Core
                 EnsureColumnExists(conn, "run_save", "bonus_shield_regen_delay", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "bonus_shielded_damage", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "bonus_dash_strike_damage", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_low_health_rage", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_kill_chain", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_explosive_specialist", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_low_ammo_rage", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_rapid_fire_chain", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "player_shield", "REAL NOT NULL DEFAULT 100");
                 EnsureColumnExists(conn, "run_save", "shield_regen_delay_timer", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "card_choice_bonus_offered", "INTEGER NOT NULL DEFAULT 0");
@@ -157,6 +164,8 @@ namespace My2DEngine.Game.Core
                 EnsureColumnExists(conn, "run_save", "weapon_upgrade_state", "TEXT NOT NULL DEFAULT ''");
                 EnsureColumnExists(conn, "run_save", "run_stat_grade_state", "TEXT NOT NULL DEFAULT ''");
                 EnsureColumnExists(conn, "run_save", "run_stat_pickup_state", "TEXT NOT NULL DEFAULT ''");
+                EnsureColumnExists(conn, "permanent_progression", "has_seen_controls", "INTEGER NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_records", "is_victory", "INTEGER NOT NULL DEFAULT 0");
 
                 using (var cmd = conn.CreateCommand())
                 {
@@ -167,7 +176,8 @@ namespace My2DEngine.Game.Core
                             enemies_killed   INTEGER NOT NULL DEFAULT 0,
                             bosses_killed    INTEGER NOT NULL DEFAULT 0,
                             duration_seconds INTEGER NOT NULL DEFAULT 0,
-                            ended_at         TEXT    NOT NULL DEFAULT ''
+                            ended_at         TEXT    NOT NULL DEFAULT '',
+                            is_victory       INTEGER NOT NULL DEFAULT 0
                         )";
                     cmd.ExecuteNonQuery();
                 }
@@ -227,7 +237,9 @@ namespace My2DEngine.Game.Core
                                combat_floor_clears, boss_clear_growth, owned_weapons_mask, coin_count,
                                weapon_card_pool_count, rest_room_cooldown, current_weapon_type,
                                weapon_ammo_state, weapon_upgrade_state,
-                               run_stat_grade_state, run_stat_pickup_state
+                               run_stat_grade_state, run_stat_pickup_state,
+                               bonus_low_health_rage, bonus_kill_chain,
+                               bonus_explosive_specialist, bonus_low_ammo_rage, bonus_rapid_fire_chain
                         FROM run_save WHERE id = 1";
 
                     using (var reader = cmd.ExecuteReader())
@@ -269,6 +281,11 @@ namespace My2DEngine.Game.Core
                             WeaponUpgradeState  = reader.GetString(30),
                             RunStatGradeState   = reader.GetString(31),
                             RunStatPickupState  = reader.GetString(32),
+                            BonusLowHealthRage  = (float)reader.GetDouble(33),
+                            BonusKillChain      = (float)reader.GetDouble(34),
+                            BonusExplosiveSpecialist = (float)reader.GetDouble(35),
+                            BonusLowAmmoRage    = (float)reader.GetDouble(36),
+                            BonusRapidFireChain = (float)reader.GetDouble(37),
                         };
                     }
                 }
@@ -301,12 +318,17 @@ namespace My2DEngine.Game.Core
                              combat_floor_clears, boss_clear_growth, owned_weapons_mask, coin_count,
                              weapon_card_pool_count, rest_room_cooldown, current_weapon_type,
                              weapon_ammo_state, weapon_upgrade_state,
-                             run_stat_grade_state, run_stat_pickup_state, saved_at)
+                             run_stat_grade_state, run_stat_pickup_state,
+                             bonus_low_health_rage, bonus_kill_chain,
+                             bonus_explosive_specialist, bonus_low_ammo_rage, bonus_rapid_fire_chain,
+                             saved_at)
                         VALUES
                             (1, @fl, @ph, @bh, @bm, @bd, @ba, @bdc, @bcd, @bls,
                              @bdr, @bsd, @bkh, @bkdr, @bcc, @bcb, @bsrr, @bsrd, @bsdm, @bdsd, @ps, @srdt, @bcbo,
                              @cf, @bg, @ow, @cc,
-                             @wcp, @rrc, @cwt, @was, @wus, @rgs, @rps, @sa)";
+                             @wcp, @rrc, @cwt, @was, @wus, @rgs, @rps,
+                             @blhr, @bkc, @bes, @blar, @brfc,
+                             @sa)";
 
                     cmd.Parameters.AddWithValue("@fl", data.Floor);
                     cmd.Parameters.AddWithValue("@ph", data.PlayerHealth);
@@ -341,6 +363,11 @@ namespace My2DEngine.Game.Core
                     cmd.Parameters.AddWithValue("@wus", data.WeaponUpgradeState ?? string.Empty);
                     cmd.Parameters.AddWithValue("@rgs", data.RunStatGradeState ?? string.Empty);
                     cmd.Parameters.AddWithValue("@rps", data.RunStatPickupState ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@blhr", data.BonusLowHealthRage);
+                    cmd.Parameters.AddWithValue("@bkc", data.BonusKillChain);
+                    cmd.Parameters.AddWithValue("@bes", data.BonusExplosiveSpecialist);
+                    cmd.Parameters.AddWithValue("@blar", data.BonusLowAmmoRage);
+                    cmd.Parameters.AddWithValue("@brfc", data.BonusRapidFireChain);
                     cmd.Parameters.AddWithValue("@sa", DateTime.UtcNow.ToString("o"));
 
                     cmd.ExecuteNonQuery();
@@ -379,15 +406,16 @@ namespace My2DEngine.Game.Core
                 {
                     cmd.CommandText = @"
                         INSERT INTO run_records
-                            (floor_reached, enemies_killed, bosses_killed, duration_seconds, ended_at)
+                            (floor_reached, enemies_killed, bosses_killed, duration_seconds, ended_at, is_victory)
                         VALUES
-                            (@fr, @ek, @bk, @ds, @ea)";
+                            (@fr, @ek, @bk, @ds, @ea, @iv)";
 
                     cmd.Parameters.AddWithValue("@fr", record.FloorReached);
                     cmd.Parameters.AddWithValue("@ek", record.EnemiesKilled);
                     cmd.Parameters.AddWithValue("@bk", record.BossesKilled);
                     cmd.Parameters.AddWithValue("@ds", record.DurationSeconds);
                     cmd.Parameters.AddWithValue("@ea", record.EndedAt ?? DateTime.UtcNow.ToString("o"));
+                    cmd.Parameters.AddWithValue("@iv", record.IsVictory ? 1 : 0);
 
                     cmd.ExecuteNonQuery();
                 }
@@ -406,7 +434,7 @@ namespace My2DEngine.Game.Core
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"
-                        SELECT id, floor_reached, enemies_killed, bosses_killed, duration_seconds, ended_at
+                        SELECT id, floor_reached, enemies_killed, bosses_killed, duration_seconds, ended_at, is_victory
                         FROM run_records
                         ORDER BY id DESC
                         LIMIT @lim";
@@ -425,6 +453,7 @@ namespace My2DEngine.Game.Core
                                 BossesKilled   = reader.GetInt32(3),
                                 DurationSeconds = reader.GetInt32(4),
                                 EndedAt        = reader.GetString(5),
+                                IsVictory      = reader.GetInt32(6) != 0,
                             });
                         }
                     }
@@ -522,7 +551,7 @@ namespace My2DEngine.Game.Core
                 cmd.CommandText = @"
                     SELECT unspent_points, health_points, move_speed_points,
                            sense_value, luck_value, pistol_damage_points,
-                           endless_mode_unlocked
+                           endless_mode_unlocked, has_seen_controls
                     FROM permanent_progression
                     WHERE id = 1";
 
@@ -540,6 +569,7 @@ namespace My2DEngine.Game.Core
                         LuckValue           = (float)reader.GetDouble(4),
                         PistolDamagePoints  = reader.GetInt32(5),
                         EndlessModeUnlocked = reader.GetInt32(6) != 0,
+                        HasSeenControls     = reader.GetInt32(7) != 0,
                     };
                 }
             }

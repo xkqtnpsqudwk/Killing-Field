@@ -146,6 +146,39 @@ namespace My2DEngine.Game.Config
         /// <summary>대시 직후 피해 증가 카드가 발동하는 시간 창(초).</summary>
         public const float DashStrikeDamageWindow = 1.2f;
 
+        /// <summary>저체력 분노 카드의 최대 누적값.</summary>
+        public const float LowHealthRageBonusCap = 0.40f;
+        /// <summary>저체력 분노 카드가 발동하는 체력 비율 임계값 (30% 미만).</summary>
+        public const float LowHealthRageThreshold = 0.30f;
+
+        /// <summary>처치 연계 카드의 최대 누적값.</summary>
+        public const float KillChainBonusCap = 0.40f;
+        /// <summary>처치 연계 카드의 발동 시간 창(초). 이 시간 내 다음 발사에 보너스가 적용된다.</summary>
+        public const float KillChainWindow = 1.5f;
+
+        /// <summary>폭발 전문가 카드의 최대 누적값 (AutoCannon 장착 시 발동).</summary>
+        public const float ExplosiveSpecialistBonusCap = 0.40f;
+
+        /// <summary>탄창 분노 카드의 최대 누적값.</summary>
+        public const float LowAmmoRageBonusCap = 0.40f;
+        /// <summary>탄창 분노 카드가 발동하는 잔탄 비율 임계값 (15% 이하).</summary>
+        public const float LowAmmoRageThreshold = 0.15f;
+
+        /// <summary>연사 가속 카드의 최대 누적값.</summary>
+        public const float RapidFireChainBonusCap = 0.40f;
+        /// <summary>연사 가속 카드가 발동하는 최소 연속 명중 수.</summary>
+        public const int RapidFireChainMinStreak = 3;
+        /// <summary>연사 가속 카드의 연속 명중 스트릭이 이 시간(초) 내에 갱신되지 않으면 초기화된다.</summary>
+        public const float RapidFireChainStreakDecayTime = 2.0f;
+
+        /// <summary>운 레벨당 코인 드롭 확률 보정 최대값 (10레벨 = +20%).</summary>
+        public const float LuckCoinDropBonusMax = 0.20f;
+
+        /// <summary>이동 속도 영구 스탯이 이 포인트 이상이면 대시 쿨다운 추가 감소가 활성화된다.</summary>
+        public const int MoveSpeedDashSynergyThreshold = 3;
+        /// <summary>이동 속도 시너지 활성화 시 추가 대시 쿨다운 감소 비율.</summary>
+        public const float MoveSpeedDashSynergyBonus = 0.08f;
+
         /// <summary>독성 안개 위험 방의 피해 간격(초).</summary>
         public const float ToxicMistDamageInterval = 1.15f;
 

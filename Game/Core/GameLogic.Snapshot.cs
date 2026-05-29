@@ -423,6 +423,85 @@ namespace My2DEngine.Game.Core
             }
         }
 
+        /// <summary>
+        /// 새 조건부 피해 카드(LowHealthRage, KillChain, ExplosiveSpecialist, LowAmmoRage, RapidFireChain)의
+        /// 발동 여부와 보너스 적용이 올바른지 검증하기 위한 스모크 스냅샷.
+        /// </summary>
+        internal float GetNewConditionalDamageSmokeSnapshot(
+            float baseDamage,
+            float healthRatio,
+            float lowHealthRageBonus,
+            bool killChainWindowActive,
+            float killChainBonus,
+            WeaponType currentWeaponType,
+            float explosiveSpecialistBonus,
+            float ammoRatio,
+            float lowAmmoRageBonus,
+            int hitStreak,
+            float rapidFireChainBonus)
+        {
+            float prevHealth = player.Health;
+            float prevMaxHealth = player.MaxHealth;
+            WeaponType prevWeaponType = weapon.CurrentType;
+            float prevKillChainTimer = killChainWindowTimer;
+            int prevStreak = rapidFireHitStreak;
+            float prevStreakDecay = rapidFireStreakDecayTimer;
+            float prevLHR = runStatBonusTotals[(int)StatType.LowHealthRage];
+            float prevKC = runStatBonusTotals[(int)StatType.KillChain];
+            float prevES = runStatBonusTotals[(int)StatType.ExplosiveSpecialist];
+            float prevLAR = runStatBonusTotals[(int)StatType.LowAmmoRage];
+            float prevRFC = runStatBonusTotals[(int)StatType.RapidFireChain];
+            try
+            {
+                player.MaxHealth = 100f;
+                player.Health = 100f * healthRatio;
+                weapon.SwitchTo(currentWeaponType);
+                int maxAmmo = weapon.GetMaxAmmo(currentWeaponType);
+                weapon.SetAmmoForSmoke(currentWeaponType, (int)Math.Round(maxAmmo * ammoRatio));
+                killChainWindowTimer = killChainWindowActive ? GameConfig.KillChainWindow : 0f;
+                rapidFireHitStreak = hitStreak;
+                rapidFireStreakDecayTimer = hitStreak > 0 ? GameConfig.RapidFireChainStreakDecayTime : 0f;
+                runStatBonusTotals[(int)StatType.LowHealthRage] = lowHealthRageBonus;
+                runStatBonusTotals[(int)StatType.KillChain] = killChainBonus;
+                runStatBonusTotals[(int)StatType.ExplosiveSpecialist] = explosiveSpecialistBonus;
+                runStatBonusTotals[(int)StatType.LowAmmoRage] = lowAmmoRageBonus;
+                runStatBonusTotals[(int)StatType.RapidFireChain] = rapidFireChainBonus;
+                return ApplyOutgoingDamageModifiers(baseDamage);
+            }
+            finally
+            {
+                player.MaxHealth = prevMaxHealth;
+                player.Health = prevHealth;
+                weapon.SwitchTo(prevWeaponType);
+                killChainWindowTimer = prevKillChainTimer;
+                rapidFireHitStreak = prevStreak;
+                rapidFireStreakDecayTimer = prevStreakDecay;
+                runStatBonusTotals[(int)StatType.LowHealthRage] = prevLHR;
+                runStatBonusTotals[(int)StatType.KillChain] = prevKC;
+                runStatBonusTotals[(int)StatType.ExplosiveSpecialist] = prevES;
+                runStatBonusTotals[(int)StatType.LowAmmoRage] = prevLAR;
+                runStatBonusTotals[(int)StatType.RapidFireChain] = prevRFC;
+            }
+        }
+
+        /// <summary>Luck 레벨에 따른 코인 드롭 확률 보너스 값을 반환한다.</summary>
+        internal float GetLuckCoinDropBonusSmokeSnapshot(int luckLevel)
+        {
+            return luckLevel * (GameConfig.LuckCoinDropBonusMax / 10f);
+        }
+
+        /// <summary>카드 UI에 표시되는 조건부 카드 발동 조건 설명 텍스트를 반환한다.</summary>
+        internal string GetStatConditionTextSmokeSnapshot(StatType stat)
+        {
+            return GetStatConditionText(stat);
+        }
+
+        /// <summary>MoveSpeed 포인트 3 이상일 때 대시 쿨다운 추가 감소가 적용되는지 반환한다.</summary>
+        internal bool GetMoveSpeedDashSynergySmokeSnapshot(int moveSpeedPoints)
+        {
+            return moveSpeedPoints >= GameConfig.MoveSpeedDashSynergyThreshold;
+        }
+
         internal RunSummarySnapshot CreateRunSummarySmokeSnapshot(
             int floorReached,
             int enemiesKilled,

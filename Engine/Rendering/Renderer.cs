@@ -159,6 +159,30 @@ namespace My2DEngine.Engine.Rendering
         /// <param name="h">출력할 높이.</param>
         public void DrawImage(Image img, float x, float y, float w, float h)
         {
+            DrawImageRegion(img, x, y, w, h, 0f, 0f, 1f, 1f, Color.White);
+        }
+
+        /// <summary>
+        /// 이미지를 색조/불투명도(tint)와 함께 그린다. 흰색 불투명이면 원본 그대로,
+        /// 알파를 낮추면 페이드, 색을 주면 색조가 적용된다(히트마커 페이드 등).
+        /// </summary>
+        public void DrawImage(Image img, float x, float y, float w, float h, Color tint)
+        {
+            DrawImageRegion(img, x, y, w, h, 0f, 0f, 1f, 1f, tint);
+        }
+
+        /// <summary>
+        /// 이미지의 일부 영역(UV 0~1)만 지정한 목적지에 늘려 그린다.
+        /// 9-slice 등 부분 샘플링이 필요한 경우에 사용한다.
+        /// </summary>
+        public void DrawImageRegion(Image img, float x, float y, float w, float h, float u0, float v0, float u1, float v1)
+        {
+            DrawImageRegion(img, x, y, w, h, u0, v0, u1, v1, Color.White);
+        }
+
+        /// <summary>UV 영역과 tint를 함께 지정해 이미지를 그린다.</summary>
+        public void DrawImageRegion(Image img, float x, float y, float w, float h, float u0, float v0, float u1, float v1, Color tint)
+        {
             if (img == null)
             {
                 return;
@@ -181,8 +205,79 @@ namespace My2DEngine.Engine.Rendering
                 X = x,
                 Y = y,
                 Width = drawW,
-                Height = drawH
+                Height = drawH,
+                U0 = u0,
+                V0 = v0,
+                U1 = u1,
+                V1 = v1,
+                Tint = tint
             });
+        }
+
+        /// <summary>
+        /// 9-slice 방식으로 이미지를 그린다. 네 모서리는 원본 크기를 유지하고
+        /// 가장자리와 중앙만 늘어나, 패널·버튼 배경을 임의 크기로 왜곡 없이 표현한다.
+        /// </summary>
+        /// <param name="img">9-slice 소스 이미지.</param>
+        /// <param name="x">목적지 왼쪽 상단 X (내부 렌더 해상도 기준).</param>
+        /// <param name="y">목적지 왼쪽 상단 Y.</param>
+        /// <param name="w">목적지 너비.</param>
+        /// <param name="h">목적지 높이.</param>
+        /// <param name="srcBorderPx">소스 이미지에서 모서리로 취급할 테두리 두께(픽셀).</param>
+        /// <param name="dstBorder">목적지에서 모서리가 차지할 두께(내부 렌더 해상도 기준 픽셀).</param>
+        public void DrawImageNineSlice(Image img, float x, float y, float w, float h, float srcBorderPx, float dstBorder)
+        {
+            DrawImageNineSlice(img, x, y, w, h, srcBorderPx, dstBorder, Color.White);
+        }
+
+        /// <summary>
+        /// 9-slice 방식으로 이미지를 tint(색조/불투명도)와 함께 그린다.
+        /// tint 알파를 낮추면 프레임 전체가 균일하게 페이드된다(메시지 패널 페이드아웃 등).
+        /// </summary>
+        public void DrawImageNineSlice(Image img, float x, float y, float w, float h, float srcBorderPx, float dstBorder, Color tint)
+        {
+            if (img == null)
+            {
+                return;
+            }
+
+            float iw = img.Width;
+            float ih = img.Height;
+            if (iw <= 0f || ih <= 0f)
+            {
+                return;
+            }
+
+            // 목적지가 양쪽 테두리 합보다 작으면 테두리를 비례 축소해 겹침을 막는다.
+            float db = dstBorder;
+            if (db * 2f > w) db = w * 0.5f;
+            if (db * 2f > h) db = h * 0.5f;
+
+            // 소스 UV 분할점
+            float su = System.Math.Min(0.5f, srcBorderPx / iw);
+            float sv = System.Math.Min(0.5f, srcBorderPx / ih);
+            float[] u = { 0f, su, 1f - su, 1f };
+            float[] v = { 0f, sv, 1f - sv, 1f };
+
+            // 목적지 분할점
+            float[] dx = { x, x + db, x + w - db, x + w };
+            float[] dy = { y, y + db, y + h - db, y + h };
+
+            for (int row = 0; row < 3; row++)
+            {
+                for (int col = 0; col < 3; col++)
+                {
+                    float cellW = dx[col + 1] - dx[col];
+                    float cellH = dy[row + 1] - dy[row];
+                    if (cellW <= 0f || cellH <= 0f)
+                    {
+                        continue;
+                    }
+
+                    DrawImageRegion(img, dx[col], dy[row], cellW, cellH,
+                        u[col], v[row], u[col + 1], v[row + 1], tint);
+                }
+            }
         }
 
         /// <summary>

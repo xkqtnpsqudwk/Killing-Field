@@ -8,5 +8,6 @@ namespace My2DEngine.Game.Core
         public int BossesKilled { get; set; }
         public int DurationSeconds { get; set; }
         public string EndedAt { get; set; }
+        public bool IsVictory { get; set; }
     }
 }

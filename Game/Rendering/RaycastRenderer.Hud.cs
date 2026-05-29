@@ -21,6 +21,79 @@ namespace My2DEngine.Game.Rendering
         /// <summary>미니맵에서 타일 하나를 표시하는 픽셀 크기.</summary>
         private const int MiniMapCellSize = 11;
 
+        // === 이미지 틀 기반 HUD 게이지(체력/보호막/스태미나) 레이아웃 (내부 렌더 해상도 기준) ===
+        /// <summary>게이지 바 이미지 너비. 이미지가 4:1 비율이라 높이는 약 1/4.</summary>
+        private const float GaugeBarW = 152f;
+        private const float GaugeBarH = 38f;
+        private const float GaugeBarX = 10f;
+        private const float GaugeBarGap = 4f;
+        private const float GaugeBarBottomMargin = 8f;
+
+        // 게이지 바 이미지 안에서 동적 채움이 들어갈 내부 표시창(정규화 0~1 UV). 캡처로 튜닝.
+        private const float GaugeFillU0 = 0.225f;
+        private const float GaugeFillU1 = 0.735f;
+        private const float GaugeFillV0 = 0.40f;
+        private const float GaugeFillV1 = 0.655f;
+
+        // === 이미지 틀 기반 우하단 가로 패널(코인/탄약) 레이아웃 ===
+        private const float HudPanelW = 188f;
+        private const float HudPanelH = 47f;
+        private const float HudPanelRightMargin = 12f;
+        private const float HudPanelBottomMargin = 10f;
+        private const float HudPanelGap = 5f;
+
+        /// <summary>
+        /// 좌하단 게이지 스택에서 slotFromBottom(0=스태미나, 1=체력, 2=보호막) 위치의 바 사각형을 계산한다.
+        /// </summary>
+        private void GetGaugeRect(int slotFromBottom, out float x, out float y, out float w, out float h)
+        {
+            w = GaugeBarW;
+            h = GaugeBarH;
+            x = GaugeBarX;
+            y = frameH - GaugeBarBottomMargin - GaugeBarH - (slotFromBottom * (GaugeBarH + GaugeBarGap));
+        }
+
+        /// <summary>
+        /// 우하단 패널 스택에서 slotFromBottom(0=탄약, 1=코인) 위치의 패널 사각형을 계산한다.
+        /// </summary>
+        private void GetHudPanelRect(int slotFromBottom, out float x, out float y, out float w, out float h)
+        {
+            w = HudPanelW;
+            h = HudPanelH;
+            x = frameW - HudPanelW - HudPanelRightMargin;
+            y = frameH - HudPanelBottomMargin - HudPanelH - (slotFromBottom * (HudPanelH + HudPanelGap));
+        }
+
+        /// <summary>
+        /// 게이지 빈 틀 이미지를 그린 뒤, 내부 표시창을 어둡게 덮어 구워진 세그먼트를 가리고,
+        /// ratio만큼 채움 색을 칠한다.
+        /// </summary>
+        private void DrawGaugeFrame(Renderer r, Image frame, float ratio, Color fill, float bx, float by, float bw, float bh)
+        {
+            if (ratio < 0f) ratio = 0f;
+            if (ratio > 1f) ratio = 1f;
+
+            r.DrawImage(frame, bx, by, bw, bh);
+
+            float wx0 = bx + (GaugeFillU0 * bw);
+            float wx1 = bx + (GaugeFillU1 * bw);
+            float wy0 = by + (GaugeFillV0 * bh);
+            float wy1 = by + (GaugeFillV1 * bh);
+            float ww = wx1 - wx0;
+            float wh = wy1 - wy0;
+
+            // 구워진 밝은 세그먼트를 가리는 어두운 홈.
+            r.DrawRectangle(wx0, wy0, ww, wh, Color.FromArgb(250, 14, 14, 16));
+
+            if (ratio > 0f)
+            {
+                float fw = ww * ratio;
+                r.DrawRectangle(wx0, wy0, fw, wh, fill);
+                // 상단 광택 하이라이트.
+                r.DrawRectangle(wx0, wy0, fw, wh * 0.42f, Color.FromArgb(60, 255, 255, 255));
+            }
+        }
+
         /// <summary>
         /// 보스 이름 텍스트를 렌더러를 통해 화면에 그린다.
         /// 보스가 없거나 사망했으면 아무것도 그리지 않는다.
@@ -49,14 +122,15 @@ namespace My2DEngine.Game.Rendering
         /// <param name="bossIntroTimer">보스 등장 연출 남은 시간(초). 0 이하이면 생략한다.</param>
         /// <param name="bossEnemy">보스 적 인스턴스. 이름 표시에 사용된다.</param>
         /// <param name="victory">스테이지 클리어 여부.</param>
-        private void DrawStageOverlay(Renderer r, string stageStatusMessage, string interactPromptText, float bossIntroTimer, Enemy bossEnemy, bool victory)
+        private void DrawStageOverlay(Renderer r, string stageStatusMessage, float stageStatusAlpha, string interactPromptText, float bossIntroTimer, Enemy bossEnemy, bool victory)
         {
-            if (!string.IsNullOrWhiteSpace(stageStatusMessage))
+            if (!string.IsNullOrWhiteSpace(stageStatusMessage) && stageStatusAlpha > 0f)
             {
+                float a = Math.Min(1f, stageStatusAlpha);
                 float panelH = 28f;
                 float panelY = frameH * 0.06f;
                 r.DrawTextCenteredShadow(stageStatusMessage, frameW * 0.5f, panelY + panelH * 0.5f,
-                    Color.FromArgb(255, 235, 220, 180), 11f);
+                    Color.FromArgb((int)(255f * a), 235, 220, 180), 11f);
             }
 
             if (!string.IsNullOrWhiteSpace(interactPromptText))
@@ -69,10 +143,11 @@ namespace My2DEngine.Game.Rendering
 
             if (bossIntroTimer > 0f && bossEnemy != null && bossEnemy.Alive)
             {
+                float a = Math.Min(1f, bossIntroTimer / GameConfig.BossIntroDuration);
                 r.DrawTextCenteredShadow("BOSS ENCOUNTER", frameW * 0.5f, frameH * 0.29f,
-                    Color.FromArgb(255, 255, 145, 95), 20f);
+                    Color.FromArgb((int)(255f * a), 255, 145, 95), 20f);
                 r.DrawTextCenteredShadow(string.IsNullOrWhiteSpace(bossEnemy.DisplayName) ? "Arena Warden" : bossEnemy.DisplayName,
-                    frameW * 0.5f, frameH * 0.335f, Color.White, 14f);
+                    frameW * 0.5f, frameH * 0.335f, Color.FromArgb((int)(255f * a), 255, 255, 255), 14f);
             }
 
             if (victory)
@@ -191,6 +266,27 @@ namespace My2DEngine.Game.Rendering
                 return;
             }
 
+            string specialStatus = GetSpecialStatusText(weapon);
+
+            // 이미지 틀이 있으면 우하단 가로 패널 표시창에 맞춰 텍스트를 배치한다.
+            Image panel = textureManager?.GetAmmoPanel();
+            if (panel != null)
+            {
+                GetHudPanelRect(0, out float px, out float py, out float pw, out float ph);
+                float cx = px + (pw * 0.46f);
+                r.DrawTextCenteredShadow(GetHudWeaponName(weapon.CurrentType), cx, py + (ph * 0.24f),
+                    Color.FromArgb(225, 228, 224, 218), 8f);
+                r.DrawTextCenteredShadow(BuildAmmoCounterText(weapon), cx, py + (ph * 0.58f),
+                    Color.FromArgb(255, 245, 245, 245), 15f);
+                if (!string.IsNullOrWhiteSpace(specialStatus))
+                {
+                    r.DrawTextCenteredShadow(specialStatus, cx, py + (ph * 0.87f),
+                        Color.FromArgb(225, 255, 178, 96), 7.5f);
+                }
+                return;
+            }
+
+            // fallback: 텍스처가 없을 때 기존 세로 박스 레이아웃.
             int panelW = 150;
             int panelH = 132;
             int panelX = frameW - panelW - 16;
@@ -205,7 +301,6 @@ namespace My2DEngine.Game.Rendering
             r.DrawTextCenteredShadow("AMMO", centerX, panelY + 80f,
                 Color.FromArgb(180, 200, 200, 200), 9f);
 
-            string specialStatus = GetSpecialStatusText(weapon);
             if (!string.IsNullOrWhiteSpace(specialStatus))
             {
                 r.DrawTextCenteredShadow(specialStatus, centerX, panelY + 98f,
@@ -256,6 +351,25 @@ namespace My2DEngine.Game.Rendering
         /// <param name="player">코인 상태를 제공하는 플레이어 상태.</param>
         private void DrawCoinHud(Renderer r, Player player)
         {
+            if (r == null || player == null)
+            {
+                return;
+            }
+
+            // 이미지 틀이 있으면 우하단 가로 패널 표시창 중앙에 코인 수를 배치한다.
+            Image panel = textureManager?.GetCoinPanel();
+            if (panel != null)
+            {
+                GetHudPanelRect(1, out float px, out float py, out float pw, out float ph);
+                float cx = px + (pw * 0.46f);
+                r.DrawTextCenteredShadow("COIN", cx, py + (ph * 0.28f),
+                    Color.FromArgb(220, 255, 222, 150), 8f);
+                r.DrawTextCenteredShadow("x" + player.CoinCount, cx, py + (ph * 0.62f),
+                    Color.White, 15f);
+                return;
+            }
+
+            // fallback: 텍스처가 없을 때 기존 박스 레이아웃.
             int panelW = 118;
             int panelX = frameW - panelW - 20;
             int panelY = frameH - 220;
@@ -326,22 +440,21 @@ namespace My2DEngine.Game.Rendering
         /// <param name="bossIntroTimer">보스 등장 연출 남은 시간(초).</param>
         /// <param name="bossEnemy">보스 적 인스턴스.</param>
         /// <param name="victory">스테이지 클리어 여부.</param>
-        private void DrawStageBackdrop(Renderer r, string stageStatusMessage, string interactPromptText, float bossIntroTimer, Enemy bossEnemy, bool victory)
+        private void DrawStageBackdrop(Renderer r, string stageStatusMessage, float stageStatusAlpha, string interactPromptText, float bossIntroTimer, Enemy bossEnemy, bool victory)
         {
             if (r == null)
             {
                 return;
             }
 
-            if (!string.IsNullOrWhiteSpace(stageStatusMessage))
+            // 스테이지 상태 메시지: 호버 프레임 패널 + tint 페이드아웃.
+            if (!string.IsNullOrWhiteSpace(stageStatusMessage) && stageStatusAlpha > 0f)
             {
-                float panelW = Math.Min(frameW * 0.72f, Math.Max(180f, stageStatusMessage.Length * 7.4f));
-                float panelH = 28f;
-                float panelX = (frameW - panelW) * 0.5f;
-                float panelY = frameH * 0.06f;
-                r.DrawRectangle(panelX, panelY, panelW, panelH, Color.FromArgb(150, 10, 10, 10));
+                GetStageMessageRect(stageStatusMessage, out float mx, out float my, out float mw, out float mh);
+                DrawHudMessagePanel(r, mx, my, mw, mh, stageStatusAlpha);
             }
 
+            // 상호작용 힌트는 상태 기반 지속 프롬프트라 페이드 없이 단색 패널을 유지한다.
             if (!string.IsNullOrWhiteSpace(interactPromptText))
             {
                 float panelW = Math.Min(frameW * 0.72f, Math.Max(150f, interactPromptText.Length * 7.2f));
@@ -354,13 +467,71 @@ namespace My2DEngine.Game.Rendering
             if (bossIntroTimer > 0f && bossEnemy != null && bossEnemy.Alive)
             {
                 float alpha = Math.Min(1f, bossIntroTimer / GameConfig.BossIntroDuration);
-                int overlayAlpha = (int)(110f * alpha);
-                r.DrawRectangle(0f, frameH * 0.24f, frameW, 96f, Color.FromArgb(overlayAlpha, 0, 0, 0));
+                GetBossIntroRect(out float bx, out float by, out float bw, out float bh);
+                DrawHudMessagePanel(r, bx, by, bw, bh, alpha);
             }
 
             if (victory)
             {
-                r.DrawRectangle(frameW * 0.5f - 180f, frameH * 0.38f, 360f, 84f, Color.FromArgb(160, 0, 0, 0));
+                GetVictoryRect(out float vx, out float vy, out float vw, out float vh);
+                DrawHudMessagePanel(r, vx, vy, vw, vh, 1f);
+            }
+        }
+
+        /// <summary>스테이지 상단 알림 메시지 패널의 사각형을 계산한다. 텍스트 길이에 비례해 너비가 늘어난다.</summary>
+        private void GetStageMessageRect(string msg, out float x, out float y, out float w, out float h)
+        {
+            w = Math.Min(frameW * 0.78f, Math.Max(230f, (msg?.Length ?? 0) * 8.6f));
+            h = 42f;
+            x = (frameW - w) * 0.5f;
+            y = frameH * 0.06f - 7f;
+        }
+
+        /// <summary>보스 등장 안내 패널의 사각형을 계산한다.</summary>
+        private void GetBossIntroRect(out float x, out float y, out float w, out float h)
+        {
+            w = Math.Min(frameW * 0.64f, 440f);
+            h = 96f;
+            x = (frameW - w) * 0.5f;
+            y = frameH * 0.25f;
+        }
+
+        /// <summary>스테이지 클리어 안내 패널의 사각형을 계산한다.</summary>
+        private void GetVictoryRect(out float x, out float y, out float w, out float h)
+        {
+            w = Math.Min(frameW * 0.60f, 400f);
+            h = 92f;
+            x = (frameW - w) * 0.5f;
+            y = frameH * 0.385f;
+        }
+
+        /// <summary>
+        /// 진행 중 알림 메시지의 배경 패널을 그린다. 호버 프레임 텍스처가 있으면 9-slice를
+        /// tint 알파로 페이드해 그리고, 없으면 단색 사각형으로 대체한다.
+        /// </summary>
+        private void DrawHudMessagePanel(Renderer r, float x, float y, float w, float h, float alpha)
+        {
+            if (alpha <= 0f)
+            {
+                return;
+            }
+
+            if (alpha > 1f)
+            {
+                alpha = 1f;
+            }
+
+            Image frame = textureManager?.GetMessagePanel();
+            if (frame != null)
+            {
+                int a = (int)(255f * alpha);
+                float border = Math.Min(w, h) * 0.45f;
+                r.DrawImageNineSlice(frame, x, y, w, h, frame.Width * 0.16f, border, Color.FromArgb(a, 255, 255, 255));
+            }
+            else
+            {
+                int a = (int)(150f * alpha);
+                r.DrawRectangle(x, y, w, h, Color.FromArgb(a, 10, 10, 10));
             }
         }
 
@@ -469,6 +640,16 @@ namespace My2DEngine.Game.Rendering
                 return;
             }
 
+            // 이미지 틀이 있으면 우하단 가로 패널을 그린다.
+            Image panel = textureManager?.GetAmmoPanel();
+            if (panel != null)
+            {
+                GetHudPanelRect(0, out float px, out float py, out float pw, out float ph);
+                r.DrawImage(panel, px, py, pw, ph);
+                return;
+            }
+
+            // fallback: 텍스처가 없을 때 기존 단색 박스.
             int panelW = 150;
             int panelH = 132;
             int panelX = frameW - panelW - 16;
@@ -487,6 +668,16 @@ namespace My2DEngine.Game.Rendering
                 return;
             }
 
+            // 이미지 틀이 있으면 우하단 가로 패널을 그린다(탄약 패널 위에 스택).
+            Image panel = textureManager?.GetCoinPanel();
+            if (panel != null)
+            {
+                GetHudPanelRect(1, out float px, out float py, out float pw, out float ph);
+                r.DrawImage(panel, px, py, pw, ph);
+                return;
+            }
+
+            // fallback: 텍스처가 없을 때 기존 단색 박스.
             int panelW = 118;
             int panelH = 42;
             int panelX = frameW - panelW - 20;
@@ -605,12 +796,21 @@ namespace My2DEngine.Game.Rendering
                 return;
             }
 
+            float ratio = player.MaxHealth > 0f ? player.Health / player.MaxHealth : 0f;
+            Image frame = textureManager?.GetHealthBarFrame();
+            if (frame != null)
+            {
+                GetGaugeRect(1, out float bx, out float by, out float bw, out float bh);
+                DrawGaugeFrame(r, frame, ratio, Color.FromArgb(240, 222, 58, 52), bx, by, bw, bh);
+                return;
+            }
+
+            // fallback: 텍스처가 없을 때 기존 단색 바.
             int barW = 164;
             int barH = 10;
             int x = 8;
             int y = frameH - 36;
             r.DrawRectangle(x - 2, y - 2, barW + 4, barH + 4, Color.FromArgb(150, 0, 0, 0));
-            float ratio = player.MaxHealth > 0f ? player.Health / player.MaxHealth : 0f;
             if (ratio < 0f) ratio = 0f;
             if (ratio > 1f) ratio = 1f;
             r.DrawRectangle(x, y, barW * ratio, barH, Color.FromArgb(220, 210, 55, 55));
@@ -626,12 +826,21 @@ namespace My2DEngine.Game.Rendering
                 return;
             }
 
+            float ratio = player.MaxShield > 0f ? player.Shield / player.MaxShield : 0f;
+            Image frame = textureManager?.GetShieldBarFrame();
+            if (frame != null)
+            {
+                GetGaugeRect(2, out float bx, out float by, out float bw, out float bh);
+                DrawGaugeFrame(r, frame, ratio, Color.FromArgb(240, 86, 178, 232), bx, by, bw, bh);
+                return;
+            }
+
+            // fallback: 텍스처가 없을 때 기존 단색 바.
             int barW = 164;
             int barH = 8;
             int x = 8;
             int y = frameH - 52;
             r.DrawRectangle(x - 2, y - 2, barW + 4, barH + 4, Color.FromArgb(145, 0, 0, 0));
-            float ratio = player.MaxShield > 0f ? player.Shield / player.MaxShield : 0f;
             if (ratio < 0f) ratio = 0f;
             if (ratio > 1f) ratio = 1f;
             r.DrawRectangle(x, y, barW * ratio, barH, Color.FromArgb(220, 82, 185, 235));
@@ -649,12 +858,22 @@ namespace My2DEngine.Game.Rendering
                 return;
             }
 
+            float ratio = player.MaxStamina > 0f ? player.Stamina / player.MaxStamina : 0f;
+            Image frame = textureManager?.GetStaminaBarFrame();
+            if (frame != null)
+            {
+                GetGaugeRect(0, out float bx, out float by, out float bw, out float bh);
+                // 스태미나 틀 아트는 호박색이라 채움도 호박색으로 맞춘다.
+                DrawGaugeFrame(r, frame, ratio, Color.FromArgb(240, 242, 156, 44), bx, by, bw, bh);
+                return;
+            }
+
+            // fallback: 텍스처가 없을 때 기존 단색 바.
             int barW = 128;
             int barH = 8;
             int x = 8;
             int y = frameH - barH - 10;
             r.DrawRectangle(x - 2, y - 2, barW + 4, barH + 4, Color.FromArgb(150, 0, 0, 0));
-            float ratio = player.MaxStamina > 0f ? player.Stamina / player.MaxStamina : 0f;
             if (ratio < 0f) ratio = 0f;
             if (ratio > 1f) ratio = 1f;
             r.DrawRectangle(x, y, barW * ratio, barH, Color.LimeGreen);
@@ -673,6 +892,16 @@ namespace My2DEngine.Game.Rendering
 
             int cx = frameW / 2;
             int cy = frameH / 2;
+
+            // 조준점 텍스처가 있으면 중앙에 그리고, 없으면 기본 픽셀 십자선을 그린다.
+            Image crosshair = textureManager?.GetCrosshair();
+            if (crosshair != null)
+            {
+                float size = 56f;
+                r.DrawImage(crosshair, cx - size * 0.5f, cy - size * 0.5f, size, size);
+                return;
+            }
+
             r.DrawRectangle(cx - 1, cy - 8, 2, 6, Color.White);
             r.DrawRectangle(cx - 1, cy + 3, 2, 6, Color.White);
             r.DrawRectangle(cx - 8, cy - 1, 6, 2, Color.White);
@@ -700,6 +929,34 @@ namespace My2DEngine.Game.Rendering
 
             int cx = frameW / 2;
             int cy = frameH / 2;
+
+            // 마커 텍스처가 있으면 이미지 + 알파 페이드로 그린다.
+            Image hitImg = textureManager?.GetHitMarker();
+            if (hitImg != null)
+            {
+                if (hitMarkerAlpha > 0f)
+                {
+                    float size = 26f + (1f - hitMarkerAlpha) * 10f;
+                    r.DrawImage(hitImg, cx - size * 0.5f, cy - size * 0.5f, size, size,
+                        Color.FromArgb((int)(255f * hitMarkerAlpha), 255, 255, 255));
+                }
+
+                if (killMarkerAlpha > 0f)
+                {
+                    Image killImg = textureManager.GetKillMarker();
+                    bool dedicated = killImg != null;
+                    Image marker = killImg ?? hitImg;
+                    float ks = 40f + (1f - killMarkerAlpha) * 14f;
+                    // 전용 처치 마커가 있으면 원색 페이드, 없으면 명중 마커에 붉은 색조를 입힌다.
+                    Color kt = dedicated
+                        ? Color.FromArgb((int)(255f * killMarkerAlpha), 255, 255, 255)
+                        : Color.FromArgb((int)(255f * killMarkerAlpha), 255, 80, 60);
+                    r.DrawImage(marker, cx - ks * 0.5f, cy - ks * 0.5f, ks, ks, kt);
+                }
+                return;
+            }
+
+            // 기본 점선 마커 (텍스처 없을 때)
             int baseAlpha = (int)(210f * alpha);
             Color hitColor = Color.FromArgb(baseAlpha, 255, 255, 255);
             DrawDottedHitMarker(r, cx, cy, 10f + (1f - alpha) * 4f, 2f, hitColor);

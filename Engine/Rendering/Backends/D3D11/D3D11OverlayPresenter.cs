@@ -27,7 +27,7 @@ namespace My2DEngine.Engine.Rendering.Backends.D3D11
         private const int MaxCachedImageEntries = 64;
 
         /// <summary>텍스트 렌더링에 사용할 기본 폰트 패밀리 이름입니다.</summary>
-        private const string DefaultFontFamily = "Malgun Gothic";
+        private const string DefaultFontFamily = "Pretendard";
         /// <summary>생성자 호출 시 텍스트 형식/줄 높이만 미리 준비할 폰트 크기 목록입니다.</summary>
         private static readonly float[] PreloadedGlyphSizes = { 9f, 10f, 11f, 12f, 13f, 14f, 18f, 19f, 20f, 24f, 26f, 44f };
         /// <summary>
@@ -187,6 +187,23 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
                 return;
             }
 
+            // UV가 비어 있으면(기본 0,0,0,0) 전체 이미지를 그린다. 9-slice 등은 부분 UV를 지정한다.
+            float u0 = command.U0, v0 = command.V0, u1 = command.U1, v1 = command.V1;
+            if (u1 <= u0 || v1 <= v0)
+            {
+                u0 = 0f; v0 = 0f; u1 = 1f; v1 = 1f;
+            }
+
+            // 텍스처가 premultiplied alpha이므로 tint도 premultiply해서 정점 색으로 넘긴다.
+            // 흰색 불투명이면 (255,255,255,255) 그대로라 원본을 변형 없이 그린다.
+            Color t = command.Tint;
+            if (t.A == 0 && t.R == 0 && t.G == 0 && t.B == 0)
+            {
+                t = Color.White;
+            }
+            int ta = t.A;
+            Color premultTint = Color.FromArgb(ta, t.R * ta / 255, t.G * ta / 255, t.B * ta / 255);
+
             DrawQuad(
                 context,
                 renderTargetView,
@@ -198,8 +215,8 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
                 command.Width,
                 command.Height,
                 0f,
-                new RectangleF(0f, 0f, 1f, 1f),
-                Color.White);
+                new RectangleF(u0, v0, u1 - u0, v1 - v0),
+                premultTint);
         }
 
         /// <summary>
@@ -921,6 +938,34 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
                     Marshal.Copy(data.Scan0, pixels, 0, pixels.Length);
                     width = converted.Width;
                     height = converted.Height;
+
+                    // 오버레이 블렌드 스테이트가 premultiplied alpha(SourceBlend=One)이므로
+                    // straight-alpha 픽셀의 RGB에 알파를 미리 곱해준다. 이렇게 하지 않으면
+                    // 투명 영역(α=0)의 RGB가 그대로 더해져 PNG 배경이 비쳐 보인다.
+                    for (int i = 0; i < pixels.Length; i++)
+                    {
+                        int p = pixels[i];
+                        int a = (p >> 24) & 0xFF;
+                        if (a == 255)
+                        {
+                            continue;
+                        }
+
+                        if (a == 0)
+                        {
+                            pixels[i] = 0;
+                            continue;
+                        }
+
+                        int r = (p >> 16) & 0xFF;
+                        int g = (p >> 8) & 0xFF;
+                        int b = p & 0xFF;
+                        r = (r * a + 127) / 255;
+                        g = (g * a + 127) / 255;
+                        b = (b * a + 127) / 255;
+                        pixels[i] = (a << 24) | (r << 16) | (g << 8) | b;
+                    }
+
                     return pixels;
                 }
                 finally

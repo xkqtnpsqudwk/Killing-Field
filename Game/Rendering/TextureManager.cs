@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Runtime.InteropServices;
 using My2DEngine.Game.Config;
 using My2DEngine.Game;
 
@@ -193,6 +196,25 @@ namespace My2DEngine.Game.Rendering
                     }
                 }
 
+                hudCrosshair?.Dispose();
+                hudCrosshair = null;
+                hudHitMarker?.Dispose();
+                hudHitMarker = null;
+                hudKillMarker?.Dispose();
+                hudKillMarker = null;
+                hudMessagePanel?.Dispose();
+                hudMessagePanel = null;
+                hudHealthBarFrame?.Dispose();
+                hudHealthBarFrame = null;
+                hudShieldBarFrame?.Dispose();
+                hudShieldBarFrame = null;
+                hudStaminaBarFrame?.Dispose();
+                hudStaminaBarFrame = null;
+                hudCoinPanel?.Dispose();
+                hudCoinPanel = null;
+                hudAmmoPanel?.Dispose();
+                hudAmmoPanel = null;
+
                 resolvedAssetPathCache.Clear();
                 resolvedAssetDirectoryCache.Clear();
                 enemySpriteVariants.Clear();
@@ -230,8 +252,194 @@ namespace My2DEngine.Game.Rendering
             LoadPickupSprites();
 
             LoadWeaponTypesFromGunFolders();
+            LoadHudTextures();
             InvalidateGpuTextureCaches();
         }
+
+        /// <summary>HUD 조준점/히트마커 텍스처. Game/Images/ui 폴더에서 로드하며 없으면 null(코드 기본 그리기로 대체).</summary>
+        private Image hudCrosshair;
+        private Image hudHitMarker;
+        private Image hudKillMarker;
+        private Image hudMessagePanel;
+
+        /// <summary>
+        /// 체력/보호막/스태미나 게이지의 "빈 틀" 이미지와 코인/탄약 패널 틀 이미지.
+        /// 게이지는 틀만 제공하고 동적 채움은 코드가 그린다. 없으면 null(코드 단색 fallback).
+        /// </summary>
+        private Image hudHealthBarFrame;
+        private Image hudShieldBarFrame;
+        private Image hudStaminaBarFrame;
+        private Image hudCoinPanel;
+        private Image hudAmmoPanel;
+
+        /// <summary>HUD 게이지/패널 틀 이미지를 로드할 때 줄여 보관할 목표 너비(픽셀). 원본 2508px를 메모리 절약 위해 축소한다.</summary>
+        private const int HudFrameTargetWidth = 512;
+
+        private void LoadHudTextures()
+        {
+            string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Game", "Images", "ui");
+            hudCrosshair = LoadOptionalHudImage(Path.Combine(dir, "Crosshair.png"));
+            hudHitMarker = LoadOptionalHudImage(Path.Combine(dir, "HitMarker.png"));
+            hudKillMarker = LoadOptionalHudImage(Path.Combine(dir, "KillMarker.png"));
+            // 진행 중 알림 메시지 배경에 쓰는 패널 틀. 호버 버튼 프레임을 재사용한다(이미 누끼된 32bpp).
+            hudMessagePanel = LoadOptionalHudImage(Path.Combine(dir, "ButtonFrameHover.png"));
+
+            // 게이지/패널 틀은 GPT 원본이 흰 배경(누끼 전)일 수 있어 로드 시 자동 누끼 + 축소한다.
+            hudHealthBarFrame = LoadCutoutHudImage(Path.Combine(dir, "HealthBar.png"), HudFrameTargetWidth);
+            hudShieldBarFrame = LoadCutoutHudImage(Path.Combine(dir, "ShieldBar.png"), HudFrameTargetWidth);
+            hudStaminaBarFrame = LoadCutoutHudImage(Path.Combine(dir, "StaminaBar.png"), HudFrameTargetWidth);
+            hudCoinPanel = LoadCutoutHudImage(Path.Combine(dir, "CoinPanel.png"), HudFrameTargetWidth);
+            hudAmmoPanel = LoadCutoutHudImage(Path.Combine(dir, "AmmoPanel.png"), HudFrameTargetWidth);
+        }
+
+        private static Image LoadOptionalHudImage(string path)
+        {
+            return File.Exists(path) ? Image.FromFile(path) : null;
+        }
+
+        /// <summary>
+        /// HUD 틀 이미지를 로드한다. 목표 너비로 비율 유지 축소한 뒤,
+        /// 가장자리에 연결된 밝은 무채색(흰 배경)을 flood-fill로 투명화(누끼)한다.
+        /// 이미 투명한 PNG면 누끼 단계가 사실상 무시되므로 누끼 여부와 무관하게 안전하다.
+        /// 파일이 없으면 null을 반환한다.
+        /// </summary>
+        private static Image LoadCutoutHudImage(string path, int targetWidth)
+        {
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+
+            using (Bitmap src = new Bitmap(path))
+            {
+                int tw = (targetWidth > 0 && src.Width > targetWidth) ? targetWidth : src.Width;
+                int th = Math.Max(1, (int)Math.Round(src.Height * (tw / (float)src.Width)));
+                Bitmap bmp = new Bitmap(tw, th, PixelFormat.Format32bppArgb);
+                using (Graphics g = Graphics.FromImage(bmp))
+                {
+                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                    g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                    g.DrawImage(src, new Rectangle(0, 0, tw, th));
+                }
+
+                CutoutBackground(bmp);
+                return bmp;
+            }
+        }
+
+        /// <summary>
+        /// 네 모서리에서 시작하는 flood-fill로 가장자리에 연결된 밝은 무채색 픽셀(흰 배경)의
+        /// 알파를 0으로 만들어 투명화한다. 내부의 채색 세그먼트/아이콘과 어두운 금속 틀은 보존된다.
+        /// </summary>
+        private static void CutoutBackground(Bitmap bmp)
+        {
+            int w = bmp.Width;
+            int h = bmp.Height;
+            Rectangle rect = new Rectangle(0, 0, w, h);
+            BitmapData data = bmp.LockBits(rect, ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+            try
+            {
+                int stride = data.Stride;
+                int total = stride * h;
+                byte[] buf = new byte[total];
+                Marshal.Copy(data.Scan0, buf, 0, total);
+
+                bool[] visited = new bool[w * h];
+                Stack<int> stack = new Stack<int>((w + h) * 2);
+
+                for (int x = 0; x < w; x++)
+                {
+                    SeedBackgroundPixel(buf, visited, stack, stride, w, h, x, 0);
+                    SeedBackgroundPixel(buf, visited, stack, stride, w, h, x, h - 1);
+                }
+                for (int y = 0; y < h; y++)
+                {
+                    SeedBackgroundPixel(buf, visited, stack, stride, w, h, 0, y);
+                    SeedBackgroundPixel(buf, visited, stack, stride, w, h, w - 1, y);
+                }
+
+                while (stack.Count > 0)
+                {
+                    int idx = stack.Pop();
+                    int x = idx % w;
+                    int y = idx / w;
+                    buf[(y * stride) + (x * 4) + 3] = 0;
+                    SeedBackgroundPixel(buf, visited, stack, stride, w, h, x - 1, y);
+                    SeedBackgroundPixel(buf, visited, stack, stride, w, h, x + 1, y);
+                    SeedBackgroundPixel(buf, visited, stack, stride, w, h, x, y - 1);
+                    SeedBackgroundPixel(buf, visited, stack, stride, w, h, x, y + 1);
+                }
+
+                Marshal.Copy(buf, 0, data.Scan0, total);
+            }
+            finally
+            {
+                bmp.UnlockBits(data);
+            }
+        }
+
+        /// <summary>flood-fill 후보 픽셀을 검사해 배경이면 방문 표시 후 스택에 넣는다.</summary>
+        private static void SeedBackgroundPixel(byte[] buf, bool[] visited, Stack<int> stack, int stride, int w, int h, int x, int y)
+        {
+            if (x < 0 || y < 0 || x >= w || y >= h)
+            {
+                return;
+            }
+
+            int idx = (y * w) + x;
+            if (visited[idx])
+            {
+                return;
+            }
+
+            int p = (y * stride) + (x * 4);
+            // 메모리 바이트 순서는 BGRA.
+            if (IsBackgroundColor(buf[p + 2], buf[p + 1], buf[p + 0], buf[p + 3]))
+            {
+                visited[idx] = true;
+                stack.Push(idx);
+            }
+        }
+
+        /// <summary>밝고 무채색(흰 배경)이거나 이미 투명한 픽셀을 배경으로 판정한다.</summary>
+        private static bool IsBackgroundColor(byte r, byte g, byte b, byte a)
+        {
+            if (a < 16)
+            {
+                return true;
+            }
+
+            int mn = Math.Min(r, Math.Min(g, b));
+            int mx = Math.Max(r, Math.Max(g, b));
+            return mn >= 190 && (mx - mn) <= 30;
+        }
+
+        /// <summary>HUD 조준점 텍스처. 없으면 null.</summary>
+        public Image GetCrosshair() => hudCrosshair;
+
+        /// <summary>HUD 명중 마커 텍스처. 없으면 null.</summary>
+        public Image GetHitMarker() => hudHitMarker;
+
+        /// <summary>HUD 처치 마커 텍스처. 없으면 null.</summary>
+        public Image GetKillMarker() => hudKillMarker;
+
+        /// <summary>진행 중 알림 메시지 배경용 패널 틀(호버 버튼 프레임 재사용). 없으면 null(단색 fallback).</summary>
+        public Image GetMessagePanel() => hudMessagePanel;
+
+        /// <summary>체력 게이지 빈 틀 이미지. 없으면 null(코드 단색 fallback).</summary>
+        public Image GetHealthBarFrame() => hudHealthBarFrame;
+
+        /// <summary>보호막 게이지 빈 틀 이미지. 없으면 null.</summary>
+        public Image GetShieldBarFrame() => hudShieldBarFrame;
+
+        /// <summary>스태미나 게이지 빈 틀 이미지. 없으면 null.</summary>
+        public Image GetStaminaBarFrame() => hudStaminaBarFrame;
+
+        /// <summary>코인 패널 틀 이미지. 없으면 null.</summary>
+        public Image GetCoinPanel() => hudCoinPanel;
+
+        /// <summary>탄약 패널 틀 이미지. 없으면 null.</summary>
+        public Image GetAmmoPanel() => hudAmmoPanel;
 
         /// <summary>
         /// 지정 무기 종류의 발사 프레임 이미지를 반환한다.

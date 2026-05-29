@@ -142,6 +142,13 @@ namespace My2DEngine.Game
             return ammoPerWeapon[(int)type];
         }
 
+        /// <summary>스모크 테스트 전용. 지정 무기의 잔탄을 직접 설정한다.</summary>
+        internal void SetAmmoForSmoke(WeaponType type, int amount)
+        {
+            int max = GetMaxAmmoForType(type);
+            ammoPerWeapon[(int)type] = Math.Max(0, Math.Min(max, amount));
+        }
+
         /// <summary>
         /// 저장된 런 상태를 기준으로 무기 업그레이드, 탄약, 현재 장착 무기를 복원한다.
         /// 영구 스탯 배율은 별도로 다시 적용되므로 여기서는 런 전용 상태만 다룬다.

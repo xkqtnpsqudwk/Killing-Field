@@ -91,6 +91,10 @@ namespace My2DEngine
         private Rectangle recordsButtonRect;
         /// <summary>기록 화면의 "뒤로" 버튼 영역.</summary>
         private Rectangle recordsBackRect;
+        /// <summary>기록 화면의 정렬 기준 전환 버튼 영역.</summary>
+        private Rectangle recordsSortRect;
+        /// <summary>기록 화면 정렬 기준. 0=최신, 1=도달 층, 2=적 처치, 3=플레이 시간.</summary>
+        private int recordsSortMode;
         /// <summary>메인 메뉴의 "이어하기" 버튼 영역 (저장된 런이 있을 때만 표시).</summary>
         private Rectangle continueButtonRect;
         /// <summary>메인 메뉴의 "게임 시작" 버튼 영역.</summary>
@@ -146,6 +150,14 @@ namespace My2DEngine
         private bool paintPending;
         /// <summary>메인 메뉴에 표시할 로고 이미지. 파일이 없으면 null.</summary>
         private Image menuLogo;
+        /// <summary>메인 메뉴 배경 일러스트. 파일이 없으면 null이며, 이 경우 절차적 배경으로 대체된다.</summary>
+        private Image menuBackground;
+        /// <summary>버튼 9-slice 프레임 텍스처(기본). 없으면 단색 버튼으로 대체된다.</summary>
+        private Image uiButtonFrame;
+        /// <summary>버튼 9-slice 프레임 텍스처(호버). 없으면 기본 프레임/단색으로 대체된다.</summary>
+        private Image uiButtonFrameHover;
+        /// <summary>패널 9-slice 프레임 텍스처. 없으면 단색 패널로 대체된다.</summary>
+        private Image uiPanelFrame;
         /// <summary>마지막으로 기록된 마우스 커서 위치 (클라이언트 좌표). 버튼 hover 판정에 사용.</summary>
         private Point lastMousePosition;
         /// <summary>UI 레이아웃이 마지막으로 계산된 클라이언트 너비. 크기 변화 감지에 사용.</summary>
@@ -180,6 +192,9 @@ namespace My2DEngine
         {
             InitializeComponent();
             LoadMenuLogo();
+            LoadMenuBackground();
+            LoadUiFrames();
+            world.SetUiPanelFrame(uiPanelFrame);
             LoadAndApplySettings();
             LoadAppIcon();
             InitializeStateMachine();
@@ -225,6 +240,14 @@ namespace My2DEngine
                 DisposeWorld();
                 menuLogo?.Dispose();
                 menuLogo = null;
+                menuBackground?.Dispose();
+                menuBackground = null;
+                uiButtonFrame?.Dispose();
+                uiButtonFrame = null;
+                uiButtonFrameHover?.Dispose();
+                uiButtonFrameHover = null;
+                uiPanelFrame?.Dispose();
+                uiPanelFrame = null;
             };
         }
 
@@ -386,6 +409,39 @@ namespace My2DEngine
             }
 
             menuLogo = Image.FromFile(logoPath);
+        }
+
+        /// <summary>
+        /// 메인 메뉴 배경 일러스트를 Game/Images/MenuBackground.png 경로에서 로드한다.
+        /// 파일이 없으면 menuBackground는 null로 유지되고, 메뉴는 절차적 배경으로 그려진다.
+        /// 16:9 가로 이미지를 권장하며, 화면을 비율 유지(cover)로 채운 뒤 가독성 스크림이 덧씌워진다.
+        /// </summary>
+        private void LoadMenuBackground()
+        {
+            string bgPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Game", "Images", "MenuBackground.png");
+            if (!File.Exists(bgPath))
+            {
+                return;
+            }
+
+            menuBackground = Image.FromFile(bgPath);
+        }
+
+        /// <summary>
+        /// UI 9-slice 프레임 텍스처(버튼/패널)를 Game/Images/ui 폴더에서 로드한다.
+        /// 각 파일이 없으면 해당 필드는 null로 유지되고, 그리기 시 단색으로 대체된다.
+        /// </summary>
+        private void LoadUiFrames()
+        {
+            string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Game", "Images", "ui");
+            uiButtonFrame = LoadOptionalImage(Path.Combine(dir, "ButtonFrame.png"));
+            uiButtonFrameHover = LoadOptionalImage(Path.Combine(dir, "ButtonFrameHover.png"));
+            uiPanelFrame = LoadOptionalImage(Path.Combine(dir, "PanelFrame.png"));
+        }
+
+        private static Image LoadOptionalImage(string path)
+        {
+            return File.Exists(path) ? Image.FromFile(path) : null;
         }
 
         private void LoadAppIcon()

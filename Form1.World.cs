@@ -30,14 +30,16 @@ namespace My2DEngine
             int EnemiesKilled,
             int BossesKilled,
             int DurationSeconds,
-            string EndedAt);
+            string EndedAt,
+            bool IsVictory);
 
         /// <summary>사망 화면에 즉시 보여줄 현재 런 요약 정보.</summary>
         private readonly record struct WorldRunSummarySnapshot(
             int FloorReached,
             int EnemiesKilled,
             int BossesKilled,
-            int DurationSeconds);
+            int DurationSeconds,
+            string[] AcquiredCards);
 
         /// <summary>게임 월드 상태 업데이트와 렌더링을 담당하는 게임 로직 인스턴스.</summary>
         private readonly GameLogic world = new();
@@ -224,7 +226,8 @@ namespace My2DEngine
                     records[i].EnemiesKilled,
                     records[i].BossesKilled,
                     records[i].DurationSeconds,
-                    records[i].EndedAt);
+                    records[i].EndedAt,
+                    records[i].IsVictory);
             }
 
             return snapshots;
@@ -237,7 +240,8 @@ namespace My2DEngine
                 summary.FloorReached,
                 summary.EnemiesKilled,
                 summary.BossesKilled,
-                summary.DurationSeconds);
+                summary.DurationSeconds,
+                world.GetAcquiredStatCardSummary());
         }
 
         private void BeginWorldPrimaryFire()

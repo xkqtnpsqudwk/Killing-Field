@@ -107,7 +107,11 @@ namespace My2DEngine.Game.Core
             }
 
             player.MoveSpeed = GameConfig.MoveSpeed * (1f + data.GetMoveSpeedBonus() + GetRunStatBonus(StatType.MoveSpeed));
-            player.SetDashCooldownMult(1f - GetRunStatBonus(StatType.DashCooldown));
+            float dashCooldownReduction = GetRunStatBonus(StatType.DashCooldown);
+            if (data.MoveSpeedPoints >= GameConfig.MoveSpeedDashSynergyThreshold)
+                dashCooldownReduction = Math.Min(1f - (GameConfig.DashCooldownMinDuration / GameConfig.DashCooldownDuration),
+                    dashCooldownReduction + GameConfig.MoveSpeedDashSynergyBonus);
+            player.SetDashCooldownMult(1f - dashCooldownReduction);
             player.ConfigureShield(
                 GameConfig.PlayerShieldMax,
                 GetEffectiveShieldRegenRate(),
@@ -387,11 +391,8 @@ namespace My2DEngine.Game.Core
             float panelY = (fh - panelH) * 0.5f;
             float panelCenterX = panelX + panelW * 0.5f;
 
-            r.DrawRectangle(panelX, panelY, panelW, panelH, Color.FromArgb(228, 18, 24, 34));
-            r.DrawRectangle(panelX, panelY, panelW, 1f, Color.FromArgb(200, 255, 210, 115));
-            r.DrawRectangle(panelX, panelY + panelH - 1f, panelW, 1f, Color.FromArgb(200, 255, 210, 115));
-            r.DrawRectangle(panelX, panelY, 1f, panelH, Color.FromArgb(200, 255, 210, 115));
-            r.DrawRectangle(panelX + panelW - 1f, panelY, 1f, panelH, Color.FromArgb(200, 255, 210, 115));
+            DrawUiOverlayPanel(r, panelX, panelY, panelW, panelH,
+                Color.FromArgb(228, 18, 24, 34), Color.FromArgb(200, 255, 210, 115));
 
             r.DrawTextCenteredShadow("[ 영구 스탯 ]", panelCenterX, panelY + 18f,
                 Color.FromArgb(255, 255, 235, 150), 14f);
@@ -453,11 +454,7 @@ namespace My2DEngine.Game.Core
         {
             float centerX = x + w * 0.5f;
 
-            r.DrawRectangle(x, y, w, h, Color.FromArgb(205, 28, 36, 50));
-            r.DrawRectangle(x, y, w, 1f, accent);
-            r.DrawRectangle(x, y + h - 1f, w, 1f, accent);
-            r.DrawRectangle(x, y, 1f, h, accent);
-            r.DrawRectangle(x + w - 1f, y, 1f, h, accent);
+            DrawUiOverlayPanel(r, x, y, w, h, Color.FromArgb(205, 28, 36, 50), accent);
 
             r.DrawTextCenteredShadow(title, centerX, y + 13f, accent, 10f);
             r.DrawTextCenteredShadow(levelText, centerX, y + 33f,
@@ -515,6 +512,11 @@ namespace My2DEngine.Game.Core
                 BonusShieldRegenDelayReduction = GetRunStatBonus(StatType.ShieldRegenDelayReduction),
                 BonusShieldedDamage = GetRunStatBonus(StatType.ShieldedDamage),
                 BonusDashStrikeDamage = GetRunStatBonus(StatType.DashStrikeDamage),
+                BonusLowHealthRage = GetRunStatBonus(StatType.LowHealthRage),
+                BonusKillChain = GetRunStatBonus(StatType.KillChain),
+                BonusExplosiveSpecialist = GetRunStatBonus(StatType.ExplosiveSpecialist),
+                BonusLowAmmoRage = GetRunStatBonus(StatType.LowAmmoRage),
+                BonusRapidFireChain = GetRunStatBonus(StatType.RapidFireChain),
                 PlayerShield = player.Shield,
                 ShieldRegenDelayTimer = player.ShieldRegenDelayTimer,
                 CardChoiceBonusOffered = cardChoiceBonusOffered,
@@ -579,6 +581,11 @@ namespace My2DEngine.Game.Core
             runStatBonusTotals[(int)StatType.ShieldRegenDelayReduction] = save.BonusShieldRegenDelayReduction;
             runStatBonusTotals[(int)StatType.ShieldedDamage] = save.BonusShieldedDamage;
             runStatBonusTotals[(int)StatType.DashStrikeDamage] = save.BonusDashStrikeDamage;
+            runStatBonusTotals[(int)StatType.LowHealthRage] = save.BonusLowHealthRage;
+            runStatBonusTotals[(int)StatType.KillChain] = save.BonusKillChain;
+            runStatBonusTotals[(int)StatType.ExplosiveSpecialist] = save.BonusExplosiveSpecialist;
+            runStatBonusTotals[(int)StatType.LowAmmoRage] = save.BonusLowAmmoRage;
+            runStatBonusTotals[(int)StatType.RapidFireChain] = save.BonusRapidFireChain;
             cardChoiceBonusOffered = save.CardChoiceBonusOffered || save.BonusCardChoiceBonus >= 1f;
             RestoreIntArray(save.RunStatGradeState, runStatGrade, -1);
             RestoreIntArray(save.RunStatPickupState, runStatPickupCount, 0);
@@ -653,6 +660,7 @@ namespace My2DEngine.Game.Core
                 BossesKilled    = runBossesKilled,
                 DurationSeconds = seconds,
                 EndedAt         = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+                IsVictory       = victory,
             };
             progressionRepository.SaveRunRecord(record);
             runResultRecorded = true;

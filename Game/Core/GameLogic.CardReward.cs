@@ -18,6 +18,70 @@ namespace My2DEngine.Game.Core
         /// <summary>룸 클리어 후 카드가 실제로 나타나기까지 대기하는 시간(초).</summary>
         private const float CardRewardRevealDelaySeconds = 2f;
 
+        /// <summary>카드/분기 패널 배경에 사용하는 9-slice 프레임 텍스처. null이면 단색으로 그린다.</summary>
+        private Image uiPanelFrame;
+
+        /// <summary>앱 레이어에서 로드한 패널 프레임 텍스처를 주입한다.</summary>
+        public void SetUiPanelFrame(Image frame)
+        {
+            uiPanelFrame = frame;
+        }
+
+        /// <summary>
+        /// 오버레이 UI(영구 스탯, 인게임 정보, 카드 카드 슬롯)의 공통 패널 배경을 그린다.
+        /// 패널 프레임이 있으면 9-slice 금속 틀을, 없으면 단색 배경 + 1px 강조 테두리를 그린다.
+        /// 강조 색 테두리는 두 경로 모두 위에 유지해 화면별 정체성(파랑/금색 등)을 보존한다.
+        /// </summary>
+        /// <param name="fill">프레임이 없을 때 사용할 단색 배경 색.</param>
+        /// <param name="accent">패널 외곽 강조 테두리 색.</param>
+        private void DrawUiOverlayPanel(Renderer r, float x, float y, float w, float h, Color fill, Color accent)
+        {
+            if (uiPanelFrame != null)
+            {
+                float db = Math.Min(w, h) * 0.16f;
+                r.DrawImageNineSlice(uiPanelFrame, x, y, w, h, uiPanelFrame.Width * 0.16f, db);
+                float t = Math.Max(2f, h * 0.008f);
+                r.DrawRectangle(x, y, w, t, accent);
+                r.DrawRectangle(x, y + h - t, w, t, accent);
+                r.DrawRectangle(x, y, t, h, accent);
+                r.DrawRectangle(x + w - t, y, t, h, accent);
+            }
+            else
+            {
+                r.DrawRectangle(x, y, w, h, fill);
+                r.DrawRectangle(x, y, w, 1f, accent);
+                r.DrawRectangle(x, y + h - 1f, w, 1f, accent);
+                r.DrawRectangle(x, y, 1f, h, accent);
+                r.DrawRectangle(x + w - 1f, y, 1f, h, accent);
+            }
+        }
+
+        /// <summary>
+        /// 카드/분기 패널 배경을 그린다. 패널 프레임이 있으면 9-slice 금속 틀을 쓰되
+        /// 등급 색 테두리는 그 위에 유지해 카드 등급 정보가 사라지지 않게 한다.
+        /// </summary>
+        private void DrawCardPanelBackground(Renderer r, float x, float y, float w, float h, Color gradeColor)
+        {
+            if (uiPanelFrame != null)
+            {
+                float db = Math.Min(w, h) * 0.20f;
+                r.DrawImageNineSlice(uiPanelFrame, x, y, w, h, uiPanelFrame.Width * 0.16f, db);
+                float t = Math.Max(2f, h * 0.012f);
+                r.DrawRectangle(x, y, w, t, gradeColor);
+                r.DrawRectangle(x, y + h - t, w, t, gradeColor);
+                r.DrawRectangle(x, y, t, h, gradeColor);
+                r.DrawRectangle(x + w - t, y, t, h, gradeColor);
+            }
+            else
+            {
+                r.DrawRectangle(x, y, w, h, Color.FromArgb(215, 20, 28, 42));
+                r.DrawRectangle(x, y, w, 1f, gradeColor);
+                r.DrawRectangle(x, y + h - 1, w, 1f, gradeColor);
+                r.DrawRectangle(x, y, 1f, h, gradeColor);
+                r.DrawRectangle(x + w - 1, y, 1f, h, gradeColor);
+            }
+        }
+
         /// <summary>런 스탯 배열 크기. StatType enum 값과 1:1로 맞춰 인덱싱한다.</summary>
         private static readonly int RunStatCount = Enum.GetValues(typeof(StatType)).Length;
 
@@ -53,7 +117,12 @@ namespace My2DEngine.Game.Core
             StatType.ShieldRegenRate,
             StatType.ShieldRegenDelayReduction,
             StatType.ShieldedDamage,
-            StatType.DashStrikeDamage
+            StatType.DashStrikeDamage,
+            StatType.LowHealthRage,
+            StatType.KillChain,
+            StatType.ExplosiveSpecialist,
+            StatType.LowAmmoRage,
+            StatType.RapidFireChain
         };
 
         // ── 카드 보상 상태 ──────────────────────────────────────────────
@@ -550,6 +619,16 @@ namespace My2DEngine.Game.Core
                     return GameConfig.ShieldedDamageBonusCap;
                 case StatType.DashStrikeDamage:
                     return GameConfig.DashStrikeDamageBonusCap;
+                case StatType.LowHealthRage:
+                    return GameConfig.LowHealthRageBonusCap;
+                case StatType.KillChain:
+                    return GameConfig.KillChainBonusCap;
+                case StatType.ExplosiveSpecialist:
+                    return GameConfig.ExplosiveSpecialistBonusCap;
+                case StatType.LowAmmoRage:
+                    return GameConfig.LowAmmoRageBonusCap;
+                case StatType.RapidFireChain:
+                    return GameConfig.RapidFireChainBonusCap;
                 default:
                     return float.PositiveInfinity;
             }
@@ -1094,6 +1173,11 @@ namespace My2DEngine.Game.Core
                 case StatType.ShieldRegenDelayReduction: return "보호막 회복 지연";
                 case StatType.ShieldedDamage: return "보호막 피해 증폭";
                 case StatType.DashStrikeDamage: return "대시 후 피해";
+                case StatType.LowHealthRage: return "저체력 분노";
+                case StatType.KillChain: return "처치 연계";
+                case StatType.ExplosiveSpecialist: return "폭발 전문가";
+                case StatType.LowAmmoRage: return "탄창 분노";
+                case StatType.RapidFireChain: return "연사 가속";
                 default:                   return "???";
             }
         }
@@ -1165,6 +1249,33 @@ namespace My2DEngine.Game.Core
             }
         }
 
+        /// <summary>
+        /// 조건부 발동 스탯 카드의 발동 조건 설명을 반환한다.
+        /// 발동 조건이 없는 상시 스탯은 null을 반환한다.
+        /// </summary>
+        private static string GetStatConditionText(StatType stat)
+        {
+            switch (stat)
+            {
+                case StatType.ShieldedDamage:
+                    return "보호막이 남아 있을 때";
+                case StatType.DashStrikeDamage:
+                    return $"대시 직후 {GameConfig.DashStrikeDamageWindow:0.#}초간";
+                case StatType.LowHealthRage:
+                    return $"체력 {GameConfig.LowHealthRageThreshold * 100f:0}% 미만일 때";
+                case StatType.KillChain:
+                    return $"처치 직후 {GameConfig.KillChainWindow:0.#}초간";
+                case StatType.ExplosiveSpecialist:
+                    return "AutoCannon 장착 중";
+                case StatType.LowAmmoRage:
+                    return $"잔탄 {GameConfig.LowAmmoRageThreshold * 100f:0}% 이하일 때";
+                case StatType.RapidFireChain:
+                    return $"연속 명중 {GameConfig.RapidFireChainMinStreak}회 이상";
+                default:
+                    return null;
+            }
+        }
+
         // ── 카드 UI 렌더링 ──────────────────────────────────────────────
 
         /// <summary>카드 보상 선택 UI를 화면에 그린다.</summary>
@@ -1205,14 +1316,8 @@ namespace My2DEngine.Game.Core
                 ? CardGradeHelper.GetGradeColor(offer.WeaponGrade)
                 : CardGradeHelper.GetGradeColor(offer.Grade);
 
-            // 배경
-            r.DrawRectangle(x, y, w, h, Color.FromArgb(215, 20, 28, 42));
-
-            // 테두리 4변
-            r.DrawRectangle(x,         y,         w, 1f, gradeColor);
-            r.DrawRectangle(x,         y + h - 1, w, 1f, gradeColor);
-            r.DrawRectangle(x,         y,         1f, h,  gradeColor);
-            r.DrawRectangle(x + w - 1, y,         1f, h,  gradeColor);
+            // 배경 + 등급 색 테두리 (패널 프레임이 있으면 9-slice 금속 틀 사용)
+            DrawCardPanelBackground(r, x, y, w, h, gradeColor);
 
             float cx = x + w * 0.5f;
 
@@ -1247,6 +1352,14 @@ namespace My2DEngine.Game.Core
                 Color.FromArgb(255, 235, 225, 200), nameFontSize);
             r.DrawTextCenteredShadow(valueText, cx, y + 108f, gradeColor, valueFontSize);
 
+            // 조건부 카드는 발동 조건을 명시해 단순 수치 카드와 구분한다.
+            string conditionText = GetStatConditionText(offer.StatType);
+            if (!string.IsNullOrEmpty(conditionText))
+            {
+                r.DrawTextCenteredShadow(conditionText, cx, y + 128f,
+                    Color.FromArgb(235, 255, 200, 110), 8.2f);
+            }
+
             // 현재 보유 등급 표시
             int statIndex = (int)offer.StatType;
             int cur = runStatGrade[statIndex];
@@ -1276,6 +1389,32 @@ namespace My2DEngine.Game.Core
                 default:
                     return $"+{pct}%";
             }
+        }
+
+        /// <summary>
+        /// 이번 런에서 획득한 스탯 카드 요약 목록을 반환한다.
+        /// 각 항목은 "스탯이름 +누적값 (횟수)" 형태이며, 한 번이라도 획득한 스탯만 포함한다.
+        /// 런 종료 요약 화면에서 사용한다.
+        /// </summary>
+        public string[] GetAcquiredStatCardSummary()
+        {
+            var list = new List<string>();
+            for (int i = 0; i < RewardStatTypes.Length; i++)
+            {
+                StatType stat = RewardStatTypes[i];
+                int count = runStatPickupCount[(int)stat];
+                if (count <= 0)
+                {
+                    continue;
+                }
+
+                string totalText = GetStatBonusTotalText(stat, runStatBonusTotals[(int)stat]);
+                list.Add(count > 1
+                    ? $"{GetStatName(stat)} {totalText} (x{count})"
+                    : $"{GetStatName(stat)} {totalText}");
+            }
+
+            return list.ToArray();
         }
 
         private void DrawWeaponCardContent(Renderer r, RewardCardOffer offer,

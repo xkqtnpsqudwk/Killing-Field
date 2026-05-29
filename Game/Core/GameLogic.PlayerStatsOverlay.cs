@@ -75,11 +75,8 @@ namespace My2DEngine.Game.Core
             float panelCenterX = panelX + panelW * 0.5f;
 
             r.DrawRectangle(0f, 0f, fw, fh, Color.FromArgb(178, 0, 0, 0));
-            r.DrawRectangle(panelX, panelY, panelW, panelH, Color.FromArgb(232, 18, 24, 34));
-            r.DrawRectangle(panelX, panelY, panelW, 1f, Color.FromArgb(210, 140, 205, 255));
-            r.DrawRectangle(panelX, panelY + panelH - 1f, panelW, 1f, Color.FromArgb(210, 140, 205, 255));
-            r.DrawRectangle(panelX, panelY, 1f, panelH, Color.FromArgb(210, 140, 205, 255));
-            r.DrawRectangle(panelX + panelW - 1f, panelY, 1f, panelH, Color.FromArgb(210, 140, 205, 255));
+            DrawUiOverlayPanel(r, panelX, panelY, panelW, panelH,
+                Color.FromArgb(232, 18, 24, 34), Color.FromArgb(210, 140, 205, 255));
 
             r.DrawTextCenteredShadow("[ 현재 스탯 ]", panelCenterX, panelY + 18f,
                 Color.FromArgb(255, 235, 240, 255), 14f);
@@ -138,6 +135,8 @@ namespace My2DEngine.Game.Core
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 12f,
                 $"조건부 피해 보호막 +{runStatBonusTotals[(int)StatType.ShieldedDamage] * 100f:0}% / 대시 +{runStatBonusTotals[(int)StatType.DashStrikeDamage] * 100f:0}%");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 13f,
+                $"   저체력 +{runStatBonusTotals[(int)StatType.LowHealthRage] * 100f:0}% 처치 +{runStatBonusTotals[(int)StatType.KillChain] * 100f:0}% 폭발 +{runStatBonusTotals[(int)StatType.ExplosiveSpecialist] * 100f:0}% 저탄 +{runStatBonusTotals[(int)StatType.LowAmmoRage] * 100f:0}% 연사 +{runStatBonusTotals[(int)StatType.RapidFireChain] * 100f:0}%");
+            DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 14f,
                 $"카드 횟수 체력 {runStatPickupCount[(int)StatType.MaxHealth]} 속도 {runStatPickupCount[(int)StatType.MoveSpeed]} 공격 {runStatPickupCount[(int)StatType.Damage]} 흡혈 {runStatPickupCount[(int)StatType.LifeSteal]}");
 
             r.DrawRectangle(panelX + 18f, panelY + panelH - 46f, panelW - 36f, 1f, Color.FromArgb(110, 180, 180, 180));

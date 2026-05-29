@@ -23,7 +23,12 @@ namespace My2DEngine.Game
         ShieldRegenRate = 13,
         ShieldRegenDelayReduction = 14,
         ShieldedDamage = 15,
-        DashStrikeDamage = 16
+        DashStrikeDamage = 16,
+        LowHealthRage = 17,
+        KillChain = 18,
+        ExplosiveSpecialist = 19,
+        LowAmmoRage = 20,
+        RapidFireChain = 21
     }
 
     /// <summary>

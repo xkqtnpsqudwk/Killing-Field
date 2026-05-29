@@ -42,6 +42,9 @@ namespace My2DEngine.Game.Core
         [DataMember(Name = "endlessModeUnlocked")]
         public bool EndlessModeUnlocked { get; set; }
 
+        [DataMember(Name = "hasSeenControls")]
+        public bool HasSeenControls { get; set; }
+
         public static PermanentProgressionData CreateDefault()
         {
             return new PermanentProgressionData();

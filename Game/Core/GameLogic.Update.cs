@@ -67,7 +67,6 @@ namespace My2DEngine.Game.Core
             weapon.UpdateTimers(dt);
             player.UpdateDashCooldown(dt);
             player.UpdateDash(dt);
-            UpdateDashStrikeWindow(dt);
             player.UpdateShield(dt);
             UpdatePickupTimers(dt);
 
@@ -272,6 +271,13 @@ namespace My2DEngine.Game.Core
             {
                 pickupToastText = null;
             }
+
+            UpdateDashStrikeWindow(dt);
+            UpdateKillChainWindow(dt);
+            UpdateRapidFireStreak(dt);
+
+            if (controlsTutorialTimer > 0f)
+                controlsTutorialTimer = Math.Max(0f, controlsTutorialTimer - dt);
         }
 
         /// <summary>

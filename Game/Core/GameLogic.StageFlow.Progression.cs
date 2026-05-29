@@ -363,7 +363,10 @@ namespace My2DEngine.Game.Core
                     : NormalEnemyCoinDropChance;
 
             float runBonus = isNormalEnemy ? GetRunStatBonus(StatType.CoinDropChance) : 0f;
-            float chance = Math.Min(1f, baseChance + runBonus);
+            float luckBonus = isNormalEnemy && permanentProgression != null
+                ? permanentProgression.GetLuckLevel() * (GameConfig.LuckCoinDropBonusMax / 10f)
+                : 0f;
+            float chance = Math.Min(1f, baseChance + runBonus + luckBonus);
             if (rewardRandom.NextDouble() > chance)
             {
                 return;
@@ -461,6 +464,13 @@ namespace My2DEngine.Game.Core
             state.ObjectiveTimer = 0f;
             state.HazardTickTimer = 0f;
             activeStageRoomIndex = roomIndex;
+
+            if (controlsTutorialTimer <= 0f && permanentProgression != null && !permanentProgression.HasSeenControls)
+            {
+                controlsTutorialTimer = 6f;
+                permanentProgression.HasSeenControls = true;
+                progressionRepository?.Save(permanentProgression);
+            }
 
             if (room.IsRestRoom)
             {

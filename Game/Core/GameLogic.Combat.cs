@@ -26,6 +26,15 @@ namespace My2DEngine.Game.Core
         /// <summary>대시 직후 피해 증가 카드가 유효한 남은 시간(초).</summary>
         private float dashStrikeWindowTimer;
 
+        /// <summary>처치 직후 피해 증가 카드가 유효한 남은 시간(초).</summary>
+        private float killChainWindowTimer;
+
+        /// <summary>연사 가속 카드의 현재 연속 명중 스트릭 수.</summary>
+        private int rapidFireHitStreak;
+
+        /// <summary>스트릭 감쇠 타이머. 이 값이 0으로 떨어지면 스트릭을 초기화한다.</summary>
+        private float rapidFireStreakDecayTimer;
+
         /// <summary>
         /// 보류 중인 발사 요청을 실제 탄 소비·판정·반동·사운드·적 피격으로 확정한다.
         /// </summary>
@@ -225,6 +234,7 @@ namespace My2DEngine.Game.Core
             // 조건부 피해 카드는 서로 합산한 뒤 원 피해에 한 번만 곱한다.
             // 각 카드의 개별 상한은 GameConfig에서 관리한다.
             float multiplier = 1f;
+
             if (player != null && player.Shield > 0f)
             {
                 multiplier += Math.Max(0f, Math.Min(
@@ -237,6 +247,46 @@ namespace My2DEngine.Game.Core
                 multiplier += Math.Max(0f, Math.Min(
                     GameConfig.DashStrikeDamageBonusCap,
                     GetRunStatBonus(StatType.DashStrikeDamage)));
+            }
+
+            if (player != null && player.MaxHealth > 0f &&
+                player.Health / player.MaxHealth < GameConfig.LowHealthRageThreshold)
+            {
+                multiplier += Math.Max(0f, Math.Min(
+                    GameConfig.LowHealthRageBonusCap,
+                    GetRunStatBonus(StatType.LowHealthRage)));
+            }
+
+            if (killChainWindowTimer > 0f)
+            {
+                multiplier += Math.Max(0f, Math.Min(
+                    GameConfig.KillChainBonusCap,
+                    GetRunStatBonus(StatType.KillChain)));
+            }
+
+            if (weapon != null && weapon.CurrentType == WeaponType.AutoCannon)
+            {
+                multiplier += Math.Max(0f, Math.Min(
+                    GameConfig.ExplosiveSpecialistBonusCap,
+                    GetRunStatBonus(StatType.ExplosiveSpecialist)));
+            }
+
+            if (weapon != null)
+            {
+                int maxAmmo = weapon.GetMaxAmmo(weapon.CurrentType);
+                if (maxAmmo > 0 && weapon.CurrentAmmo <= (int)(maxAmmo * GameConfig.LowAmmoRageThreshold))
+                {
+                    multiplier += Math.Max(0f, Math.Min(
+                        GameConfig.LowAmmoRageBonusCap,
+                        GetRunStatBonus(StatType.LowAmmoRage)));
+                }
+            }
+
+            if (rapidFireHitStreak >= GameConfig.RapidFireChainMinStreak)
+            {
+                multiplier += Math.Max(0f, Math.Min(
+                    GameConfig.RapidFireChainBonusCap,
+                    GetRunStatBonus(StatType.RapidFireChain)));
             }
 
             return Math.Max(0f, damage * multiplier);
@@ -258,6 +308,33 @@ namespace My2DEngine.Game.Core
             }
 
             dashStrikeWindowTimer = Math.Max(0f, dashStrikeWindowTimer - Math.Max(0f, dt));
+        }
+
+        private void UpdateKillChainWindow(float dt)
+        {
+            if (killChainWindowTimer > 0f)
+                killChainWindowTimer = Math.Max(0f, killChainWindowTimer - Math.Max(0f, dt));
+        }
+
+        private void UpdateRapidFireStreak(float dt)
+        {
+            if (rapidFireStreakDecayTimer <= 0f)
+            {
+                rapidFireHitStreak = 0;
+                return;
+            }
+
+            rapidFireStreakDecayTimer = Math.Max(0f, rapidFireStreakDecayTimer - Math.Max(0f, dt));
+            if (rapidFireStreakDecayTimer <= 0f)
+                rapidFireHitStreak = 0;
+        }
+
+        private void ResetCombatWindowTimers()
+        {
+            dashStrikeWindowTimer = 0f;
+            killChainWindowTimer = 0f;
+            rapidFireHitStreak = 0;
+            rapidFireStreakDecayTimer = 0f;
         }
 
         private void ApplyPlayerLifeSteal(float dealtDamage)
@@ -303,9 +380,20 @@ namespace My2DEngine.Game.Core
         private void RegisterEnemyHitFeedback(bool killed)
         {
             hitMarkerTimer = Math.Max(hitMarkerTimer, HitMarkerDuration);
+
+            if (GetRunStatBonus(StatType.RapidFireChain) > 0f)
+            {
+                rapidFireHitStreak++;
+                rapidFireStreakDecayTimer = GameConfig.RapidFireChainStreakDecayTime;
+            }
+
             if (killed)
             {
                 killMarkerTimer = KillMarkerDuration;
+                if (GetRunStatBonus(StatType.KillChain) > 0f)
+                {
+                    killChainWindowTimer = GameConfig.KillChainWindow;
+                }
             }
         }
 

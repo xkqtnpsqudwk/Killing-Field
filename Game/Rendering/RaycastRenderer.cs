@@ -124,6 +124,7 @@ namespace My2DEngine.Game.Rendering
         /// <param name="bossEnemy">보스 적 인스턴스. null이면 보스 HUD를 그리지 않는다.</param>
         /// <param name="bossIntroTimer">보스 등장 연출 남은 시간(초). 0 이하이면 연출을 표시하지 않는다.</param>
         /// <param name="stageStatusMessage">화면 상단에 표시할 스테이지 상태 메시지.</param>
+        /// <param name="stageStatusAlpha">스테이지 상태 메시지 표시 강도(0~1). 만료 직전 페이드아웃에 사용.</param>
         /// <param name="interactPromptText">플레이어 근처의 상호작용 힌트 텍스트.</param>
         /// <param name="victory">스테이지 클리어 여부. true이면 클리어 UI를 표시한다.</param>
         /// <param name="playerDamageFlash">피격 화면 번쩍임 강도(0~1).</param>
@@ -143,7 +144,7 @@ namespace My2DEngine.Game.Rendering
         /// <param name="pickupToastAlpha">보상 드롭/획득 HUD 토스트 표시 강도(0~1).</param>
         public void Render(Renderer r, int screenWidth, int screenHeight, Player player, Weapon weapon,
             IList<RewardPickup> rewardPickups, IList<EnemyProjectile> playerProjectiles, Enemy bossEnemy, float bossIntroTimer, string stageStatusMessage,
-            string interactPromptText, bool victory, float playerDamageFlash, float damageDirX, float damageDirY,
+            float stageStatusAlpha, string interactPromptText, bool victory, float playerDamageFlash, float damageDirX, float damageDirY,
             float playerDamageShakeTimer, float playerDamageShakePower,
             float playerRecoilShakeTimer, float playerRecoilShakePower,
             float deathPresentationProgress, float deathRollDirection,
@@ -202,7 +203,7 @@ namespace My2DEngine.Game.Rendering
             else
             {
                 DrawBossHudBackdrop(r, bossEnemy);
-                DrawStageBackdrop(r, stageStatusMessage, interactPromptText, bossIntroTimer, bossEnemy, victory);
+                DrawStageBackdrop(r, stageStatusMessage, stageStatusAlpha, interactPromptText, bossIntroTimer, bossEnemy, victory);
                 DrawMiniMap(r, player);
                 DrawAmmoCounterBackdrop(r, weapon);
                 DrawCoinHudBackdrop(r);
@@ -217,7 +218,7 @@ namespace My2DEngine.Game.Rendering
                 DrawWeaponOverlay(r, weapon);
 
                 DrawBossHud(r, bossEnemy);
-                DrawStageOverlay(r, stageStatusMessage, interactPromptText, bossIntroTimer, bossEnemy, victory);
+                DrawStageOverlay(r, stageStatusMessage, stageStatusAlpha, interactPromptText, bossIntroTimer, bossEnemy, victory);
                 DrawAmmoCounter(r, weapon);
                 DrawCoinHud(r, player);
                 DrawRewardPickupLabels(r, player, rewardPickups);

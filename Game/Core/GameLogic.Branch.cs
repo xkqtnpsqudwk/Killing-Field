@@ -269,10 +269,7 @@ namespace My2DEngine.Game.Core
         /// </summary>
         private void DrawBranchCard(Renderer r, RoomTemplate template, float x, float y, float w, float h, string keyLabel)
         {
-            // 카드 배경
-            r.DrawRectangle(x, y, w, h, Color.FromArgb(210, 25, 32, 44));
-
-            // 테두리 (4변을 1px 사각형으로 처리)
+            // 방 유형별 테두리 색 (보스/휴식/미니보스/일반)
             Color borderColor = template.IsBossRoom
                 ? Color.FromArgb(220, 200, 80, 50)
                 : (template.IsRestRoom
@@ -281,10 +278,8 @@ namespace My2DEngine.Game.Core
                     ? Color.FromArgb(220, 160, 100, 220)
                     : Color.FromArgb(200, 100, 130, 180)));
 
-            r.DrawRectangle(x,         y,         w, 1f, borderColor);
-            r.DrawRectangle(x,         y + h - 1, w, 1f, borderColor);
-            r.DrawRectangle(x,         y,         1f, h,  borderColor);
-            r.DrawRectangle(x + w - 1, y,         1f, h,  borderColor);
+            // 카드 배경 + 유형 색 테두리 (패널 프레임이 있으면 9-slice 금속 틀 사용)
+            DrawCardPanelBackground(r, x, y, w, h, borderColor);
 
             float cx = x + w * 0.5f;
 

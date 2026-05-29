@@ -57,6 +57,9 @@ namespace My2DEngine.SmokeTests
                 RunExpandedStatCardSmokeCheck();
                 RunDeathSummarySmokeCheck();
                 RunAutoCannonProjectileSmokeCheck();
+                RunNewSynergyCardsSmokeCheck();
+                RunLuckCoinBonusSmokeCheck();
+                RunMoveSpeedDashSynergySmokeCheck();
                 Console.WriteLine("Smoke checks passed.");
                 return 0;
             }
@@ -991,6 +994,166 @@ namespace My2DEngine.SmokeTests
             {
                 throw new InvalidOperationException("Smoke check failed for autocannon projectile: explosion radius was not set.");
             }
+        }
+
+        /// <summary>
+        /// 5종 신규 조건부 피해 카드가 카드 풀에 등록되고 조건별로 정확히 발동하는지 검증한다.
+        /// </summary>
+        private static void RunNewSynergyCardsSmokeCheck()
+        {
+            var world = new GameLogic();
+
+            StatType[] newStats =
+            {
+                StatType.LowHealthRage,
+                StatType.KillChain,
+                StatType.ExplosiveSpecialist,
+                StatType.LowAmmoRage,
+                StatType.RapidFireChain
+            };
+
+            foreach (var stat in newStats)
+            {
+                if (!world.IsStatInRewardPoolSmokeSnapshot(stat))
+                    throw new InvalidOperationException("Smoke check failed for new synergy cards: " + stat + " is missing from the reward pool.");
+            }
+
+            // LowHealthRage: 체력 29% — 발동, 체력 31% — 미발동
+            AssertNearlyEqual(120f, world.GetNewConditionalDamageSmokeSnapshot(
+                baseDamage: 100f, healthRatio: 0.29f, lowHealthRageBonus: 0.20f,
+                killChainWindowActive: false, killChainBonus: 0f,
+                currentWeaponType: WeaponType.AMPistol, explosiveSpecialistBonus: 0f,
+                ammoRatio: 0.5f, lowAmmoRageBonus: 0f,
+                hitStreak: 0, rapidFireChainBonus: 0f), "low health rage active");
+
+            AssertNearlyEqual(100f, world.GetNewConditionalDamageSmokeSnapshot(
+                baseDamage: 100f, healthRatio: 0.31f, lowHealthRageBonus: 0.20f,
+                killChainWindowActive: false, killChainBonus: 0f,
+                currentWeaponType: WeaponType.AMPistol, explosiveSpecialistBonus: 0f,
+                ammoRatio: 0.5f, lowAmmoRageBonus: 0f,
+                hitStreak: 0, rapidFireChainBonus: 0f), "low health rage inactive above threshold");
+
+            // KillChain: 창 활성 — 발동, 창 비활성 — 미발동
+            AssertNearlyEqual(115f, world.GetNewConditionalDamageSmokeSnapshot(
+                baseDamage: 100f, healthRatio: 1f, lowHealthRageBonus: 0f,
+                killChainWindowActive: true, killChainBonus: 0.15f,
+                currentWeaponType: WeaponType.AMPistol, explosiveSpecialistBonus: 0f,
+                ammoRatio: 0.5f, lowAmmoRageBonus: 0f,
+                hitStreak: 0, rapidFireChainBonus: 0f), "kill chain active");
+
+            AssertNearlyEqual(100f, world.GetNewConditionalDamageSmokeSnapshot(
+                baseDamage: 100f, healthRatio: 1f, lowHealthRageBonus: 0f,
+                killChainWindowActive: false, killChainBonus: 0.15f,
+                currentWeaponType: WeaponType.AMPistol, explosiveSpecialistBonus: 0f,
+                ammoRatio: 0.5f, lowAmmoRageBonus: 0f,
+                hitStreak: 0, rapidFireChainBonus: 0f), "kill chain inactive without window");
+
+            // ExplosiveSpecialist: AutoCannon — 발동, AMPistol — 미발동
+            AssertNearlyEqual(125f, world.GetNewConditionalDamageSmokeSnapshot(
+                baseDamage: 100f, healthRatio: 1f, lowHealthRageBonus: 0f,
+                killChainWindowActive: false, killChainBonus: 0f,
+                currentWeaponType: WeaponType.AutoCannon, explosiveSpecialistBonus: 0.25f,
+                ammoRatio: 0.5f, lowAmmoRageBonus: 0f,
+                hitStreak: 0, rapidFireChainBonus: 0f), "explosive specialist on autocannon");
+
+            AssertNearlyEqual(100f, world.GetNewConditionalDamageSmokeSnapshot(
+                baseDamage: 100f, healthRatio: 1f, lowHealthRageBonus: 0f,
+                killChainWindowActive: false, killChainBonus: 0f,
+                currentWeaponType: WeaponType.AMPistol, explosiveSpecialistBonus: 0.25f,
+                ammoRatio: 0.5f, lowAmmoRageBonus: 0f,
+                hitStreak: 0, rapidFireChainBonus: 0f), "explosive specialist inactive on non-explosive");
+
+            // LowAmmoRage: 잔탄 10% — 발동, 잔탄 50% — 미발동
+            AssertNearlyEqual(130f, world.GetNewConditionalDamageSmokeSnapshot(
+                baseDamage: 100f, healthRatio: 1f, lowHealthRageBonus: 0f,
+                killChainWindowActive: false, killChainBonus: 0f,
+                currentWeaponType: WeaponType.AMPistol, explosiveSpecialistBonus: 0f,
+                ammoRatio: 0.05f, lowAmmoRageBonus: 0.30f,
+                hitStreak: 0, rapidFireChainBonus: 0f), "low ammo rage active");
+
+            AssertNearlyEqual(100f, world.GetNewConditionalDamageSmokeSnapshot(
+                baseDamage: 100f, healthRatio: 1f, lowHealthRageBonus: 0f,
+                killChainWindowActive: false, killChainBonus: 0f,
+                currentWeaponType: WeaponType.AMPistol, explosiveSpecialistBonus: 0f,
+                ammoRatio: 0.50f, lowAmmoRageBonus: 0.30f,
+                hitStreak: 0, rapidFireChainBonus: 0f), "low ammo rage inactive with sufficient ammo");
+
+            // RapidFireChain: 스트릭 3 — 발동, 스트릭 2 — 미발동
+            AssertNearlyEqual(110f, world.GetNewConditionalDamageSmokeSnapshot(
+                baseDamage: 100f, healthRatio: 1f, lowHealthRageBonus: 0f,
+                killChainWindowActive: false, killChainBonus: 0f,
+                currentWeaponType: WeaponType.AMPistol, explosiveSpecialistBonus: 0f,
+                ammoRatio: 0.5f, lowAmmoRageBonus: 0f,
+                hitStreak: 3, rapidFireChainBonus: 0.10f), "rapid fire chain at min streak");
+
+            AssertNearlyEqual(100f, world.GetNewConditionalDamageSmokeSnapshot(
+                baseDamage: 100f, healthRatio: 1f, lowHealthRageBonus: 0f,
+                killChainWindowActive: false, killChainBonus: 0f,
+                currentWeaponType: WeaponType.AMPistol, explosiveSpecialistBonus: 0f,
+                ammoRatio: 0.5f, lowAmmoRageBonus: 0f,
+                hitStreak: 2, rapidFireChainBonus: 0.10f), "rapid fire chain below min streak");
+
+            // 모든 조건 동시 발동: 합산 확인
+            float allActive = world.GetNewConditionalDamageSmokeSnapshot(
+                baseDamage: 100f, healthRatio: 0.20f, lowHealthRageBonus: 0.10f,
+                killChainWindowActive: true, killChainBonus: 0.10f,
+                currentWeaponType: WeaponType.AutoCannon, explosiveSpecialistBonus: 0.10f,
+                ammoRatio: 0.05f, lowAmmoRageBonus: 0.10f,
+                hitStreak: 5, rapidFireChainBonus: 0.10f);
+            if (allActive < 149f || allActive > 151f)
+                throw new InvalidOperationException("Smoke check failed for new synergy cards: all-active stacking expected ~150, got " + allActive + ".");
+
+            // 카드 UI에 발동 조건 설명이 모든 조건부 카드에 채워지는지 검증한다.
+            StatType[] conditionalStats =
+            {
+                StatType.ShieldedDamage, StatType.DashStrikeDamage,
+                StatType.LowHealthRage, StatType.KillChain,
+                StatType.ExplosiveSpecialist, StatType.LowAmmoRage, StatType.RapidFireChain
+            };
+            foreach (var stat in conditionalStats)
+            {
+                string desc = world.GetStatConditionTextSmokeSnapshot(stat);
+                if (string.IsNullOrWhiteSpace(desc))
+                    throw new InvalidOperationException("Smoke check failed for new synergy cards: " + stat + " is missing a condition description on the card UI.");
+            }
+
+            // 상시 발동 스탯은 조건 설명이 없어야 한다(불필요한 안내 방지).
+            if (world.GetStatConditionTextSmokeSnapshot(StatType.MaxHealth) != null)
+                throw new InvalidOperationException("Smoke check failed for new synergy cards: a non-conditional stat unexpectedly has a condition description.");
+        }
+
+        /// <summary>운 레벨에 따라 코인 드롭 확률 보너스가 선형으로 증가하는지 검증한다.</summary>
+        private static void RunLuckCoinBonusSmokeCheck()
+        {
+            var world = new GameLogic();
+
+            float lv0 = world.GetLuckCoinDropBonusSmokeSnapshot(0);
+            float lv10 = world.GetLuckCoinDropBonusSmokeSnapshot(10);
+
+            if (lv0 != 0f)
+                throw new InvalidOperationException("Smoke check failed for luck coin bonus: lv0 should be 0, got " + lv0 + ".");
+
+            if (Math.Abs(lv10 - GameConfig.LuckCoinDropBonusMax) > 0.0001f)
+                throw new InvalidOperationException("Smoke check failed for luck coin bonus: lv10 should be " + GameConfig.LuckCoinDropBonusMax + ", got " + lv10 + ".");
+
+            float lv5 = world.GetLuckCoinDropBonusSmokeSnapshot(5);
+            if (Math.Abs(lv5 - GameConfig.LuckCoinDropBonusMax * 0.5f) > 0.0001f)
+                throw new InvalidOperationException("Smoke check failed for luck coin bonus: lv5 should be " + (GameConfig.LuckCoinDropBonusMax * 0.5f) + ", got " + lv5 + ".");
+        }
+
+        /// <summary>이동 속도 영구 스탯 3포인트 이상일 때 대시 쿨다운 시너지가 활성화되는지 검증한다.</summary>
+        private static void RunMoveSpeedDashSynergySmokeCheck()
+        {
+            var world = new GameLogic();
+
+            if (world.GetMoveSpeedDashSynergySmokeSnapshot(2))
+                throw new InvalidOperationException("Smoke check failed for move speed dash synergy: should not activate at 2 points.");
+
+            if (!world.GetMoveSpeedDashSynergySmokeSnapshot(3))
+                throw new InvalidOperationException("Smoke check failed for move speed dash synergy: should activate at 3 points.");
+
+            if (!world.GetMoveSpeedDashSynergySmokeSnapshot(5))
+                throw new InvalidOperationException("Smoke check failed for move speed dash synergy: should activate at 5 points.");
         }
 
         /// <summary>

@@ -323,6 +323,23 @@ namespace My2DEngine.Game.Core
             }
         }
 
+        /// <summary>스테이지 상태 메시지가 사라지기 전 마지막 구간에서 천천히 페이드아웃하는 시간(초).</summary>
+        private const float StageStatusFadeOut = 0.7f;
+
+        /// <summary>
+        /// 스테이지 상태 메시지의 표시 강도(0~1)를 반환한다.
+        /// 남은 시간이 페이드아웃 구간보다 많으면 1, 적으면 비례 감소한다.
+        /// </summary>
+        private float GetStageStatusAlpha()
+        {
+            if (stageStatusTimer <= 0f)
+            {
+                return 0f;
+            }
+
+            return Math.Min(1f, stageStatusTimer / StageStatusFadeOut);
+        }
+
         /// <summary>
         /// 보스 방 진입 연출 타이머를 감소시킨다.
         /// 타이머가 0에 도달하면 보스 인트로 연출이 끝난 것으로 간주된다.
