@@ -179,7 +179,7 @@ namespace My2DEngine.Game.Map
             float objectiveDuration = objective == RoomObjectiveKind.Survive
                 ? GetSurvivalDuration(floor, isElite)
                 : 0f;
-            StageSpawnPoint[] spawns = GenerateRandomSpawns(floor, bossClearGrowthCount, isElite, roomW, roomH, spawnCap, rng);
+            StageSpawnPoint[] spawns = GenerateRandomSpawns(floor, bossClearGrowthCount, isElite, roomW, roomH, spawnCap, rng, layout);
             if (objective == RoomObjectiveKind.KeyTarget)
             {
                 MarkKeyTargetSpawn(spawns, rng);
@@ -409,7 +409,8 @@ namespace My2DEngine.Game.Map
         /// 적 종류는 층 단계 풀에서 무작위로 선택되며, 스폰 위치는 방 내부에 고르게 분산된다.
         /// </summary>
         private static StageSpawnPoint[] GenerateRandomSpawns(
-            int floor, int bossClearGrowthCount, bool isElite, int roomW, int roomH, int spawnCap, Random rng)
+            int floor, int bossClearGrowthCount, bool isElite, int roomW, int roomH, int spawnCap, Random rng,
+            RoomLayoutVariant layout)
         {
             // 층에 따라 적 수 증가 (3 → spawnCap 상한)
             int baseCount = 3 + (floor - 1) / 8;
@@ -422,12 +423,16 @@ namespace My2DEngine.Game.Map
             List<(float x, float y)> positions = GenerateSpreadPositions(count, halfW, halfH, rng);
             string[] roster = BuildEnemyRoster(positions.Count, bossClearGrowthCount, isElite, rng);
 
+            // 방 레이아웃이 선호하는 행동 패턴 집합. 적 아키타입이 실제로 지원하는 패턴과
+            // 교집합을 취해, 지원하지 않는 패턴을 강제하지 않으면서 전술 성향만 편향시킨다.
+            EnemyBehaviorPattern[] layoutPreferred = GetLayoutPreferredPatterns(layout);
+
             StageSpawnPoint[] spawns = new StageSpawnPoint[positions.Count];
             for (int i = 0; i < positions.Count; i++)
             {
                 string assetId = roster[i];
                 (float x, float y) = positions[i];
-                StageSpawnPoint sp = SpawnEnemy(assetId, x, y);
+                StageSpawnPoint sp = SpawnEnemy(assetId, x, y, layoutPreferred);
                 if (isElite)
                 {
                     sp.HealthMultiplier = EliteStatMultiplier;
@@ -437,6 +442,52 @@ namespace My2DEngine.Game.Map
             }
 
             return spawns;
+        }
+
+        /// <summary>
+        /// 방 레이아웃 변형에 어울리는 선호 행동 패턴 집합을 반환한다.
+        /// 이 집합은 적 아키타입이 지원하는 패턴과 교집합으로만 적용되므로(<see cref="SpawnEnemy"/>),
+        /// 적이 지원하지 않는 패턴이 강제되지 않는다. 빈 배열이면 레이아웃 편향 없음(아키타입 기본 풀 사용).
+        /// </summary>
+        private static EnemyBehaviorPattern[] GetLayoutPreferredPatterns(RoomLayoutVariant layout)
+        {
+            switch (layout)
+            {
+                // 개활지: 엄폐물이 없어 정면 압박이 유효하다.
+                case RoomLayoutVariant.Open:
+                    return new[] { EnemyBehaviorPattern.Rushdown, EnemyBehaviorPattern.Juggernaut, EnemyBehaviorPattern.Default };
+
+                // 중앙 기둥 한 개: 기둥을 끼고 도는 횡이동/타이밍 돌진이 어울린다.
+                case RoomLayoutVariant.CenterPillar:
+                    return new[] { EnemyBehaviorPattern.Strafe, EnemyBehaviorPattern.Pouncer };
+
+                // 쌍기둥: 엄폐 활용 치고빠지기.
+                case RoomLayoutVariant.TwinPillars:
+                    return new[] { EnemyBehaviorPattern.Skirmisher, EnemyBehaviorPattern.Strafe };
+
+                // 네 모서리 기둥: 모서리 엄폐 저격/원거리 견제.
+                case RoomLayoutVariant.CornerPillars:
+                    return new[] { EnemyBehaviorPattern.Kite, EnemyBehaviorPattern.BeamSniper, EnemyBehaviorPattern.ZombieGunner };
+
+                // 분할 통로: 통로를 따라 빠르게 들어오는 돌진/접근.
+                case RoomLayoutVariant.SplitLanes:
+                    return new[] { EnemyBehaviorPattern.Rushdown, EnemyBehaviorPattern.Skirmisher };
+
+                // 대각선 기둥: 비스듬한 엄폐, 횡이동 견제.
+                case RoomLayoutVariant.DiagonalPillars:
+                    return new[] { EnemyBehaviorPattern.Strafe, EnemyBehaviorPattern.Kite };
+
+                // 내부 링: 중앙을 끼고 도는 타이밍 돌진/근접.
+                case RoomLayoutVariant.InnerRing:
+                    return new[] { EnemyBehaviorPattern.Pouncer, EnemyBehaviorPattern.Skirmisher };
+
+                // 중앙 가로 장벽: 장벽 너머 원거리 견제.
+                case RoomLayoutVariant.CenterWall:
+                    return new[] { EnemyBehaviorPattern.Kite, EnemyBehaviorPattern.BeamSniper, EnemyBehaviorPattern.Strafe };
+
+                default:
+                    return Array.Empty<EnemyBehaviorPattern>();
+            }
         }
 
         private static void MarkKeyTargetSpawn(StageSpawnPoint[] spawns, Random rng)
@@ -641,10 +692,39 @@ namespace My2DEngine.Game.Map
 
         private static StageSpawnPoint SpawnEnemy(string assetId, float x, float y)
         {
+            return SpawnEnemy(assetId, x, y, null);
+        }
+
+        /// <summary>
+        /// 스폰 포인트를 만든다. <paramref name="layoutPreferred"/>가 주어지면 아키타입이 지원하는
+        /// 패턴과의 교집합으로 행동 패턴 풀을 좁혀 방 레이아웃에 맞는 전술 성향을 부여한다.
+        /// 교집합이 비면 아키타입 기본 풀을 그대로 사용한다(지원하지 않는 패턴을 강제하지 않음).
+        /// </summary>
+        private static StageSpawnPoint SpawnEnemy(string assetId, float x, float y, EnemyBehaviorPattern[] layoutPreferred)
+        {
             EnemyArchetype archetype = EnemyCatalog.Get(assetId);
             EnemyBehaviorPattern[] patternPool = archetype.BehaviorPatternPool.Length > 0
                 ? (EnemyBehaviorPattern[])archetype.BehaviorPatternPool.Clone()
                 : null;
+
+            if (patternPool != null && layoutPreferred != null && layoutPreferred.Length > 0)
+            {
+                var intersection = new List<EnemyBehaviorPattern>(patternPool.Length);
+                for (int i = 0; i < patternPool.Length; i++)
+                {
+                    if (Array.IndexOf(layoutPreferred, patternPool[i]) >= 0)
+                    {
+                        intersection.Add(patternPool[i]);
+                    }
+                }
+
+                // 교집합이 있으면 그 부분집합만 사용, 없으면 아키타입 원본 풀 유지.
+                if (intersection.Count > 0)
+                {
+                    patternPool = intersection.ToArray();
+                }
+            }
+
             return new StageSpawnPoint
             {
                 EnemyAssetId = archetype.AssetId,
