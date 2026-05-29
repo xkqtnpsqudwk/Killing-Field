@@ -445,7 +445,7 @@ namespace My2DEngine.Game.Core
             string footer = data.UnspentPoints > 0
                 ? "1~5로 배분, I로 닫기"
                 : "배분 가능한 포인트가 없습니다. I로 닫기";
-            r.DrawTextCenteredShadow(footer, panelCenterX, panelY + panelH - 18f,
+            r.DrawTextCenteredShadow(footer, panelCenterX, panelY + panelH - 34f,
                 Color.FromArgb(220, 220, 220, 220), 9f);
         }
 

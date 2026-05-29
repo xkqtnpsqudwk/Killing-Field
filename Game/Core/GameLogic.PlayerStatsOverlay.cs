@@ -139,10 +139,10 @@ namespace My2DEngine.Game.Core
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 14f,
                 $"카드 횟수 체력 {runStatPickupCount[(int)StatType.MaxHealth]} 속도 {runStatPickupCount[(int)StatType.MoveSpeed]} 공격 {runStatPickupCount[(int)StatType.Damage]} 흡혈 {runStatPickupCount[(int)StatType.LifeSteal]}");
 
-            r.DrawRectangle(panelX + 18f, panelY + panelH - 46f, panelW - 36f, 1f, Color.FromArgb(110, 180, 180, 180));
+            r.DrawRectangle(panelX + 18f, panelY + panelH - 56f, panelW - 36f, 1f, Color.FromArgb(110, 180, 180, 180));
             r.DrawTextCenteredShadow(
                 $"영구 스탯: 감각 Lv {data.GetSenseTier()}  행운 Lv {data.GetLuckLevel()}  {WeaponPresentation.GetDisplayName(WeaponType.AMPistol)} +{data.GetPistolDamageBonus() * 100f:0}%",
-                panelCenterX, panelY + panelH - 28f,
+                panelCenterX, panelY + panelH - 40f,
                 Color.FromArgb(215, 185, 185, 185), 8.2f);
         }
 
