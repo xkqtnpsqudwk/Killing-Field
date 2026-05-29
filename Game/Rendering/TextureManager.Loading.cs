@@ -24,11 +24,18 @@ namespace My2DEngine.Game.Rendering
         /// </summary>
         private void BuildFallbackWallTextures()
         {
-            for (int y = 0; y < GameConfig.TextureSize; y++)
+            // wallTextures/doorOpenTexture 슬롯은 WorldTextureSize² 크기이므로 폴백도 같은 해상도로 채운다.
+            // 문 패널 테두리는 64px 기준 절대 좌표였으므로 해상도 비율(scale)에 맞춰 환산한다.
+            int size = GameConfig.WorldTextureSize;
+            float scale = size / 64f;
+            int doorBorderX = (int)(6 * scale);
+            int doorBorderTop = (int)(4 * scale);
+            int doorCenter = size / 2;
+            for (int y = 0; y < size; y++)
             {
-                for (int x = 0; x < GameConfig.TextureSize; x++)
+                for (int x = 0; x < size; x++)
                 {
-                    int idx = y * GameConfig.TextureSize + x;
+                    int idx = y * size + x;
 
                     bool checker = ((x / 8 + y / 8) % 2) == 0;
                     wallTextures[0][idx] = checker ? Color.DarkRed : Color.Red;
@@ -50,7 +57,9 @@ namespace My2DEngine.Game.Rendering
                         ? Color.FromArgb(50, 90, 140)
                         : Color.FromArgb(30, 60, 110);
 
-                    bool doorPanel = x < 6 || x > 57 || y < 4 || y > 59 || x == 31 || x == 32;
+                    bool doorPanel = x < doorBorderX || x > size - 1 - doorBorderX
+                        || y < doorBorderTop || y > size - 1 - doorBorderTop
+                        || x == doorCenter || x == doorCenter - 1;
                     wallTextures[5][idx] = doorPanel
                         ? Color.FromArgb(170, 138, 118, 78)
                         : Color.FromArgb(105, 74, 60, 36);
