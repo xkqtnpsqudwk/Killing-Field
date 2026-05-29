@@ -93,11 +93,11 @@ namespace My2DEngine.Game.Rendering
             // 문 닫힘 폴백: World 폴더에 Door.png 가 없으면 DoorClose.png 를 검색
             if (doorTexture == null)
             {
-                doorTexture = LoadTextureFromFile("DoorClose.png");
+                doorTexture = LoadWorldTextureFromFile("DoorClose.png");
             }
 
             // 문 열림 텍스처: DoorOpen.png 우선, 없으면 닫힘 텍스처를 재사용
-            Color[] doorOpenData = LoadTextureFromFile("DoorOpen.png");
+            Color[] doorOpenData = LoadWorldTextureFromFile("DoorOpen.png");
             if (doorOpenData == null)
             {
                 doorOpenData = doorTexture;
@@ -147,11 +147,11 @@ namespace My2DEngine.Game.Rendering
                 string fullPath = Path.Combine(worldDir, fileName);
                 if (File.Exists(fullPath))
                 {
-                    return LoadTextureFromPath(fullPath);
+                    return LoadWorldTextureFromPath(fullPath);
                 }
             }
 
-            return LoadTextureFromFile(fileName);
+            return LoadWorldTextureFromFile(fileName);
         }
 
         /// <summary>
@@ -561,12 +561,17 @@ namespace My2DEngine.Game.Rendering
         /// <returns>TextureSize × TextureSize 크기로 리샘플링된 색상 배열. 실패 시 null.</returns>
         private Color[] LoadTextureFromPath(string path)
         {
+            // 기본은 스프라이트/무기용 TextureSize. 월드 텍스처는 WorldTextureSize 오버로드를 쓴다.
+            return LoadTextureFromPath(path, GameConfig.TextureSize);
+        }
+
+        private Color[] LoadTextureFromPath(string path, int size)
+        {
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             {
                 return null;
             }
 
-            int size = GameConfig.TextureSize;
             using (Bitmap source = new Bitmap(path))
             using (Bitmap scaled = new Bitmap(size, size))
             using (Graphics g = Graphics.FromImage(scaled))
@@ -577,6 +582,19 @@ namespace My2DEngine.Game.Rendering
                 g.DrawImage(source, 0, 0, size, size);
                 return BitmapToColorArray(scaled);
             }
+        }
+
+        /// <summary>월드 벽/바닥/천장/문 텍스처를 WorldTextureSize 해상도로 로드한다.</summary>
+        private Color[] LoadWorldTextureFromPath(string path)
+        {
+            return LoadTextureFromPath(path, GameConfig.WorldTextureSize);
+        }
+
+        /// <summary>파일 이름을 해석해 월드 텍스처를 WorldTextureSize 해상도로 로드한다.</summary>
+        private Color[] LoadWorldTextureFromFile(string fileName)
+        {
+            string resolvedPath = ResolveImagePath(fileName);
+            return LoadWorldTextureFromPath(resolvedPath);
         }
 
         // ── 스프라이트 시트 로딩 ──────────────────────────────────────────────

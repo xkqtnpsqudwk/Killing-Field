@@ -8,8 +8,16 @@ namespace My2DEngine.Game.Config
     /// </summary>
     public static class GameConfig
     {
-        /// <summary>벽 텍스처 한 장의 크기(픽셀). 정사각형으로 가정한다.</summary>
+        /// <summary>벽 텍스처 한 장의 크기(픽셀). 정사각형으로 가정한다.
+        /// 셰이더·아틀라스·레이캐스트 texX·스프라이트 셀이 모두 이 값을 참조하므로,
+        /// 월드 벽/바닥/천장/문 텍스처 해상도는 별도 <see cref="WorldTextureSize"/>로 분리해 올린다.</summary>
         public const int TextureSize = 64;
+
+        /// <summary>
+        /// 월드 벽/바닥/천장/문 텍스처를 로드할 때 리샘플하는 해상도(픽셀). TextureSize의 정수 배여야 한다.
+        /// 이 값만큼 아틀라스가 커지지만 스프라이트(적/무기/픽업)에는 영향을 주지 않는다.
+        /// </summary>
+        public const int WorldTextureSize = 256;
 
         /// <summary>문(door) 타일 타입 번호. 맵 배열에서 이 값이면 문으로 처리된다.</summary>
         public const int DoorTileType = 9;
