@@ -19,14 +19,17 @@ namespace My2DEngine.Game.Rendering
         private const int MiniMapTileRadius = 5;
 
         /// <summary>미니맵에서 타일 하나를 표시하는 픽셀 크기.</summary>
-        private const int MiniMapCellSize = 11;
+        private const int MiniMapCellSize = 9;
 
         // === 이미지 틀 기반 HUD 게이지(체력/보호막/스태미나) 레이아웃 (내부 렌더 해상도 기준) ===
         /// <summary>게이지 바 이미지 너비. 채움 단계 시퀀스 아트가 약 3.19:1(1903×596)이라 높이를 그에 맞춘다.</summary>
         private const float GaugeBarW = 152f;
         private const float GaugeBarH = 47f;
         private const float GaugeBarX = 10f;
-        private const float GaugeBarGap = 3f;
+        // 게이지 아트는 흰 배경을 누끼한 뒤 실제 바 본체가 슬롯 높이의 가운데 ~35%만 차지하고
+        // 위아래로 투명 여백이 크다. 슬롯 간격(gap)을 음수로 두어 그 투명 여백을 겹치게 만들어
+        // 보이는 바끼리 더 가깝게 쌓는다(겹쳐도 본체끼리는 닿지 않는다).
+        private const float GaugeBarGap = -16f;
         private const float GaugeBarBottomMargin = 8f;
 
         // 단일 틀 폴백에서 동적 채움이 들어갈 내부 표시창(정규화 0~1 UV). 시퀀스 사용 시에는 무시된다.
@@ -575,24 +578,62 @@ namespace My2DEngine.Game.Rendering
             const float cellSize = MiniMapCellSize;
             const float padding = 12f;
             float visibleTiles = MiniMapTileRadius * 2 + 1;
-            float panelSize = visibleTiles * cellSize;
-            float panelX = padding;
-            float panelY = padding;
-            float centerPixelX = panelX + (panelSize * 0.5f);
-            float centerPixelY = panelY + (panelSize * 0.5f);
+            // 미니맵 타일이 실제로 그려지는 안쪽 영역(콘텐츠 영역) 크기.
+            float contentSize = visibleTiles * cellSize;
+
+            // 장식 틀(PanelFrame) 이미지가 있으면 그 안쪽 개구부에 맞춰 미니맵을 그린다.
+            // 틀 가장자리(테두리/모서리 브래킷)는 콘텐츠 크기의 약 15%를 차지하므로 그만큼 안으로 들인다.
+            Image panelImg = textureManager?.GetMiniMapPanel();
+            float panelX;
+            float panelY;
+            if (panelImg != null)
+            {
+                const float borderFrac = 0.15f;
+                float frameSize = contentSize / (1f - (2f * borderFrac));
+                float inset = frameSize * borderFrac;
+                panelX = padding + inset;
+                panelY = padding + inset;
+                r.DrawImage(panelImg, padding, padding, frameSize, frameSize);
+            }
+            else
+            {
+                // fallback: 틀 이미지가 없으면 기존 단색 박스로 그린다.
+                panelX = padding;
+                panelY = padding;
+                r.DrawRectangle(panelX - 5f, panelY - 5f, contentSize + 10f, contentSize + 10f, Color.FromArgb(125, 0, 0, 0));
+                r.DrawRectangle(panelX, panelY, contentSize, contentSize, Color.FromArgb(170, 16, 16, 16));
+            }
+
+            float panelRight = panelX + contentSize;
+            float panelBottom = panelY + contentSize;
+            float centerPixelX = panelX + (contentSize * 0.5f);
+            float centerPixelY = panelY + (contentSize * 0.5f);
             int playerTileX = (int)Math.Floor(player.Position.X);
             int playerTileY = (int)Math.Floor(player.Position.Y);
             int mapWidth = map.GetLength(0);
             int mapHeight = map.GetLength(1);
-            float subTileOffsetX = (player.Position.X - playerTileX) * cellSize;
-            float subTileOffsetY = (player.Position.Y - playerTileY) * cellSize;
 
-            r.DrawRectangle(panelX - 5f, panelY - 5f, panelSize + 10f, panelSize + 10f, Color.FromArgb(125, 0, 0, 0));
-            r.DrawRectangle(panelX, panelY, panelSize, panelSize, Color.FromArgb(170, 16, 16, 16));
-
-            for (int localY = -MiniMapTileRadius; localY <= MiniMapTileRadius; localY++)
+            // 콘텐츠 영역(정해진 영역) 밖으로 넘치는 부분을 잘라서 그린다.
+            // 스크롤 시 가장자리가 틀 밖으로 삐져나오지 않게 한다.
+            void DrawClipped(float x, float y, float w, float h, Color color)
             {
-                for (int localX = -MiniMapTileRadius; localX <= MiniMapTileRadius; localX++)
+                float left = Math.Max(x, panelX);
+                float top = Math.Max(y, panelY);
+                float right = Math.Min(x + w, panelRight);
+                float bottom = Math.Min(y + h, panelBottom);
+                if (right <= left || bottom <= top)
+                {
+                    return;
+                }
+
+                r.DrawRectangle(left, top, right - left, bottom - top, color);
+            }
+
+            // 플레이어 월드 좌표를 콘텐츠 영역 중심에 직접 매핑한다.
+            // 가장자리 반경을 한 칸 넓혀(±1) 서브타일 스크롤 시 생기던 빈틈을 메운다.
+            for (int localY = -MiniMapTileRadius - 1; localY <= MiniMapTileRadius + 1; localY++)
+            {
+                for (int localX = -MiniMapTileRadius - 1; localX <= MiniMapTileRadius + 1; localX++)
                 {
                     int mapX = playerTileX + localX;
                     int mapY = playerTileY + localY;
@@ -602,9 +643,9 @@ namespace My2DEngine.Game.Rendering
                         cellColor = GetMiniMapTileColor(map[mapX, mapY]);
                     }
 
-                    float drawX = panelX + ((localX + MiniMapTileRadius) * cellSize) - subTileOffsetX;
-                    float drawY = panelY + ((localY + MiniMapTileRadius) * cellSize) - subTileOffsetY;
-                    r.DrawRectangle(drawX, drawY, cellSize + 1f, cellSize + 1f, cellColor);
+                    float drawX = centerPixelX + ((mapX - player.Position.X) * cellSize);
+                    float drawY = centerPixelY + ((mapY - player.Position.Y) * cellSize);
+                    DrawClipped(drawX, drawY, cellSize + 1f, cellSize + 1f, cellColor);
                 }
             }
 
@@ -618,31 +659,24 @@ namespace My2DEngine.Game.Rendering
                         continue;
                     }
 
-                    float relX = (enemy.X - player.Position.X) * cellSize;
-                    float relY = (enemy.Y - player.Position.Y) * cellSize;
-                    if (Math.Abs(relX) > panelSize * 0.5f + cellSize || Math.Abs(relY) > panelSize * 0.5f + cellSize)
-                    {
-                        continue;
-                    }
-
-                    float enemyX = centerPixelX + relX;
-                    float enemyY = centerPixelY + relY;
+                    float enemyX = centerPixelX + ((enemy.X - player.Position.X) * cellSize);
+                    float enemyY = centerPixelY + ((enemy.Y - player.Position.Y) * cellSize);
                     Color enemyColor = enemy.IsBoss
                         ? Color.Gold
                         : enemy.IsMiniBoss
                             ? Color.DeepSkyBlue
                             : Color.OrangeRed;
-                    r.DrawRectangle(enemyX - 3f, enemyY - 3f, 6f, 6f, enemyColor);
+                    DrawClipped(enemyX - 3f, enemyY - 3f, 6f, 6f, enemyColor);
                 }
             }
 
-            r.DrawRectangle(centerPixelX - 4f, centerPixelY - 4f, 8f, 8f, Color.Gold);
+            DrawClipped(centerPixelX - 4f, centerPixelY - 4f, 8f, 8f, Color.Gold);
             for (int i = 1; i <= 10; i++)
             {
                 float t = i / 10f;
                 float dirX = centerPixelX + (player.Direction.X * t * 26f);
                 float dirY = centerPixelY + (player.Direction.Y * t * 26f);
-                r.DrawRectangle(dirX - 1.2f, dirY - 1.2f, 4f, 4f, Color.Gold);
+                DrawClipped(dirX - 1.2f, dirY - 1.2f, 4f, 4f, Color.Gold);
             }
         }
 

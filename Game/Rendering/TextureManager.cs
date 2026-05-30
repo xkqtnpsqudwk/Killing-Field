@@ -221,6 +221,8 @@ namespace My2DEngine.Game.Rendering
                 hudCoinPanel = null;
                 hudAmmoPanel?.Dispose();
                 hudAmmoPanel = null;
+                hudMiniMapPanel?.Dispose();
+                hudMiniMapPanel = null;
 
                 resolvedAssetPathCache.Clear();
                 resolvedAssetDirectoryCache.Clear();
@@ -279,6 +281,9 @@ namespace My2DEngine.Game.Rendering
         private Image hudCoinPanel;
         private Image hudAmmoPanel;
 
+        /// <summary>미니맵을 감싸는 장식 틀(사각 프레임) 이미지. 없으면 null(코드 단색 fallback).</summary>
+        private Image hudMiniMapPanel;
+
         /// <summary>
         /// 체력/보호막/스태미나 게이지의 채움 단계별 프레임 시퀀스.
         /// 인덱스 0=빈(0%) … 마지막=가득(100%). ratio로 한 장을 골라 그대로 그린다.
@@ -310,11 +315,42 @@ namespace My2DEngine.Game.Rendering
             hudStaminaBarFrame = LoadCutoutHudImage(Path.Combine(dir, "StaminaBar.png"), HudFrameTargetWidth);
             hudCoinPanel = LoadCutoutHudImage(Path.Combine(dir, "CoinPanel.png"), HudFrameTargetWidth);
             hudAmmoPanel = LoadCutoutHudImage(Path.Combine(dir, "AmmoPanel.png"), HudFrameTargetWidth);
+            // PanelFrame은 이미 알파가 있는 PNG라 누끼를 돌리면 밝은 금속 하이라이트가 깎일 수 있어
+            // 축소만 하고 누끼는 적용하지 않는다.
+            hudMiniMapPanel = LoadScaledHudImage(Path.Combine(dir, "PanelFrame.png"), HudFrameTargetWidth);
         }
 
         private static Image LoadOptionalHudImage(string path)
         {
             return File.Exists(path) ? Image.FromFile(path) : null;
+        }
+
+        /// <summary>
+        /// HUD 장식 이미지를 목표 너비로 비율 유지 축소만 해서 로드한다(누끼 없음).
+        /// 이미 알파가 있는 PNG(예: PanelFrame)를 누끼로 훼손하지 않기 위해 사용한다.
+        /// 파일이 없으면 null을 반환한다.
+        /// </summary>
+        private static Image LoadScaledHudImage(string path, int targetWidth)
+        {
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+
+            using (Bitmap src = new Bitmap(path))
+            {
+                int tw = (targetWidth > 0 && src.Width > targetWidth) ? targetWidth : src.Width;
+                int th = Math.Max(1, (int)Math.Round(src.Height * (tw / (float)src.Width)));
+                Bitmap bmp = new Bitmap(tw, th, PixelFormat.Format32bppArgb);
+                using (Graphics g = Graphics.FromImage(bmp))
+                {
+                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                    g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                    g.DrawImage(src, new Rectangle(0, 0, tw, th));
+                }
+
+                return bmp;
+            }
         }
 
         /// <summary>
@@ -511,6 +547,9 @@ namespace My2DEngine.Game.Rendering
 
         /// <summary>탄약 패널 틀 이미지. 없으면 null.</summary>
         public Image GetAmmoPanel() => hudAmmoPanel;
+
+        /// <summary>미니맵 장식 틀(사각 프레임) 이미지. 없으면 null(코드 단색 fallback).</summary>
+        public Image GetMiniMapPanel() => hudMiniMapPanel;
 
         /// <summary>
         /// 지정 무기 종류의 발사 프레임 이미지를 반환한다.
