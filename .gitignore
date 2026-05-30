@@ -24,15 +24,15 @@ packages-temp/
 .claude/
 
 # Local study notes
-study-topics.txt
-technical-study-notes.txt
+study-guide.md
 
 # WinForms designer can create resource files for partial Form1 classes; only Form1.resx is used.
 Form1.DebugHud.resx
 Form1.Input.resx
 
-# Publish output / per-user publish profiles
+# Publish output / publish profiles (machine-specific PublishDir, keep local)
 publish/
+*.pubxml
 *.pubxml.user
 
 # Visual Studio upgrade artifacts
