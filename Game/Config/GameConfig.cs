@@ -485,22 +485,22 @@ namespace My2DEngine.Game.Config
         /// <summary>일반 전투 구간에서 무작위로 선택되는 배경 음악 트랙 파일명 목록.</summary>
         public static readonly string[] NormalBackgroundTracks = new[]
         {
-            @"BackGroundMusic\Normal.wav",
-            @"BackGroundMusic\Normal2.wav"
+            @"BackGroundMusic\Normal.mp3",
+            @"BackGroundMusic\Normal2.mp3"
         };
 
         /// <summary>미니보스 방에서 재생되는 배경 음악 트랙 파일명 목록.</summary>
         public static readonly string[] MiniBossBackgroundTracks = new[]
         {
-            @"BackGroundMusic\MiniBoss.wav",
-            @"BackGroundMusic\MiniBoss2.wav"
+            @"BackGroundMusic\MiniBoss.mp3",
+            @"BackGroundMusic\MiniBoss2.mp3"
         };
 
         /// <summary>보스 방에서 재생되는 배경 음악 트랙 파일명 목록.</summary>
         public static readonly string[] BossBackgroundTracks = new[]
         {
-            @"BackGroundMusic\Boss.wav",
-            @"BackGroundMusic\Boss2.wav"
+            @"BackGroundMusic\Boss.mp3",
+            @"BackGroundMusic\Boss2.mp3"
         };
     }
 }
