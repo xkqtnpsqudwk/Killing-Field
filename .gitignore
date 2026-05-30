@@ -30,3 +30,28 @@ technical-study-notes.txt
 # WinForms designer can create resource files for partial Form1 classes; only Form1.resx is used.
 Form1.DebugHud.resx
 Form1.Input.resx
+
+# Publish output / per-user publish profiles
+publish/
+*.pubxml.user
+
+# Visual Studio upgrade artifacts
+UpgradeLog*.htm
+_UpgradeReport_Files/
+Backup*/
+
+# Other editors / IDEs
+.vscode/
+.idea/
+
+# OS-generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Misc temp/scratch
+*.tmp
+*.bak
+*.log
