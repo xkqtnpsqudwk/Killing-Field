@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using My2DEngine.Engine.Core;
 using My2DEngine.Engine.Hosting;
@@ -72,8 +73,28 @@ namespace My2DEngine
             new Size(1920, 1080)
         ];
 
-        /// <summary>게임 루프를 구동하는 타이머. 약 16ms(~60Hz) 간격으로 틱이 발생한다.</summary>
-        private readonly Timer timer = new();
+        /// <summary>
+        /// 게임 루프를 구동하는 Application.Idle 핸들러가 등록되어 있는지 여부.
+        /// WinForms 타이머(해상도 ~15.6ms, 지터) 대신 Idle 루프로 프레임을 구동해
+        /// VSync(Present) 페이싱에 맞춰 모니터 주사율로 매끄럽게 돌린다.
+        /// </summary>
+        private bool gameLoopRunning;
+
+        /// <summary>Win32 메시지 큐를 들여다볼 때 사용하는 메시지 구조체.</summary>
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NativeMessage
+        {
+            public IntPtr Handle;
+            public uint Message;
+            public IntPtr WParam;
+            public IntPtr LParam;
+            public uint Time;
+            public Point Point;
+        }
+
+        /// <summary>메시지를 제거하지 않고 큐에 대기 중인 메시지가 있는지 확인한다(PM_NOREMOVE).</summary>
+        [DllImport("user32.dll")]
+        private static extern bool PeekMessage(out NativeMessage message, IntPtr hWnd, uint filterMin, uint filterMax, uint flags);
 
         /// <summary>렌더 백엔드 생성 및 복구를 담당하는 게임 호스트.</summary>
         private readonly GameHost gameHost = new();
@@ -206,9 +227,8 @@ namespace My2DEngine
 
             ConfigurePaintingMode();
 
-            timer.Interval = 10;
-            timer.Tick += GameLoop;
-            timer.Start();
+            Application.Idle += OnApplicationIdle;
+            gameLoopRunning = true;
 
             KeyDown += OnGameKeyDown;
             KeyUp += OnGameKeyUp;
@@ -230,7 +250,11 @@ namespace My2DEngine
                 CommitSettingsEditsIfNeeded();
                 shuttingDown = true;
                 paintPending = false;
-                timer.Stop();
+                if (gameLoopRunning)
+                {
+                    Application.Idle -= OnApplicationIdle;
+                    gameLoopRunning = false;
+                }
             };
             FormClosed += (s, e) =>
             {
@@ -286,13 +310,43 @@ namespace My2DEngine
         }
 
         /// <summary>
-        /// 타이머 틱마다 호출되는 게임 루프.
-        /// 시간 갱신, FPS 평활화, 게임 로직 업데이트, 페인트 요청을 순서대로 수행한다.
+        /// Application.Idle 핸들러. 메시지 큐가 비어 있는 동안 게임 틱을 연속 실행한다.
+        /// VSync(Present(1))가 프레임을 모니터 주사율로 페이싱하므로 CPU를 무한 점유하지 않고,
+        /// 입력 등 새 메시지가 들어오면 루프를 빠져나가 메시지 펌프에 양보한다.
+        /// </summary>
+        /// <param name="sender">이벤트 발생원 (사용되지 않음).</param>
+        /// <param name="e">이벤트 인수 (사용되지 않음).</param>
+        private void OnApplicationIdle(object sender, EventArgs e)
+        {
+            while (IsApplicationIdle())
+            {
+                if (shuttingDown || IsDisposed || Disposing)
+                {
+                    return;
+                }
+
+                Tick();
+
+                // 최소화 상태에서는 Present가 VSync로 페이싱되지 않아(즉시 반환) 루프가 CPU를 폭주시킨다.
+                // 잠깐 쉬어 점유를 막는다(렌더는 RenderNow에서 이미 건너뛴다).
+                if (WindowState == FormWindowState.Minimized)
+                {
+                    System.Threading.Thread.Sleep(8);
+                }
+            }
+        }
+
+        /// <summary>큐에 대기 중인 Win32 메시지가 없으면 true(=아이들 상태)를 반환한다.</summary>
+        private static bool IsApplicationIdle()
+        {
+            return !PeekMessage(out _, IntPtr.Zero, 0, 0, 0);
+        }
+
+        /// <summary>
+        /// 한 프레임을 처리한다. 시간 갱신, FPS 평활화, 게임 로직 업데이트 후 화면을 그린다.
         /// 폼이 종료 중이거나 해제된 상태이면 즉시 반환한다.
         /// </summary>
-        /// <param name="sender">타이머 이벤트 발생원 (사용되지 않음).</param>
-        /// <param name="e">이벤트 인수 (사용되지 않음).</param>
-        private void GameLoop(object sender, EventArgs e)
+        private void Tick()
         {
             if (shuttingDown || IsDisposed || Disposing)
             {
@@ -312,18 +366,22 @@ namespace My2DEngine
 
             currentStateHandler.Update();
 
-            RequestPaint();
+            RenderNow();
         }
 
         /// <summary>
-        /// WinForms 페인트 이벤트 핸들러. 매 프레임 렌더러를 생성하고 전체 화면을 그린다.
-        /// D3D11 페인팅 모드에서는 기본 OnPaint를 호출하지 않는다.
+        /// 현재 상태를 즉시 한 번 렌더링한다. 게임 루프 틱과 WinForms 페인트 양쪽에서 공유한다.
         /// 렌더러 생성이나 드로우 중 예외가 발생하면 <see cref="GameHost.ReportBackendFailure"/>로 보고한다.
         /// </summary>
-        /// <param name="e">페인트 이벤트 인수 (GDI 모드에서만 Graphics 객체가 유효하게 사용된다).</param>
-        protected override void OnPaint(PaintEventArgs e)
+        private void RenderNow()
         {
             if (shuttingDown || IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            // 최소화/0크기 상태에서는 그릴 표면이 없으므로 렌더와 Present를 건너뛴다.
+            if (WindowState == FormWindowState.Minimized || ClientSize.Width <= 0 || ClientSize.Height <= 0)
             {
                 return;
             }
@@ -340,6 +398,16 @@ namespace My2DEngine
             {
                 gameHost.ReportBackendFailure(ex.Message);
             }
+        }
+
+        /// <summary>
+        /// WinForms 페인트 이벤트 핸들러. 크기 변경·노출 등으로 OS가 다시 그리기를 요청할 때
+        /// 현재 화면을 렌더링한다. 평상시 프레임 구동은 <see cref="OnApplicationIdle"/> 루프가 담당한다.
+        /// </summary>
+        /// <param name="e">페인트 이벤트 인수 (GDI 모드에서만 Graphics 객체가 유효하게 사용된다).</param>
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            RenderNow();
         }
 
         /// <summary>
