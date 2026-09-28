@@ -20,11 +20,10 @@ packages-temp/
 .dotnet-home/
 
 # Local assistant/tool metadata
-.agent/
 .claude/
 
-# Local study notes
-study-guide.md
+# 문서는 저장소에 두지 않는다. 모두 옵시디언 볼트(D:\vault_project\SoloProject\Killing Field)에 쓴다.
+*.md
 
 # WinForms designer can create resource files for partial Form1 classes; only Form1.resx is used.
 Form1.DebugHud.resx
