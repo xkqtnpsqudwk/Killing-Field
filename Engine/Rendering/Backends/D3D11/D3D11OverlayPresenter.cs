@@ -504,8 +504,9 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
                         0),
                     null);
 
+                // 무기 그림 같은 픽셀 아트를 키워 그리므로 번지지 않게 점 샘플링을 쓴다.
                 samplerState = device.CreateSamplerState(new SamplerDescription(
-                    Vortice.Direct3D11.Filter.MinMagMipLinear,
+                    Vortice.Direct3D11.Filter.MinMagMipPoint,
                     TextureAddressMode.Clamp,
                     TextureAddressMode.Clamp,
                     TextureAddressMode.Clamp,

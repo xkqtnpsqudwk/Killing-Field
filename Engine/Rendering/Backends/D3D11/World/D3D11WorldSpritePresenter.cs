@@ -166,8 +166,8 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float2
     {
         float2 atlasSize;
         SpriteAtlasTexture.GetDimensions(atlasSize.x, atlasSize.y);
-        float2 linearUv = (texcoord + 0.5) / max(float2(1.0, 1.0), atlasSize);
-        color = SpriteAtlasTexture.SampleLevel(LinearSampler, linearUv, 0.0);
+        float2 atlasUv = (texcoord + 0.5) / max(float2(1.0, 1.0), atlasSize);
+        color = SpriteAtlasTexture.SampleLevel(PointSampler, atlasUv, 0.0); // 픽셀 아트라 점 샘플링
     }
     else
     {

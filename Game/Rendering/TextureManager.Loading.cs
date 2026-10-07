@@ -563,7 +563,7 @@ namespace My2DEngine.Game.Rendering
 
         /// <summary>
         /// 지정한 절대 경로의 이미지를 로드하고 TextureSize × TextureSize로 리샘플링하여
-        /// 색상 배열로 반환한다. 고품질 바이큐빅 보간을 사용하여 스프라이트 품질을 유지한다.
+        /// 색상 배열로 반환한다. 픽셀 아트가 번지지 않게 최근접 보간을 사용한다.
         /// 경로가 null이거나 파일이 없으면 null을 반환한다.
         /// </summary>
         /// <param name="path">로드할 이미지의 절대 경로</param>
@@ -586,8 +586,9 @@ namespace My2DEngine.Game.Rendering
             using (Graphics g = Graphics.FromImage(scaled))
             {
                 g.Clear(Color.Transparent);
-                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                // 그림은 모두 픽셀 아트라 최근접 보간으로 칸을 그대로 옮긴다.
+                g.InterpolationMode = InterpolationMode.NearestNeighbor;
+                g.PixelOffsetMode = PixelOffsetMode.Half;
                 g.DrawImage(source, 0, 0, size, size);
                 return BitmapToColorArray(scaled);
             }
@@ -892,8 +893,9 @@ namespace My2DEngine.Game.Rendering
             using (Graphics g = Graphics.FromImage(cell))
             {
                 g.Clear(Color.Transparent);
-                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                // 그림은 모두 픽셀 아트라 최근접 보간으로 칸을 그대로 옮긴다.
+                g.InterpolationMode = InterpolationMode.NearestNeighbor;
+                g.PixelOffsetMode = PixelOffsetMode.Half;
                 g.DrawImage(bmp,
                     new Rectangle(0, 0, outputSize, outputSize),
                     new Rectangle(startX, startY, cellSize, cellSize),

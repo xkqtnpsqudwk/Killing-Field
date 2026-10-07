@@ -292,10 +292,10 @@ namespace My2DEngine.SmokeTests
                     }
                 }
 
-                EnsureImageBackedEnemyVariant(textures, "uzi_trooper", "zombie_scientist_uzi", 6, 6, 4, 3);
-                EnsureImageBackedEnemyVariant(textures, "plasma_tech", "zombie_scientist_plasma", 6, 6, 4, 3);
-                EnsureImageBackedEnemyVariant(textures, "grenadier_scientist", "zombie_scientist_grenade", 6, 6, 4, 3);
-                EnsureImageBackedEnemyVariant(textures, "lab_butcher", "zombie_scientist_cleaver", 6, 6, 4, 3);
+                EnsureImageBackedEnemyVariant(textures, "uzi_trooper", "zombie_scientist_uzi", 4, 6, 4, 6);
+                EnsureImageBackedEnemyVariant(textures, "plasma_tech", "zombie_scientist_plasma", 4, 6, 4, 6);
+                EnsureImageBackedEnemyVariant(textures, "grenadier_scientist", "zombie_scientist_grenade", 4, 6, 4, 6);
+                EnsureImageBackedEnemyVariant(textures, "lab_butcher", "zombie_scientist_cleaver", 4, 6, 4, 6);
             }
         }
 
