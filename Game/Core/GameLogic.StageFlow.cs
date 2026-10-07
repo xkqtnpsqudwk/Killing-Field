@@ -104,7 +104,7 @@ namespace My2DEngine.Game.Core
         private void UpdateInteractPrompt()
         {
             // 카드 연출/선택 또는 분기 선택 UI가 활성화된 동안에는 안내 문구를 숨긴다.
-            if (CardRewardRevealPending || cardRewardActive || branchSelectionActive || permanentStatsUiActive || endingSequenceActive)
+            if (IsStageFlowPaused)
             {
                 interactPromptText = null;
                 return;

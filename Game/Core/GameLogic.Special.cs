@@ -33,7 +33,7 @@ namespace My2DEngine.Game.Core
         private void HandleSpecialInput()
         {
             bool held = Input.GetKey(Keys.F);
-            if (cardRewardActive || branchSelectionActive)
+            if (IsSelectionUiActive)
             {
                 specialKeyHeld = held;
                 return;

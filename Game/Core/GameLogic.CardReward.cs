@@ -857,7 +857,7 @@ namespace My2DEngine.Game.Core
         private bool CardRewardRevealPending => cardRewardRevealTimer > 0f;
 
         /// <summary>마우스 자유 입력이 필요한 오버레이 UI가 열려 있는지 여부.</summary>
-        public bool MouseSelectableOverlayActive => cardRewardActive || branchSelectionActive || permanentStatsUiActive;
+        public bool MouseSelectableOverlayActive => IsSelectionUiActive || permanentStatsUiActive;
 
         /// <summary>카드 선택 대기 중 별도 상단 클리어 배너는 표시하지 않는다.</summary>
         private void DrawPendingCardRewardReveal(Renderer r)

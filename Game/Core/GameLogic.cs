@@ -506,7 +506,7 @@ namespace My2DEngine.Game.Core
         /// </summary>
         public void FireButtonDown()
         {
-            if (victory || player.IsDead || permanentStatsUiActive || playerStatsOverlayActive || endingSequenceActive) return;
+            if (!CanUseCombatInput) return;
 
             switch (weapon.CurrentType)
             {
@@ -547,7 +547,7 @@ namespace My2DEngine.Game.Core
         /// </summary>
         public void SwitchWeapon(WeaponType type)
         {
-            if (victory || player.IsDead || permanentStatsUiActive || playerStatsOverlayActive || endingSequenceActive) return;
+            if (!CanUseCombatInput) return;
             StopLoopingWeaponEffects();
             weapon.SwitchTo(type);
         }
@@ -763,7 +763,7 @@ namespace My2DEngine.Game.Core
         /// <param name="dx">프레임 사이의 마우스 수평 이동 픽셀 수. 양수면 오른쪽, 음수면 왼쪽.</param>
         public void AddMouseDelta(int dx)
         {
-            if (dx == 0 || player.IsDead || permanentStatsUiActive || playerStatsOverlayActive || endingSequenceActive)
+            if (dx == 0 || !CanUseLookInput)
             {
                 return;
             }

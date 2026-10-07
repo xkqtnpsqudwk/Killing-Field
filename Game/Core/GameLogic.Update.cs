@@ -308,7 +308,7 @@ namespace My2DEngine.Game.Core
         private void HandleWeaponSwitchInput()
         {
             // 카드/분기 선택 UI 중에는 1/2/3 키가 선택지 입력으로 사용되므로 무기 전환을 차단한다.
-            if (cardRewardActive || branchSelectionActive)
+            if (IsSelectionUiActive)
             {
                 return;
             }
@@ -381,7 +381,7 @@ namespace My2DEngine.Game.Core
             if (interactHeld && !interactKeyHeld)
             {
                 // 카드 연출/선택 및 분기 UI가 진행 중일 때는 E키 동작을 차단한다.
-                if (CardRewardRevealPending || cardRewardActive || branchSelectionActive || endingSequenceActive)
+                if (IsInteractBlocked)
                 {
                     interactKeyHeld = interactHeld;
                     return;

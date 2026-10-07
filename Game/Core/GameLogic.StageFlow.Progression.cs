@@ -29,7 +29,7 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            if (CardRewardRevealPending || cardRewardActive || branchSelectionActive || permanentStatsUiActive || endingSequenceActive)
+            if (IsStageFlowPaused)
             {
                 return;
             }
