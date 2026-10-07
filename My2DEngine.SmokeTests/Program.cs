@@ -78,6 +78,7 @@ namespace My2DEngine.SmokeTests
                 RunLayoutBehaviorChecks();
                 RunSeedDeterminismSmokeCheck();
                 RunStatCardCatalogSmokeCheck();
+                RunEnemyCatalogDataSmokeCheck();
                 Console.WriteLine("Smoke checks passed.");
                 return 0;
             }
@@ -86,6 +87,62 @@ namespace My2DEngine.SmokeTests
                 Console.Error.WriteLine(ex);
                 return 1;
             }
+        }
+
+        /// <summary>
+        /// Game/Data/enemies.json이 모두 읽히고, 보스 패턴과 해금 풀이 가리키는 ID가 모두 있는지,
+        /// 잘못된 데이터는 어느 적인지 알려 주며 거부되는지 검증한다.
+        /// </summary>
+        private static void RunEnemyCatalogDataSmokeCheck()
+        {
+            EnemyArchetype[] archetypes = EnemyCatalog.GetAllArchetypes();
+            if (archetypes.Length != 21)
+            {
+                throw new InvalidOperationException("Smoke check failed for enemy catalog: expected 21 archetypes, got " + archetypes.Length + ".");
+            }
+
+            // 보스 패턴 등록과 방 템플릿 해금 풀은 코드에 ID 문자열로 남아 있으므로 JSON과 어긋나면 여기서 잡는다.
+            string[] referencedIds =
+            {
+                "feral_alpha", "azazel", "abaddon", "bulwark_colossus", "behemoth", "annihilator", "aracnorb_queen",
+                "ashen_artillerist", "arachnocortex", "afrit", "arachnobaron", "rift_strider", "agaures",
+                "agatho_demon", "arachnophyte", "gunner", "uzi_trooper", "lab_butcher", "elite", "ruined_gunner",
+                "plasma_tech", "grenadier_scientist", "blood_ghost", "beam_revenant", "hellion"
+            };
+            foreach (string id in referencedIds)
+            {
+                EnemyCatalog.Get(id);
+            }
+
+            string valid = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Game", "Data", "enemies.json"));
+            if (EnemyCatalog.ValidateJson(valid) != archetypes.Length)
+            {
+                throw new InvalidOperationException("Smoke check failed for enemy catalog: re-reading enemies.json gave a different count.");
+            }
+
+            AssertEnemyCatalogRejects(valid.Replace("\"SightRange\": 11.5", "\"SightRangeTypo\": 11.5"), "SightRangeTypo", "unknown AI override");
+            AssertEnemyCatalogRejects(valid.Replace("\"movementPattern\": \"ZombieGunner\"", "\"movementPattern\": \"Zombie\""), "\"Zombie\"", "bad enum value");
+            AssertEnemyCatalogRejects(valid.Replace("\"defaultForType\": \"Gunner\",", string.Empty), "Gunner", "missing default archetype");
+        }
+
+        private static void AssertEnemyCatalogRejects(string json, string expectedInMessage, string scenario)
+        {
+            try
+            {
+                EnemyCatalog.ValidateJson(json);
+            }
+            catch (InvalidDataException ex)
+            {
+                if (!ex.Message.Contains(expectedInMessage))
+                {
+                    throw new InvalidOperationException(
+                        "Smoke check failed for enemy catalog (" + scenario + "): error message does not mention '" + expectedInMessage + "': " + ex.Message);
+                }
+
+                return;
+            }
+
+            throw new InvalidOperationException("Smoke check failed for enemy catalog (" + scenario + "): invalid data was accepted.");
         }
 
         /// <summary>
