@@ -28,7 +28,7 @@ namespace My2DEngine.Game.Core
             {
                 audio.PlayEffect(AudioConfig.DoorSoundAlias, true);
                 EmitEnemyAlertSound(door.X + 0.5f, door.Y + 0.5f, 7.5f);
-                SetStageStatus("연결 문 개방", 1.8f);
+                stageStatus.Show("연결 문 개방", 1.8f);
             }
         }
 
@@ -72,7 +72,7 @@ namespace My2DEngine.Game.Core
                         continue;
                     }
 
-                    StageRoom targetRoom = GetStageRoom(connection.TargetRoomId);
+                    StageRoom targetRoom = roomLookup.Get(connection.TargetRoomId);
                     if (targetRoom == null)
                     {
                         continue;
@@ -122,16 +122,16 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            StageRoom currentRoom = FindCurrentStageRoom();
+            StageRoom currentRoom = roomLookup.FindCurrent(player.Position.X, player.Position.Y);
             if (currentRoom != null && !currentRoom.State.Cleared && !currentRoom.State.Activated)
             {
-                interactPromptText = BuildRoomEntryPrompt(currentRoom);
+                interactPromptText = RoomText.EntryPrompt(currentRoom);
                 return;
             }
 
             if (currentRoom != null && currentRoom.State.Activated && !currentRoom.State.Cleared && !currentRoom.IsRestRoom)
             {
-                interactPromptText = BuildActiveRoomObjectivePrompt(currentRoom);
+                interactPromptText = RoomText.ObjectivePrompt(currentRoom, enemyManager.CountAliveEnemies());
                 return;
             }
 
@@ -146,71 +146,6 @@ namespace My2DEngine.Game.Core
             interactPromptText = TryGetInteractableDoor(out _, out _)
                 ? "E : 연결된 문 열기"
                 : null;
-        }
-
-        private string BuildRoomEntryPrompt(StageRoom room)
-        {
-            if (room.IsRestRoom)
-            {
-                return "중앙 진입 시 카드 상점";
-            }
-
-            string prompt;
-            switch (room.ObjectiveKind)
-            {
-                case RoomObjectiveKind.Survive:
-                    prompt = "중앙 진입 시 생존전 시작";
-                    break;
-                case RoomObjectiveKind.KeyTarget:
-                    prompt = "중앙 진입 시 은닉 표적 방 시작";
-                    break;
-                default:
-                    prompt = room.IsBossRoom
-                        ? "중앙 진입 시 보스전 시작"
-                        : room.IsMiniBossRoom
-                            ? "중앙 진입 시 정예전 시작"
-                            : "중앙 진입 시 라운드 시작";
-                    break;
-            }
-
-            if (room.HazardKind == RoomHazardKind.ToxicMist)
-            {
-                prompt += " / 독성 안개";
-            }
-            else if (room.HazardKind == RoomHazardKind.SupplyShortage)
-            {
-                prompt += " / 보급 부족";
-            }
-
-            return prompt;
-        }
-
-        private string BuildActiveRoomObjectivePrompt(StageRoom room)
-        {
-            string prompt;
-            switch (room.ObjectiveKind)
-            {
-                case RoomObjectiveKind.Survive:
-                    prompt = "목표: " + Math.Ceiling(Math.Max(0f, room.State.ObjectiveTimer)) + "초 버티기";
-                    break;
-                case RoomObjectiveKind.KeyTarget:
-                    prompt = "목표: 은닉 표적 추적";
-                    break;
-                default:
-                    prompt = "목표: 적 제거 (" + enemyManager.CountAliveEnemies() + " 남음)";
-                    break;
-            }
-
-            if (room.HazardKind == RoomHazardKind.ToxicMist)
-            {
-                prompt += " / 위험: 독성 안개";
-            }
-            else if (room.HazardKind == RoomHazardKind.SupplyShortage)
-            {
-                prompt += " / 보급 없음, 보상 +1";
-            }
-
-            return prompt;
         }
 
         private float GetToxicMistOverlayAlpha()
@@ -305,42 +240,6 @@ namespace My2DEngine.Game.Core
         }
 
         /// <summary>
-        /// 스테이지 상태 메시지 타이머를 감소시키고, 시간이 다 되면 메시지를 지운다.
-        /// </summary>
-        /// <param name="dt">이번 프레임의 경과 시간(초).</param>
-        private void UpdateStageMessage(float dt)
-        {
-            if (stageStatusTimer <= 0f)
-            {
-                return;
-            }
-
-            stageStatusTimer -= dt;
-            if (stageStatusTimer <= 0f)
-            {
-                stageStatusTimer = 0f;
-                stageStatusMessage = null;
-            }
-        }
-
-        /// <summary>스테이지 상태 메시지가 사라지기 전 마지막 구간에서 천천히 페이드아웃하는 시간(초).</summary>
-        private const float StageStatusFadeOut = 0.7f;
-
-        /// <summary>
-        /// 스테이지 상태 메시지의 표시 강도(0~1)를 반환한다.
-        /// 남은 시간이 페이드아웃 구간보다 많으면 1, 적으면 비례 감소한다.
-        /// </summary>
-        private float GetStageStatusAlpha()
-        {
-            if (stageStatusTimer <= 0f)
-            {
-                return 0f;
-            }
-
-            return Math.Min(1f, stageStatusTimer / StageStatusFadeOut);
-        }
-
-        /// <summary>
         /// 보스 방 진입 연출 타이머를 감소시킨다.
         /// 타이머가 0에 도달하면 보스 인트로 연출이 끝난 것으로 간주된다.
         /// </summary>
@@ -360,18 +259,6 @@ namespace My2DEngine.Game.Core
         }
 
         /// <summary>
-        /// 화면에 표시할 스테이지 상태 메시지와 지속 시간을 설정한다.
-        /// 이전 메시지가 있어도 덮어쓴다.
-        /// </summary>
-        /// <param name="message">화면에 표시할 메시지 문자열.</param>
-        /// <param name="duration">메시지를 표시할 시간(초).</param>
-        private void SetStageStatus(string message, float duration)
-        {
-            stageStatusMessage = message;
-            stageStatusTimer = duration;
-        }
-
-        /// <summary>
         /// 스테이지 전체 상태를 초기값으로 재설정한다.
         /// 승리 플래그, 활성 방 인덱스, 시각 효과, 보상 픽업, 상호작용 키 상태를 모두 초기화하고,
         /// 스테이지 흐름이 있는 맵에서는 모든 방의 진행 상태와 문을 닫힌 상태로 되돌린다.
@@ -381,8 +268,7 @@ namespace My2DEngine.Game.Core
             StopLoopingWeaponEffects();
             victory = false;
             activeStageRoomIndex = -1;
-            stageStatusMessage = null;
-            stageStatusTimer = 0f;
+            stageStatus.Clear();
             bossIntroTimer = 0f;
             playerDamageFlashTimer = 0f;
             playerDamageFlashDirX = 0f;
@@ -402,7 +288,7 @@ namespace My2DEngine.Game.Core
             deathRollDirection = 1f;
             interactKeyHeld = false;
             specialKeyHeld = false;
-            currentStageRoomCache = null;
+            roomLookup.ForgetCurrent();
             branchSelectionActive = false;
             branchOptionA = null;
             branchOptionB = null;
@@ -451,7 +337,7 @@ namespace My2DEngine.Game.Core
             interactPromptText = null;
             if (rooms.Length > 0)
             {
-                SetStageStatus("시작실에서 준비한 뒤 연결 문을 여세요", 3f);
+                stageStatus.Show("시작실에서 준비한 뒤 연결 문을 여세요", 3f);
             }
         }
     }

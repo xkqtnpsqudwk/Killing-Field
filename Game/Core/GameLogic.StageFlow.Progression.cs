@@ -161,7 +161,7 @@ namespace My2DEngine.Game.Core
                     }
                     else
                     {
-                        SetStageStatus($"{currentFloor}층 보스 처치! 무기 카드 & 영구 포인트 획득! 다음 층 적 강화", 5.8f);
+                        stageStatus.Show($"{currentFloor}층 보스 처치! 무기 카드 & 영구 포인트 획득! 다음 층 적 강화", 5.8f);
                         ShowCardReward(wasBossRoom: true, nextFloorIsBoss: nextIsBoss);
                     }
                 }
@@ -184,14 +184,14 @@ namespace My2DEngine.Game.Core
             // 기존 미로 모드
             if (activeRoom.IsBossRoom)
             {
-                if (AreAllBossRoomsCleared())
+                if (roomLookup.AreAllBossRoomsCleared())
                 {
                     victory = true;
-                    SetStageStatus("모든 보스 구역 확보 - 작전 완료", 6f);
+                    stageStatus.Show("모든 보스 구역 확보 - 작전 완료", 6f);
                 }
                 else
                 {
-                    SetStageStatus("보스 격파 - 남은 구역을 수색하세요", 4f);
+                    stageStatus.Show("보스 격파 - 남은 구역을 수색하세요", 4f);
                 }
 
                 return;
@@ -326,7 +326,7 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            StageRoom room = FindStageRoomAtPosition(enemy.X, enemy.Y) ?? FindCurrentStageRoom();
+            StageRoom room = roomLookup.FindAt(enemy.X, enemy.Y) ?? roomLookup.FindCurrent(player.Position.X, player.Position.Y);
             rewardPickups.Add(new RewardPickup
             {
                 RoomId = room?.Id ?? -1,
@@ -366,7 +366,7 @@ namespace My2DEngine.Game.Core
             }
 
             int coinAmount = enemy.IsBoss ? 3 : enemy.IsMiniBoss ? 2 : 1;
-            StageRoom room = FindStageRoomAtPosition(enemy.X, enemy.Y) ?? FindCurrentStageRoom();
+            StageRoom room = roomLookup.FindAt(enemy.X, enemy.Y) ?? roomLookup.FindCurrent(player.Position.X, player.Position.Y);
             rewardPickups.Add(new RewardPickup
             {
                 RoomId = room?.Id ?? -1,
@@ -385,8 +385,8 @@ namespace My2DEngine.Game.Core
         private bool IsSupplyShortageRoomDropBlocked(Enemy enemy)
         {
             StageRoom room = enemy == null
-                ? FindCurrentStageRoom()
-                : FindStageRoomAtPosition(enemy.X, enemy.Y) ?? FindCurrentStageRoom();
+                ? roomLookup.FindCurrent(player.Position.X, player.Position.Y)
+                : roomLookup.FindAt(enemy.X, enemy.Y) ?? roomLookup.FindCurrent(player.Position.X, player.Position.Y);
             // 보급 부족 방은 전투 중 드랍을 막지만, 방 클리어 보상 등 다른 보상 체계까지 막지는 않는다.
             return room != null && room.HazardKind == RoomHazardKind.SupplyShortage && room.State.Activated && !room.State.Cleared;
         }
@@ -410,37 +410,6 @@ namespace My2DEngine.Game.Core
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// 현재 무기에 맞는 기본 탄약 지급량을 반환한다.
-        /// </summary>
-        private int GetAmmoPickupAmount(WeaponType type, float effectMultiplier)
-        {
-            float clampedMultiplier = Math.Max(1f, effectMultiplier);
-            return Math.Max(1, (int)Math.Ceiling(GetAmmoPickupBaseAmount(type) * clampedMultiplier));
-        }
-
-        /// <summary>
-        /// 무기 종류에 맞는 기본 탄약 지급량을 반환한다.
-        /// </summary>
-        private int GetAmmoPickupBaseAmount(WeaponType type)
-        {
-            switch (type)
-            {
-                case WeaponType.AMPistol:
-                    return 12;
-                case WeaponType.BearKiller:
-                    return 2;
-                case WeaponType.HChainGun:
-                    return 18;
-                case WeaponType.AutoCannon:
-                    return 3;
-                case WeaponType.DuelBerettas:
-                    return 10;
-                default:
-                    return 0;
-            }
         }
 
         /// <summary>
@@ -468,7 +437,7 @@ namespace My2DEngine.Game.Core
             if (room.IsRestRoom)
             {
                 SpawnRestRoomChoices(room);
-                SetStageStatus("카드 상점 - 코인으로 고등급 카드 구매", 3.6f);
+                stageStatus.Show("카드 상점 - 코인으로 고등급 카드 구매", 3.6f);
                 return;
             }
 
@@ -484,18 +453,18 @@ namespace My2DEngine.Game.Core
                 if (currentFloor > 0)
                 {
                     // 로그라이크 모드: 스폰 없는 방도 출구로 진행
-                    SetStageStatus("[E] 다음 층으로", 3f);
+                    stageStatus.Show("[E] 다음 층으로", 3f);
                 }
                 else if (room.IsBossRoom)
                 {
-                    if (AreAllBossRoomsCleared())
+                    if (roomLookup.AreAllBossRoomsCleared())
                     {
                         victory = true;
-                        SetStageStatus("작전 완료", 4f);
+                        stageStatus.Show("작전 완료", 4f);
                     }
                     else
                     {
-                        SetStageStatus("보스 구역 확보 - 다른 보스가 남아 있습니다", 3.5f);
+                        stageStatus.Show("보스 구역 확보 - 다른 보스가 남아 있습니다", 3.5f);
                     }
                 }
                 else
@@ -511,15 +480,15 @@ namespace My2DEngine.Game.Core
             if (room.IsBossRoom)
             {
                 bossIntroTimer = EnemyConfig.BossIntroDuration;
-                SetStageStatus(BuildRoomStartMessage(room), 3.5f);
+                stageStatus.Show(RoomText.StartMessage(room), 3.5f);
             }
             else if (room.IsMiniBossRoom)
             {
-                SetStageStatus(BuildRoomStartMessage(room), 3f);
+                stageStatus.Show(RoomText.StartMessage(room), 3f);
             }
             else
             {
-                SetStageStatus(BuildRoomStartMessage(room), 2.8f);
+                stageStatus.Show(RoomText.StartMessage(room), 2.8f);
             }
         }
 
@@ -545,38 +514,6 @@ namespace My2DEngine.Game.Core
             {
                 state.HazardTickTimer = 0f;
             }
-        }
-
-        private string BuildRoomStartMessage(StageRoom room)
-        {
-            string objectiveText;
-            switch (room.ObjectiveKind)
-            {
-                case RoomObjectiveKind.Survive:
-                    objectiveText = "생존전 시작 - " + Math.Ceiling(Math.Max(1f, room.ObjectiveDuration)) + "초 버티기";
-                    break;
-                case RoomObjectiveKind.KeyTarget:
-                    objectiveText = "열쇠 방 시작 - 은닉 표적 추적";
-                    break;
-                default:
-                    objectiveText = room.IsBossRoom
-                        ? "보스전 시작"
-                        : room.IsMiniBossRoom
-                            ? "정예전 시작"
-                            : "라운드 시작 - 적 제거";
-                    break;
-            }
-
-            if (room.HazardKind == RoomHazardKind.ToxicMist)
-            {
-                objectiveText += " / 독성 안개";
-            }
-            else if (room.HazardKind == RoomHazardKind.SupplyShortage)
-            {
-                objectiveText += " / 보급 부족";
-            }
-
-            return objectiveText;
         }
 
         /// <summary>
@@ -616,15 +553,15 @@ namespace My2DEngine.Game.Core
                 }
             }
 
-            PointF spawn = FindRewardSpawnPoint(room);
-            RewardPickupKind kind = DetermineRewardKind(room);
-            RewardPickupRarity rarity = DetermineRewardRarity(room, kind);
+            PointF spawn = RewardPlacement.FindRoomSpot(mapManager.Map, room.Bounds);
+            RewardPickupKind kind = RewardRules.RoomRewardKind(room);
+            RewardPickupRarity rarity = RewardRules.RollRarity(room, kind, rewardRandom);
             rewardPickups.Add(new RewardPickup
             {
                 RoomId = room.Id,
                 Kind = kind,
                 Rarity = rarity,
-                EffectMultiplier = GetRewardEffectMultiplier(kind, rarity),
+                EffectMultiplier = RewardRules.EffectMultiplier(kind, rarity),
                 X = spawn.X,
                 Y = spawn.Y,
                 Active = true,
@@ -652,7 +589,7 @@ namespace My2DEngine.Game.Core
                 }
             }
 
-            PointF[] spawnPoints = FindRestChoiceSpawnPoints(room);
+            PointF[] spawnPoints = RewardPlacement.FindShopSpots(mapManager.Map, room.Bounds);
             RewardCardOffer[] offers = GenerateRestShopCardOffers(3);
 
             for (int i = 0; i < offers.Length && i < spawnPoints.Length; i++)
@@ -673,257 +610,6 @@ namespace My2DEngine.Game.Core
                     CoinCost = GetRestShopCardCost(grade),
                     CardOffer = offer
                 });
-            }
-        }
-
-        /// <summary>
-        /// 휴식 룸 3지선다 픽업이 놓일 좌/중/우 지점을 계산한다.
-        /// 후보 위치가 막혀 있으면 근처의 이동 가능한 타일로 보정한다.
-        /// </summary>
-        private PointF[] FindRestChoiceSpawnPoints(StageRoom room)
-        {
-            Rectangle bounds = room.Bounds;
-            int centerX = bounds.Left + bounds.Width / 2;
-            int centerY = bounds.Top + bounds.Height / 2;
-            int spacing = Math.Max(2, bounds.Width / 6);
-
-            return new[]
-            {
-                FindNearestWalkableRewardPoint(centerX - spacing, centerY, bounds),
-                FindNearestWalkableRewardPoint(centerX, centerY, bounds),
-                FindNearestWalkableRewardPoint(centerX + spacing, centerY, bounds)
-            };
-        }
-
-        /// <summary>
-        /// 선호 타일 좌표 주변에서 가장 가까운 이동 가능한 보상 배치 지점을 찾는다.
-        /// </summary>
-        private PointF FindNearestWalkableRewardPoint(int preferredX, int preferredY, Rectangle bounds)
-        {
-            int[,] map = mapManager.Map;
-            if (map == null)
-            {
-                return new PointF(preferredX + 0.5f, preferredY + 0.5f);
-            }
-
-            int maxRadius = Math.Max(bounds.Width, bounds.Height);
-            for (int radius = 0; radius <= maxRadius; radius++)
-            {
-                for (int y = preferredY - radius; y <= preferredY + radius; y++)
-                {
-                    for (int x = preferredX - radius; x <= preferredX + radius; x++)
-                    {
-                        if (Math.Abs(x - preferredX) != radius && Math.Abs(y - preferredY) != radius)
-                        {
-                            continue;
-                        }
-
-                        if (IsWalkableRewardTile(x, y, bounds, map))
-                        {
-                            return new PointF(x + 0.5f, y + 0.5f);
-                        }
-                    }
-                }
-            }
-
-            return FindRewardSpawnPoint(new StageRoom { Bounds = bounds });
-        }
-
-        /// <summary>
-        /// 방의 중심에서 나선형으로 바깥쪽을 탐색하여 보상 아이템을 놓을 최적 위치를 찾는다.
-        /// <list type="bullet">
-        ///   <item>1단계: 주변 8타일이 모두 이동 가능한 "안전" 타일을 우선 탐색한다.</item>
-        ///   <item>2단계: 안전 타일이 없으면 이동 가능한 타일 아무 곳에나 배치한다.</item>
-        ///   <item>3단계: 이동 가능한 타일도 없으면 방 중심 좌표를 반환한다.</item>
-        /// </list>
-        /// </summary>
-        /// <param name="room">보상을 생성할 스테이지 방.</param>
-        /// <returns>보상 아이템의 월드 좌표(타일 중심, 즉 타일 좌표 + 0.5).</returns>
-        private PointF FindRewardSpawnPoint(StageRoom room)
-        {
-            int[,] map = mapManager.Map;
-            Rectangle bounds = room.Bounds;
-            int centerX = bounds.Left + bounds.Width / 2;
-            int centerY = bounds.Top + bounds.Height / 2;
-            int maxRadius = Math.Max(bounds.Width, bounds.Height);
-
-            for (int radius = 0; radius <= maxRadius; radius++)
-            {
-                for (int y = centerY - radius; y <= centerY + radius; y++)
-                {
-                    for (int x = centerX - radius; x <= centerX + radius; x++)
-                    {
-                        if (Math.Abs(x - centerX) != radius && Math.Abs(y - centerY) != radius)
-                        {
-                            continue;
-                        }
-
-                        if (IsSafeRewardTile(x, y, bounds, map))
-                        {
-                            return new PointF(x + 0.5f, y + 0.5f);
-                        }
-                    }
-                }
-            }
-
-            for (int radius = 0; radius <= maxRadius; radius++)
-            {
-                for (int y = centerY - radius; y <= centerY + radius; y++)
-                {
-                    for (int x = centerX - radius; x <= centerX + radius; x++)
-                    {
-                        if (Math.Abs(x - centerX) != radius && Math.Abs(y - centerY) != radius)
-                        {
-                            continue;
-                        }
-
-                        if (IsWalkableRewardTile(x, y, bounds, map))
-                        {
-                            return new PointF(x + 0.5f, y + 0.5f);
-                        }
-                    }
-                }
-            }
-
-            return new PointF(centerX + 0.5f, centerY + 0.5f);
-        }
-
-        /// <summary>
-        /// 지정한 타일이 보상 배치에 "안전"한지 확인한다.
-        /// 해당 타일 자체가 이동 가능하고, 상하좌우·대각선 8방향 타일도 모두 이동 가능해야 한다.
-        /// </summary>
-        /// <param name="x">검사할 타일의 X 좌표.</param>
-        /// <param name="y">검사할 타일의 Y 좌표.</param>
-        /// <param name="bounds">방의 경계 사각형. 벽 인접 여부 확인에 사용된다.</param>
-        /// <param name="map">맵 타일 배열. 0이 빈 공간이다.</param>
-        /// <returns>해당 타일과 주변 8타일이 모두 이동 가능하면 true.</returns>
-        private bool IsSafeRewardTile(int x, int y, Rectangle bounds, int[,] map)
-        {
-            if (!IsWalkableRewardTile(x, y, bounds, map))
-            {
-                return false;
-            }
-
-            for (int offsetY = -1; offsetY <= 1; offsetY++)
-            {
-                for (int offsetX = -1; offsetX <= 1; offsetX++)
-                {
-                    if (offsetX == 0 && offsetY == 0)
-                    {
-                        continue;
-                    }
-
-                    int checkX = x + offsetX;
-                    int checkY = y + offsetY;
-                    if (!IsWalkableRewardTile(checkX, checkY, bounds, map))
-                    {
-                        return false;
-                    }
-                }
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// 지정한 타일이 보상 아이템을 놓을 수 있는 이동 가능한 타일인지 확인한다.
-        /// 방 경계에서 2타일 이상 안쪽에 있어야 하며, 맵 범위 내의 빈 공간(값 0)이어야 한다.
-        /// </summary>
-        /// <param name="x">검사할 타일의 X 좌표.</param>
-        /// <param name="y">검사할 타일의 Y 좌표.</param>
-        /// <param name="bounds">방의 경계 사각형. 경계 근접 여부 확인에 사용된다.</param>
-        /// <param name="map">맵 타일 배열. null이면 false를 반환한다.</param>
-        /// <returns>이동 가능한 보상 배치 타일이면 true.</returns>
-        private bool IsWalkableRewardTile(int x, int y, Rectangle bounds, int[,] map)
-        {
-            if (map == null)
-            {
-                return false;
-            }
-
-            if (x <= bounds.Left + 1 || x >= bounds.Right - 2 || y <= bounds.Top + 1 || y >= bounds.Bottom - 2)
-            {
-                return false;
-            }
-
-            if (x < 0 || y < 0 || x >= map.GetLength(0) || y >= map.GetLength(1))
-            {
-                return false;
-            }
-
-            return map[x, y] == 0;
-        }
-
-        /// <summary>
-        /// 방 ID를 기반으로 전투 방 클리어 보상의 종류를 결정한다.
-        /// 회복/스팀 보상은 제거되어 전투 방 보상은 탄약 보급만 생성한다.
-        /// </summary>
-        /// <param name="room">보상 종류를 결정할 스테이지 방.</param>
-        /// <returns>결정된 보상 픽업 종류.</returns>
-        private RewardPickupKind DetermineRewardKind(StageRoom room)
-        {
-            return RewardPickupKind.AmmoPack;
-        }
-
-        /// <summary>
-        /// 방 타입과 보상 종류를 기반으로 보상의 희귀도를 무작위로 결정한다.
-        /// 코인과 카드는 항상 <see cref="RewardPickupRarity.None"/>을 반환한다.
-        /// 보스 방일수록 Epic·Rare 확률이 높고, 일반 방일수록 낮다.
-        /// </summary>
-        /// <param name="room">희귀도 판정에 사용할 스테이지 방(보스 여부 확인).</param>
-        /// <param name="kind">보상 종류.</param>
-        /// <returns>결정된 희귀도.</returns>
-        private RewardPickupRarity DetermineRewardRarity(StageRoom room, RewardPickupKind kind)
-        {
-            if (kind == RewardPickupKind.Coin || kind == RewardPickupKind.Card)
-            {
-                return RewardPickupRarity.None;
-            }
-
-            int roll = rewardRandom.Next(100);
-            if (room != null && room.IsBossRoom)
-            {
-                if (roll < 45) return RewardPickupRarity.Epic;
-                if (roll < 100) return RewardPickupRarity.Rare;
-            }
-            else if (room != null && room.IsMiniBossRoom)
-            {
-                if (roll < 20) return RewardPickupRarity.Epic;
-                if (roll < 65) return RewardPickupRarity.Rare;
-            }
-            else
-            {
-                if (roll < 10) return RewardPickupRarity.Epic;
-                if (roll < 35) return RewardPickupRarity.Rare;
-            }
-
-            return RewardPickupRarity.Common;
-        }
-
-        /// <summary>
-        /// 보상 종류와 희귀도를 기반으로 효과 배율을 계산한다.
-        /// 코인, 카드이거나 희귀도가 None이면 기본 배율 1.0을 반환한다.
-        /// </summary>
-        /// <param name="kind">보상 종류.</param>
-        /// <param name="rarity">보상 희귀도.</param>
-        /// <returns>
-        /// 효과 배율. 예를 들어 Rare 탄약은 1.8배, Epic 탄약은 2.2배의 효과를 가진다.
-        /// </returns>
-        private float GetRewardEffectMultiplier(RewardPickupKind kind, RewardPickupRarity rarity)
-        {
-            if (kind == RewardPickupKind.Coin || kind == RewardPickupKind.Card || rarity == RewardPickupRarity.None)
-            {
-                return 1f;
-            }
-
-            switch (rarity)
-            {
-                case RewardPickupRarity.Rare:
-                    return 1.8f;
-                case RewardPickupRarity.Epic:
-                    return 2.2f;
-                default:
-                    return 1.5f;
             }
         }
 
@@ -1011,7 +697,7 @@ namespace My2DEngine.Game.Core
                 }
             }
 
-            StageRoom room = GetStageRoom(roomId);
+            StageRoom room = roomLookup.Get(roomId);
             if (room != null)
             {
                 room.State.Cleared = true;
@@ -1049,7 +735,7 @@ namespace My2DEngine.Game.Core
             {
                 case RewardPickupKind.AmmoPack:
                     WeaponType currentWeaponType = weapon.CurrentType;
-                    int ammoAmount = GetAmmoPickupAmount(currentWeaponType, effectMultiplier);
+                    int ammoAmount = RewardRules.AmmoPickupAmount(currentWeaponType, effectMultiplier);
                     int ammoCapacity = weapon.GetMaxAmmo(currentWeaponType) - weapon.GetAmmo(currentWeaponType);
                     int addedAmmo = Math.Max(0, Math.Min(ammoAmount, ammoCapacity));
                     if (addedAmmo <= 0)
@@ -1095,12 +781,7 @@ namespace My2DEngine.Game.Core
 
         private int GetRestShopCardCost(CardGrade grade)
         {
-            int gradeCost = Math.Max(0, (int)grade) * RewardConfig.RestShopCardCostPerGrade;
-            int baseCost = RewardConfig.RestShopCardBaseCost +
-                gradeCost +
-                Math.Max(0, bossClearGrowthCount) * RewardConfig.RestShopCostIncreasePerBossClear;
-            float discount = Math.Max(0f, Math.Min(0.50f, GetRunStatBonus(StatType.ShopDiscount)));
-            return Math.Max(1, (int)Math.Ceiling(baseCost * (1f - discount)));
+            return RewardRules.RestShopCardCost(grade, bossClearGrowthCount, GetRunStatBonus(StatType.ShopDiscount));
         }
 
         private bool TrySpendRestShopCost(RewardPickup pickup)
@@ -1122,11 +803,7 @@ namespace My2DEngine.Game.Core
 
         private void ShowRestShopBlockMessage(string message)
         {
-            if (!string.IsNullOrWhiteSpace(message) &&
-                (!string.Equals(stageStatusMessage, message, StringComparison.Ordinal) || stageStatusTimer <= 0.15f))
-            {
-                SetStageStatus(message, 1.6f);
-            }
+            stageStatus.ShowIfNew(message, 1.6f, refreshBelow: 0.15f);
         }
 
         private bool TrySkipActiveRestRoom()
@@ -1177,94 +854,6 @@ namespace My2DEngine.Game.Core
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// 보상 획득 메시지를 구성한다.
-        /// 희귀도 라벨이 있으면 "라벨 기본메시지" 형식으로, 없으면 기본 메시지만 반환한다.
-        /// </summary>
-        /// <param name="pickup">희귀도 라벨을 읽을 보상 픽업 객체.</param>
-        /// <param name="baseMessage">기본 메시지 문자열(예: "의료 보급 확보").</param>
-        /// <returns>희귀도 라벨이 포함된 최종 메시지 문자열.</returns>
-        private string BuildRewardPickupMessage(RewardPickup pickup, string baseMessage)
-        {
-            if (pickup == null || pickup.Rarity == RewardPickupRarity.None)
-            {
-                return baseMessage;
-            }
-
-            string label = pickup.GetRarityLabel();
-            return string.IsNullOrWhiteSpace(label)
-                ? baseMessage
-                : label + " " + baseMessage;
-        }
-
-        /// <summary>
-        /// 방 ID로 스테이지 방 객체를 빠르게 조회한다.
-        /// 내부적으로 <see cref="stageRoomLookup"/> 딕셔너리를 사용하여 O(1) 탐색을 수행한다.
-        /// </summary>
-        /// <param name="roomId">조회할 방의 ID.</param>
-        /// <returns>해당 ID의 <see cref="StageRoom"/>. 없으면 null.</returns>
-        private StageRoom GetStageRoom(int roomId)
-        {
-            return stageRoomLookup.TryGetValue(roomId, out StageRoom room)
-                ? room
-                : null;
-        }
-
-        /// <summary>
-        /// 지정 좌표를 포함하는 스테이지 방을 찾아 반환한다.
-        /// </summary>
-        private StageRoom FindStageRoomAtPosition(float x, float y)
-        {
-            StageRoom[] rooms = mapManager.StageRooms;
-            if (rooms == null)
-            {
-                return null;
-            }
-
-            for (int i = 0; i < rooms.Length; i++)
-            {
-                StageRoom room = rooms[i];
-                if (room != null && room.Contains(x, y))
-                {
-                    return room;
-                }
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// 맵의 모든 보스 방이 클리어되었는지 확인한다.
-        /// 보스 방이 하나도 없으면 false를 반환한다(맵 데이터 오류 방어).
-        /// </summary>
-        /// <returns>보스 방이 하나 이상 존재하고 모두 클리어됐으면 true, 그렇지 않으면 false.</returns>
-        private bool AreAllBossRoomsCleared()
-        {
-            StageRoom[] rooms = mapManager.StageRooms;
-            if (rooms == null)
-            {
-                return false;
-            }
-
-            bool hasBossRoom = false;
-            for (int i = 0; i < rooms.Length; i++)
-            {
-                StageRoom room = rooms[i];
-                if (room == null || !room.IsBossRoom)
-                {
-                    continue;
-                }
-
-                hasBossRoom = true;
-                if (!room.State.Cleared)
-                {
-                    return false;
-                }
-            }
-
-            return hasBossRoom;
         }
     }
 }

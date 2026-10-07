@@ -306,14 +306,14 @@ namespace My2DEngine.Game.Core
 
             if (!success)
             {
-                SetStageStatus(failureMessage, 1.8f);
+                stageStatus.Show(failureMessage, 1.8f);
                 return;
             }
 
             permanentProgression.Sanitize();
             SavePermanentProgression();
             ApplyCombinedProgressionStats(refillHealth: false, healMaxHealthDelta: healDelta);
-            SetStageStatus(successMessage, 2.2f);
+            stageStatus.Show(successMessage, 2.2f);
         }
 
         private void HandlePermanentStatsMouseClick()

@@ -38,7 +38,7 @@ namespace My2DEngine.Game.Core
         /// <returns>현재 상황에 맞는 BGM 카테고리.</returns>
         private BackgroundMusicCategory GetBackgroundMusicCategory()
         {
-            StageRoom room = FindCurrentStageRoom();
+            StageRoom room = roomLookup.FindCurrent(player.Position.X, player.Position.Y);
             if (room != null && room.State.Activated)
             {
                 if (room.IsBossRoom)
@@ -53,39 +53,6 @@ namespace My2DEngine.Game.Core
             }
 
             return BackgroundMusicCategory.Normal;
-        }
-
-        /// <summary>
-        /// 플레이어가 현재 어느 스테이지 방 안에 있는지 찾아 반환한다.
-        /// 이전 프레임 결과(<see cref="currentStageRoomCache"/>)를 먼저 확인하여
-        /// 플레이어가 같은 방에 머무는 동안에는 전체 배열 탐색을 생략한다.
-        /// </summary>
-        /// <returns>플레이어가 위치한 <see cref="StageRoom"/>. 어느 방에도 없으면 null.</returns>
-        private StageRoom FindCurrentStageRoom()
-        {
-            if (currentStageRoomCache != null && currentStageRoomCache.Contains(player.Position.X, player.Position.Y))
-            {
-                return currentStageRoomCache;
-            }
-
-            StageRoom[] rooms = mapManager.StageRooms;
-            if (rooms == null)
-            {
-                return null;
-            }
-
-            for (int i = 0; i < rooms.Length; i++)
-            {
-                StageRoom room = rooms[i];
-                if (room != null && room.Contains(player.Position.X, player.Position.Y))
-                {
-                    currentStageRoomCache = room;
-                    return room;
-                }
-            }
-
-            currentStageRoomCache = null;
-            return null;
         }
     }
 }

@@ -48,7 +48,7 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            UpdateStageMessage(dt);
+            stageStatus.Update(dt);
             UpdateBossIntroTimer(dt);
             UpdatePlayerDamageFlash(dt);
             UpdateCombatFeedback(dt);

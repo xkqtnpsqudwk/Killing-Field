@@ -33,7 +33,7 @@ namespace My2DEngine.Game.Core
             weapon.FireButtonHeld = false;
             StopLoopingWeaponEffects();
             interactPromptText = null;
-            SetStageStatus("666층 돌파 - 엔딩 연출", EndingSequenceDuration);
+            stageStatus.Show("666층 돌파 - 엔딩 연출", EndingSequenceDuration);
         }
 
         private void UpdateEndingSequence(float dt)
@@ -52,7 +52,7 @@ namespace My2DEngine.Game.Core
             endingSequenceTimer = 0f;
             endingSequenceActive = false;
             endingSequenceCompleted = true;
-            SetStageStatus("엔딩 완료 - [E] 무한 모드 진입", 4f);
+            stageStatus.Show("엔딩 완료 - [E] 무한 모드 진입", 4f);
         }
 
         private void ResetEndingSequenceState()

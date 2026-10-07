@@ -74,14 +74,11 @@ namespace My2DEngine.Game.Core
         /// <summary>보상 희귀도 랜덤 결정에 사용되는 난수 생성기.</summary>
         private System.Random rewardRandom;
 
-        /// <summary>방 ID → StageRoom 빠른 조회를 위한 딕셔너리. RebuildStageRoomLookup()으로 갱신된다.</summary>
-        private readonly Dictionary<int, StageRoom> stageRoomLookup;
+        /// <summary>방 ID 조회와 플레이어가 있는 방 캐시.</summary>
+        private readonly StageRoomIndex roomLookup;
 
-        /// <summary>화면 상단에 표시할 스테이지 상태 메시지 문자열. null이면 표시하지 않는다.</summary>
-        private string stageStatusMessage;
-
-        /// <summary>stageStatusMessage가 표시되는 남은 시간(초).</summary>
-        private float stageStatusTimer;
+        /// <summary>화면 위쪽 상태 메시지.</summary>
+        private readonly StageStatusMessage stageStatus = new StageStatusMessage();
 
         /// <summary>현재 전투 중인(활성화된) 스테이지 방의 인덱스. 활성 방이 없으면 -1.</summary>
         private int activeStageRoomIndex;
@@ -152,9 +149,6 @@ namespace My2DEngine.Game.Core
         /// <summary>사망 시 화면이 기울어지는 방향. +1이면 오른쪽, -1이면 왼쪽으로 쓰러진다.</summary>
         private float deathRollDirection;
 
-        /// <summary>현재 프레임에서 플레이어가 머물고 있는 스테이지 방의 캐시. 방이 바뀌면 갱신된다.</summary>
-        private StageRoom currentStageRoomCache;
-
         /// <summary>첫 런 조작 안내 오버레이가 표시되는 남은 시간(초). 0이면 표시 안 함.</summary>
         private float controlsTutorialTimer;
 
@@ -202,6 +196,7 @@ namespace My2DEngine.Game.Core
         public GameLogic(int? fixedRunSeed)
         {
             mapManager = new MapManager();
+            roomLookup = new StageRoomIndex(mapManager);
 
             textureManager = new TextureManager();
             textureManager.LoadAllTextures();
@@ -218,7 +213,6 @@ namespace My2DEngine.Game.Core
             playerProjectiles = new List<EnemyProjectile>();
             FixedRunSeed = fixedRunSeed;
             BeginRunRandom();
-            stageRoomLookup = new Dictionary<int, StageRoom>();
             ResetCardRunState();
             ResetRunEndlessState();
 
@@ -226,7 +220,7 @@ namespace My2DEngine.Game.Core
             ApplyMapSpawnSettings();
             collision = new CollisionSystem(mapManager.Map, mapManager.FloorHeights);
             enemyManager.BuildFromMap(mapManager.Map, player.Position, collision);
-            RebuildStageRoomLookup();
+            roomLookup.Rebuild();
             ResetStageState();
             LoadPermanentProgression();
             ApplyCombinedProgressionStats(refillHealth: true, healMaxHealthDelta: false);
@@ -414,7 +408,7 @@ namespace My2DEngine.Game.Core
             ApplyMapSpawnSettings();
             collision = new CollisionSystem(mapManager.Map, mapManager.FloorHeights);
             enemyManager.BuildFromMap(mapManager.Map, player.Position, collision);
-            RebuildStageRoomLookup();
+            roomLookup.Rebuild();
             ResetStageState();
             renderer.ResetTransientCaches();
             cachedRenderer?.OnLevelTransition();
@@ -430,11 +424,11 @@ namespace My2DEngine.Game.Core
 
             if (currentFloor == FinalRoguelikeFloor + 1)
             {
-                SetStageStatus("무한 모드 개시 - 667층" + entryHint, 4.2f);
+                stageStatus.Show("무한 모드 개시 - 667층" + entryHint, 4.2f);
             }
             else
             {
-                SetStageStatus($"{currentFloor}층{floorTag}{entryHint}", 3.4f);
+                stageStatus.Show($"{currentFloor}층{floorTag}{entryHint}", 3.4f);
             }
         }
 
@@ -755,7 +749,7 @@ namespace My2DEngine.Game.Core
             player.Position = mapManager.PlayerStartPosition;
             player.Direction = mapManager.PlayerStartDirection;
             player.FovDegrees = mapManager.PlayerStartFov;
-            currentStageRoomCache = null;
+            roomLookup.ForgetCurrent();
         }
 
         /// <summary>
@@ -769,7 +763,7 @@ namespace My2DEngine.Game.Core
         {
             cachedRenderer = r;
             renderer.Render(r, screenWidth, screenHeight, player, weapon, rewardPickups, playerProjectiles, enemyManager.GetBossEnemy(),
-                bossIntroTimer, stageStatusMessage, GetStageStatusAlpha(), interactPromptText, victory,
+                bossIntroTimer, stageStatus.Text, stageStatus.Alpha, interactPromptText, victory,
                 playerDamageFlashTimer, playerDamageFlashDirX, playerDamageFlashDirY,
                 playerDamageShakeTimer, playerDamageShakePower,
                 playerRecoilShakeTimer, playerRecoilShakePower,
@@ -797,31 +791,6 @@ namespace My2DEngine.Game.Core
             audio.Dispose();
             textureManager.Dispose();
             disposed = true;
-        }
-
-        /// <summary>
-        /// <see cref="stageRoomLookup"/> 딕셔너리를 현재 맵의 스테이지 방 목록으로 재구성한다.
-        /// 맵이 교체될 때마다 호출하여 ID 기반 빠른 조회가 항상 최신 상태를 반영하게 한다.
-        /// </summary>
-        private void RebuildStageRoomLookup()
-        {
-            stageRoomLookup.Clear();
-            currentStageRoomCache = null;
-
-            StageRoom[] rooms = mapManager.StageRooms;
-            if (rooms == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < rooms.Length; i++)
-            {
-                StageRoom room = rooms[i];
-                if (room != null)
-                {
-                    stageRoomLookup[room.Id] = room;
-                }
-            }
         }
     }
 }

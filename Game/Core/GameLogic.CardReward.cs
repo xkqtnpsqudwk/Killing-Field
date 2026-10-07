@@ -805,12 +805,12 @@ namespace My2DEngine.Game.Core
             else if (!cardRewardWasBossRoom && cardRewardNextFloorIsBoss)
             {
                 // 다음 층이 보스 → E키로 강제 진입
-                SetStageStatus("[E] 다음 층으로 (보스)", 4f);
+                stageStatus.Show("[E] 다음 층으로 (보스)", 4f);
             }
             else
             {
                 // 보스 클리어 후 → E키로 진행
-                SetStageStatus("[E] 다음 층으로", 4f);
+                stageStatus.Show("[E] 다음 층으로", 4f);
             }
         }
 
@@ -830,7 +830,7 @@ namespace My2DEngine.Game.Core
 
             if (offer.IsWeaponCard)
             {
-                SetStageStatus(BuildWeaponCardMessage(offer), 3f);
+                stageStatus.Show(BuildWeaponCardMessage(offer), 3f);
             }
         }
 
@@ -867,7 +867,7 @@ namespace My2DEngine.Game.Core
             runStatPickupCount[statIndex]++;
 
             ApplyCombinedProgressionStats(refillHealth: false, healMaxHealthDelta: stat == StatType.MaxHealth);
-            SetStageStatus(BuildStatCardMessage(stat, grade, actualBonus), 3f);
+            stageStatus.Show(BuildStatCardMessage(stat, grade, actualBonus), 3f);
         }
 
         private static float ClampRunStatBonusTotal(StatType stat, float value)

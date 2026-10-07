@@ -67,7 +67,7 @@ namespace My2DEngine.Game.Core
             Enemy target = FindNearestAliveEnemy(10f);
             if (target == null)
             {
-                SetStageStatus("갈고리 - 대상 없음", 1.5f);
+                stageStatus.Show("갈고리 - 대상 없음", 1.5f);
                 return;
             }
 
@@ -77,7 +77,7 @@ namespace My2DEngine.Game.Core
             target.StunTimer = HookStunDuration;
             EmitEnemyAlertSound(player.Position.X, player.Position.Y, 8.5f, player.Direction.X, player.Direction.Y);
             weapon.StartSpecialCooldown(10f);
-            SetStageStatus("갈고리 - 끌어당김!", 2f);
+            stageStatus.Show("갈고리 - 끌어당김!", 2f);
         }
 
         private void UpdateHookPull()
@@ -114,13 +114,13 @@ namespace My2DEngine.Game.Core
         {
             if (weapon.CurrentAmmo <= 0)
             {
-                SetStageStatus("LMG 버스트 - 탄약 없음", 1.6f);
+                stageStatus.Show("LMG 버스트 - 탄약 없음", 1.6f);
                 return;
             }
 
             weapon.StartLmgBurst();
             StartLmgFireLoop();
-            SetStageStatus("LMG 버스트 모드 - 전탄 연사!", 2.5f);
+            stageStatus.Show("LMG 버스트 모드 - 전탄 연사!", 2.5f);
         }
 
         // ── Auto Cannon 집속 포격 ──────────────────────────────────────
@@ -130,7 +130,7 @@ namespace My2DEngine.Game.Core
             Enemy target = FindBestTarget(Math.Max(weapon.SpreadRadius, 0.6f), weapon.Range + 4f);
             if (target == null)
             {
-                SetStageStatus("집속 포격 - 대상 없음", 1.5f);
+                stageStatus.Show("집속 포격 - 대상 없음", 1.5f);
                 return;
             }
 
@@ -138,7 +138,7 @@ namespace My2DEngine.Game.Core
             ApplyExplosionDamage(target.X, target.Y, weapon.CurrentDamage * 1.55f, weapon.SplashRadius * 1.65f);
             EmitEnemyAlertSound(target.X, target.Y, 16.5f);
             weapon.StartSpecialCooldown(14f);
-            SetStageStatus("집속 포격 - 고폭탄 투하!", 2.2f);
+            stageStatus.Show("집속 포격 - 고폭탄 투하!", 2.2f);
         }
 
         // ── Dual 92s 피버 모드 ─────────────────────────────────────────
@@ -147,14 +147,14 @@ namespace My2DEngine.Game.Core
         {
             if (weapon.CurrentAmmo <= 0)
             {
-                SetStageStatus("Dual 92s 피버 - 탄약 없음", 1.6f);
+                stageStatus.Show("Dual 92s 피버 - 탄약 없음", 1.6f);
                 return;
             }
 
             weapon.StartPlazmaLaser();
             plazmaLaserTimer = PlazmaLaserDuration;
             plazmaLaserTick = 0f;
-            SetStageStatus("Dual 92s 피버 - 전방 자동 제압!", 2.5f);
+            stageStatus.Show("Dual 92s 피버 - 전방 자동 제압!", 2.5f);
         }
 
         private void UpdatePlazmaLaser(float dt)
