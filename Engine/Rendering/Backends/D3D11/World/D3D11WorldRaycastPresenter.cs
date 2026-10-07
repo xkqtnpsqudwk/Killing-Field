@@ -581,6 +581,10 @@ float4 PSMain(float4 position : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET
             EnsureSceneRenderTarget(command.TargetWidth, command.TargetHeight);
             context.OMSetRenderTargets(renderTargetView, null);
             context.RSSetViewport(0f, 0f, surfaceWidth, surfaceHeight, 0f, 1f);
+            // 월드 합성은 불투명 덮어쓰기다. 앞 프레임의 오버레이 블렌드나 글자 아틀라스를 그린 D2D 상태를
+            // 물려받으면 월드 픽셀이 섞이거나 빠지므로 블렌드·래스터라이저 상태를 기본값으로 되돌린다.
+            context.OMSetBlendState(null);
+            context.RSSetState(null);
             context.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);
             context.IASetInputLayout(null);
             context.VSSetShader(vertexShader);

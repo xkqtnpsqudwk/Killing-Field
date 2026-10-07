@@ -427,19 +427,19 @@ namespace My2DEngine.Engine.Rendering.Backends.D3D11
         /// <param name="text">크기를 측정할 텍스트입니다.</param>
         /// <param name="size">텍스트의 폰트 크기(포인트)입니다.</param>
         /// <returns>측정된 텍스트의 너비와 높이입니다.</returns>
-        public SizeF MeasureText(string text, float size)
+        public SizeF MeasureText(string text, float size, bool bold = false)
         {
             EnsureReady("measure text");
             EnsureOverlayPresenter();
             try
             {
-                return overlayPresenter.MeasureText(text, size);
+                return overlayPresenter.MeasureText(text, size, bold);
             }
             catch
             {
                 ResetOverlayPresenter();
                 EnsureOverlayPresenter();
-                return overlayPresenter.MeasureText(text, size);
+                return overlayPresenter.MeasureText(text, size, bold);
             }
         }
 

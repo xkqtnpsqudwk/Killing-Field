@@ -61,6 +61,8 @@ namespace My2DEngine.Engine.Rendering.Abstractions
         public Color Color;
         /// <summary>폰트 크기(픽셀 단위).</summary>
         public float Size;
+        /// <summary>굵은 글꼴로 그릴지 여부.</summary>
+        public bool Bold;
     }
 
     /// <summary>

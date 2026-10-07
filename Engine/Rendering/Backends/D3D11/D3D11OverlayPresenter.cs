@@ -26,8 +26,11 @@ namespace My2DEngine.Engine.Rendering.Backends.D3D11
         /// <summary>LRU 이미지 텍스처 캐시에 보관할 수 있는 최대 항목 수입니다.</summary>
         private const int MaxCachedImageEntries = 64;
 
-        /// <summary>텍스트 렌더링에 사용할 기본 폰트 패밀리 이름입니다.</summary>
-        private const string DefaultFontFamily = "Pretendard";
+        /// <summary>
+        /// 굵은 글꼴을 쓰는 글리프의 크기 값에 더하는 오프셋입니다.
+        /// 글리프 캐시·텍스트 형식 캐시가 크기 하나를 키로 쓰므로, 굵기를 크기 값에 함께 담아 구분합니다.
+        /// </summary>
+        private const float BoldSizeOffset = 1000f;
         /// <summary>생성자 호출 시 텍스트 형식/줄 높이만 미리 준비할 폰트 크기 목록입니다.</summary>
         private static readonly float[] PreloadedGlyphSizes = { 9f, 10f, 11f, 12f, 13f, 14f, 18f, 19f, 20f, 24f, 26f, 44f };
         /// <summary>
@@ -107,6 +110,18 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
         /// <summary>글리프 메트릭 측정과 텍스트 형식 생성에 사용하는 DirectWrite 팩토리입니다.</summary>
         private readonly IDWriteFactory dwriteFactory;
 
+        /// <summary>게임에 포함된 글꼴 파일로 만든 전용 글꼴 모음입니다. null이면 시스템 글꼴을 씁니다.</summary>
+        private IDWriteFontCollection privateFontCollection;
+
+        /// <summary>보통 굵기 글자에 쓸 패밀리 이름입니다.</summary>
+        private string regularFamilyName = OverlayFontSettings.FallbackFamilyName;
+
+        /// <summary>굵은 글자에 쓸 패밀리 이름입니다. 굵은 면이 같은 패밀리에 있으면 보통 패밀리와 같습니다.</summary>
+        private string boldFamilyName = OverlayFontSettings.FallbackFamilyName;
+
+        /// <summary>픽셀 글꼴 격자 크기입니다. 0이면 크기 맞춤과 앨리어싱 렌더링을 하지 않습니다.</summary>
+        private int pixelGridSize;
+
         /// <summary>오버레이 쿼드를 위한 컴파일된 버텍스 셰이더입니다.</summary>
         private ID3D11VertexShader vertexShader;
 
@@ -142,6 +157,7 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
             this.device = device ?? throw new ArgumentNullException(nameof(device));
             d2dFactory = D2D1.D2D1CreateFactory<ID2D1Factory>(Vortice.Direct2D1.FactoryType.SingleThreaded);
             dwriteFactory = DWrite.DWriteCreateFactory<IDWriteFactory>(Vortice.DirectWrite.FactoryType.Shared);
+            LoadOverlayFonts();
             CreatePipelineResources();
             PrewarmDefaultGlyphAtlases();
         }
@@ -162,8 +178,13 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
                 return;
             }
 
+            // 블렌드 상태가 premultiplied alpha(SourceBlend=One)이므로 색도 알파를 곱해 넘긴다.
+            // 곱하지 않으면 반투명 색 사각형이 밝게 더해지고, 밝은 바탕에서는 흰 점으로 넘친다.
+            Color c = command.Color;
+            int a = c.A;
+            Color premultiplied = a >= 255 ? c : Color.FromArgb(a, c.R * a / 255, c.G * a / 255, c.B * a / 255);
             CachedTexture texture = EnsureWhiteTexture(context);
-            DrawQuad(context, renderTargetView, surfaceWidth, surfaceHeight, texture, command.X, command.Y, command.Width, command.Height, 0f, new RectangleF(0f, 0f, 1f, 1f), command.Color);
+            DrawQuad(context, renderTargetView, surfaceWidth, surfaceHeight, texture, command.X, command.Y, command.Width, command.Height, 0f, new RectangleF(0f, 0f, 1f, 1f), premultiplied);
         }
 
         /// <summary>
@@ -235,9 +256,12 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
                 return;
             }
 
-            float cursorX = command.X;
-            float cursorY = command.Y;
-            float lineHeight = GetLineHeight(command.Size);
+            float fontSpec = ResolveFontSpec(command.Size, command.Bold);
+            bool snapToPixels = pixelGridSize > 0;
+            float cursorX = snapToPixels ? (float)System.Math.Round(command.X) : command.X;
+            float cursorY = snapToPixels ? (float)System.Math.Round(command.Y) : command.Y;
+            float lineStartX = cursorX;
+            float lineHeight = GetLineHeight(fontSpec);
             float maxLineHeight = lineHeight;
             string text = command.Text;
 
@@ -251,13 +275,13 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
 
                 if (ch == '\n')
                 {
-                    cursorX = command.X;
+                    cursorX = lineStartX;
                     cursorY += maxLineHeight;
                     maxLineHeight = lineHeight;
                     continue;
                 }
 
-                CachedGlyphBitmap glyph = GetOrCreateGlyphBitmap(ch, command.Size);
+                CachedGlyphBitmap glyph = GetOrCreateGlyphBitmap(ch, fontSpec);
                 if (glyph == null)
                 {
                     continue;
@@ -298,13 +322,14 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
         /// <param name="text">크기를 측정할 텍스트입니다.</param>
         /// <param name="size">텍스트의 폰트 크기(포인트)입니다.</param>
         /// <returns>측정된 텍스트의 너비와 높이(픽셀)입니다. 빈 문자열이면 <see cref="SizeF.Empty"/>를 반환합니다.</returns>
-        public SizeF MeasureText(string text, float size)
+        public SizeF MeasureText(string text, float size, bool bold = false)
         {
             if (string.IsNullOrEmpty(text))
             {
                 return SizeF.Empty;
             }
 
+            size = ResolveFontSpec(size, bold);
             float width = 0f;
             float lineWidth = 0f;
             float lineHeight = GetLineHeight(size);
@@ -444,6 +469,8 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
             vertexShader?.Dispose();
             vertexShader = null;
             disposed = true;
+            privateFontCollection?.Dispose();
+            privateFontCollection = null;
         }
 
         /// <summary>
@@ -764,9 +791,9 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
         {
             foreach (float size in PreloadedGlyphSizes)
             {
-                int sizeKey = GetSizeKey(size);
-                GetOrCreateTextFormat(sizeKey);
-                GetLineHeight(size);
+                float spec = ResolveFontSpec(size, bold: false);
+                GetOrCreateTextFormat(GetSizeKey(spec));
+                GetLineHeight(spec);
             }
         }
 
@@ -1001,7 +1028,7 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
 
             string glyphText = ch.ToString();
             IDWriteTextFormat textFormat = GetOrCreateTextFormat(sizeKey);
-            using (IDWriteTextLayout textLayout = dwriteFactory.CreateTextLayout(glyphText, textFormat, size * 4f, lineHeight * 2f))
+            using (IDWriteTextLayout textLayout = dwriteFactory.CreateTextLayout(glyphText, textFormat, GetActualSize(size) * 4f, lineHeight * 2f))
             {
                 TextMetrics metrics = textLayout.Metrics;
                 OverhangMetrics overhang = textLayout.OverhangMetrics;
@@ -1034,7 +1061,7 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
             }
 
             IDWriteTextFormat textFormat = GetOrCreateTextFormat(sizeKey);
-            using (IDWriteTextLayout textLayout = dwriteFactory.CreateTextLayout("Hg", textFormat, size * 8f, size * 4f))
+            using (IDWriteTextLayout textLayout = dwriteFactory.CreateTextLayout("Hg", textFormat, GetActualSize(size) * 8f, GetActualSize(size) * 4f))
             {
                 float lineHeight = System.Math.Max(1f, (float)System.Math.Ceiling(textLayout.Metrics.Height + 2f));
                 lineHeightCache[sizeKey] = lineHeight;
@@ -1054,13 +1081,15 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
                 return cachedTextFormat;
             }
 
+            float spec = sizeKey / 100f;
+            bool bold = IsBoldSpec(spec);
             IDWriteTextFormat textFormat = dwriteFactory.CreateTextFormat(
-                DefaultFontFamily,
-                null,
-                FontWeight.Bold,
+                bold ? boldFamilyName : regularFamilyName,
+                privateFontCollection,
+                bold || privateFontCollection == null ? FontWeight.Bold : FontWeight.Normal,
                 Vortice.DirectWrite.FontStyle.Normal,
                 FontStretch.Normal,
-                sizeKey / 100f,
+                GetActualSize(spec),
                 "ko-KR");
             textFormatCache[sizeKey] = textFormat;
             return textFormat;
@@ -1104,6 +1133,11 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
                     RenderTargetUsage.None,
                     Vortice.Direct2D1.FeatureLevel.Default));
             ID2D1SolidColorBrush brush = renderTarget.CreateSolidColorBrush(new Color4(1f, 1f, 1f, 1f));
+            if (pixelGridSize > 0)
+            {
+                // 픽셀 글꼴은 안티앨리어싱 없이 그려야 가장자리가 번지지 않는다.
+                renderTarget.TextAntialiasMode = Vortice.Direct2D1.TextAntialiasMode.Aliased;
+            }
 
             renderTarget.BeginDraw();
             renderTarget.Clear(new Color4(0f, 0f, 0f, 0f));
@@ -1155,6 +1189,137 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
         }
 
         /// <summary>
+        /// 요청 크기와 굵기를 글리프 캐시용 크기 값으로 바꾼다.
+        /// 픽셀 글꼴이면 크기를 격자 배수로 맞추고, 굵은 글자는 <see cref="BoldSizeOffset"/>를 더해 구분한다.
+        /// </summary>
+        private float ResolveFontSpec(float size, bool bold)
+        {
+            if (size <= 0f)
+            {
+                size = 10f;
+            }
+
+            if (pixelGridSize > 0)
+            {
+                int steps = System.Math.Max(1, (int)System.Math.Round(size / pixelGridSize));
+                size = steps * pixelGridSize;
+            }
+
+            return bold ? size + BoldSizeOffset : size;
+        }
+
+        /// <summary>글리프 캐시용 크기 값에서 실제 글꼴 크기를 꺼낸다.</summary>
+        private static float GetActualSize(float spec)
+        {
+            return spec >= BoldSizeOffset ? spec - BoldSizeOffset : spec;
+        }
+
+        private static bool IsBoldSpec(float spec)
+        {
+            return spec >= BoldSizeOffset;
+        }
+
+        /// <summary>
+        /// <see cref="OverlayFontSettings"/>의 글꼴 파일로 전용 글꼴 모음을 만든다.
+        /// 실패하면 설정한 이름의 시스템 글꼴, 그것도 없으면 맑은 고딕을 쓰고 픽셀 격자 맞춤을 끈다.
+        /// </summary>
+        private void LoadOverlayFonts()
+        {
+            string family = OverlayFontSettings.FamilyName;
+            regularFamilyName = family;
+            boldFamilyName = family;
+            pixelGridSize = 0;
+
+            if (OverlayFontSettings.FontFiles.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                IDWriteFactory5 factory5 = dwriteFactory.QueryInterface<IDWriteFactory5>();
+                IDWriteFontSetBuilder1 builder = factory5.CreateFontSetBuilder();
+                foreach (string file in OverlayFontSettings.FontFiles)
+                {
+                    using (IDWriteFontFile fontFile = factory5.CreateFontFileReference(file, null))
+                    {
+                        builder.AddFontFile(fontFile);
+                    }
+                }
+
+                IDWriteFontSet fontSet = builder.CreateFontSet();
+                IDWriteFontCollection1 collection = factory5.CreateFontCollectionFromFontSet(fontSet);
+                fontSet.Dispose();
+                builder.Dispose();
+                factory5.Dispose();
+
+                string regular = FindFamily(collection, family, preferBold: false);
+                if (regular == null)
+                {
+                    collection.Dispose();
+                    return;
+                }
+
+                privateFontCollection = collection;
+                regularFamilyName = regular;
+                boldFamilyName = FindFamily(collection, family, preferBold: true) ?? regular;
+                pixelGridSize = OverlayFontSettings.PixelGridSize;
+            }
+            catch (SharpGen.Runtime.SharpGenException)
+            {
+                privateFontCollection = null;
+                regularFamilyName = family;
+                boldFamilyName = family;
+                pixelGridSize = 0;
+            }
+        }
+
+        /// <summary>
+        /// 글꼴 모음에서 패밀리 이름을 찾는다. 정확히 같은 이름이 있으면 그것을, 없으면 이름으로 시작하는 패밀리를 고른다.
+        /// preferBold면 이름에 Bold가 들어간 패밀리를 먼저 찾는다(굵은 면이 별도 패밀리로 등록된 글꼴 대응).
+        /// </summary>
+        private static string FindFamily(IDWriteFontCollection collection, string family, bool preferBold)
+        {
+            string exact = null;
+            string prefixed = null;
+            string bold = null;
+            int count = (int)collection.FontFamilyCount;
+            for (int i = 0; i < count; i++)
+            {
+                using (IDWriteFontFamily fontFamily = collection.GetFontFamily(i))
+                using (IDWriteLocalizedStrings names = fontFamily.FamilyNames)
+                {
+                    for (int n = 0; n < (int)names.Count; n++)
+                    {
+                        string name = names.GetString(n);
+                        if (string.Equals(name, family, StringComparison.OrdinalIgnoreCase))
+                        {
+                            exact ??= name;
+                        }
+                        else if (name.StartsWith(family, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (name.IndexOf("Bold", StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                bold ??= name;
+                            }
+                            else
+                            {
+                                prefixed ??= name;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (preferBold)
+            {
+                return bold;
+            }
+
+            return exact ?? prefixed;
+        }
+
+        /// <summary>
         /// 공백 문자의 어드밴스 너비를 반환합니다. 탭 문자는 공백 4칸에 해당하는 너비를 반환합니다.
         /// </summary>
         /// <param name="ch">공백 여부를 판단할 문자입니다.</param>
@@ -1162,7 +1327,7 @@ float4 PSMain(float4 position : SV_POSITION, float2 texcoord : TEXCOORD0, float4
         /// <returns>공백 어드밴스 너비(픽셀)입니다.</returns>
         private static int GetWhitespaceAdvance(char ch, int sizeKey)
         {
-            float size = sizeKey / 100f;
+            float size = GetActualSize(sizeKey / 100f);
             if (ch == '\t')
             {
                 return System.Math.Max(1, (int)System.Math.Ceiling(size * 0.42f) * 4);

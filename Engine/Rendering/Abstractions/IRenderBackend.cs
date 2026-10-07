@@ -63,7 +63,7 @@ namespace My2DEngine.Engine.Rendering.Abstractions
         /// <param name="text">측정할 문자열</param>
         /// <param name="size">폰트 크기(픽셀)</param>
         /// <returns>텍스트의 너비·높이</returns>
-        SizeF MeasureText(string text, float size);
+        SizeF MeasureText(string text, float size, bool bold = false);
 
         /// <summary>
         /// 층 전환 등 레벨 경계에서 호출된다.

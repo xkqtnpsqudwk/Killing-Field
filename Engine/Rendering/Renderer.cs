@@ -138,6 +138,21 @@ namespace My2DEngine.Engine.Rendering
             drawW *= presentationScaleX;
             drawH *= presentationScaleY;
 
+            // 픽셀 UI가 번지지 않도록 시작점과 끝점을 각각 정수 픽셀로 맞춘다.
+            // 끝점을 따로 반올림해야 이웃한 사각형 사이에 틈이나 겹침이 생기지 않는다.
+            float x1 = (float)System.Math.Round(x + drawW);
+            float y1 = (float)System.Math.Round(y + drawH);
+            x = (float)System.Math.Round(x);
+            y = (float)System.Math.Round(y);
+            if (drawW <= 0f || drawH <= 0f)
+            {
+                return;
+            }
+
+            // 반올림으로 0이 되는 얇은 선은 1픽셀로 남긴다.
+            drawW = System.Math.Max(1f, x1 - x);
+            drawH = System.Math.Max(1f, y1 - y);
+
             backend.DrawRectangle(new RenderRectCommand
             {
                 X = x,
@@ -289,7 +304,8 @@ namespace My2DEngine.Engine.Rendering
         /// <param name="y">텍스트 왼쪽 상단의 Y 좌표 (내부 렌더 해상도 기준).</param>
         /// <param name="color">텍스트 색.</param>
         /// <param name="size">폰트 크기 (내부 렌더 해상도 기준 포인트).</param>
-        public void DrawText(string text, float x, float y, Color color, float size)
+        /// <param name="bold">굵은 글꼴로 그릴지 여부.</param>
+        public void DrawText(string text, float x, float y, Color color, float size, bool bold = false)
         {
             if (string.IsNullOrEmpty(text))
             {
@@ -306,8 +322,24 @@ namespace My2DEngine.Engine.Rendering
                 Color = color,
                 // 폰트 크기는 세로 픽셀 밀도 기준으로만 스케일한다.
                 // X/Y 스케일이 달라져도 글자 폭을 별도로 늘리지 않아 텍스트 왜곡을 피한다.
-                Size = size * presentationScaleY
+                Size = size * presentationScaleY,
+                Bold = bold
             });
+        }
+
+        /// <summary>
+        /// 텍스트를 그렸을 때의 크기를 내부 렌더 해상도 기준으로 돌려준다.
+        /// 픽셀 글꼴이면 실제로 그려질 맞춤 크기로 잰다.
+        /// </summary>
+        public SizeF MeasureText(string text, float size, bool bold = false)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return SizeF.Empty;
+            }
+
+            SizeF measure = backend.MeasureText(text, size * presentationScaleY, bold);
+            return new SizeF(measure.Width / presentationScaleX, measure.Height / presentationScaleY);
         }
 
         /// <summary>
@@ -319,7 +351,8 @@ namespace My2DEngine.Engine.Rendering
         /// <param name="centerY">텍스트 중심의 Y 좌표 (내부 렌더 해상도 기준).</param>
         /// <param name="color">텍스트 색.</param>
         /// <param name="size">폰트 크기 (내부 렌더 해상도 기준 포인트).</param>
-        public void DrawTextCentered(string text, float centerX, float centerY, Color color, float size)
+        /// <param name="bold">굵은 글꼴로 그릴지 여부.</param>
+        public void DrawTextCentered(string text, float centerX, float centerY, Color color, float size, bool bold = false)
         {
             if (string.IsNullOrEmpty(text))
             {
@@ -332,7 +365,7 @@ namespace My2DEngine.Engine.Rendering
 
             // 중앙 정렬은 backend의 실제 텍스트 측정값에 의존한다.
             // DirectWrite/GDI 계열 백엔드마다 글리프 폭이 다를 수 있으므로 추정식으로 맞추지 않는다.
-            SizeF measure = backend.MeasureText(text, scaledSize);
+            SizeF measure = backend.MeasureText(text, scaledSize, bold);
             float x = centerX - (measure.Width * 0.5f);
             float y = centerY - (measure.Height * 0.5f);
             backend.DrawText(new RenderTextCommand
@@ -341,21 +374,23 @@ namespace My2DEngine.Engine.Rendering
                 X = x,
                 Y = y,
                 Color = color,
-                Size = scaledSize
+                Size = scaledSize,
+                Bold = bold
             });
         }
 
         /// <summary>
         /// 지정한 중심 좌표를 기준으로 텍스트를 가로/세로 중앙 정렬로 그리되,
-        /// 오른쪽 아래 2픽셀 offset의 반투명 검은 그림자를 먼저 그린 뒤 본 텍스트를 그린다.
+        /// 오른쪽 아래로 글꼴 픽셀 한 칸만큼 어긋난 검은 그림자를 먼저 그린 뒤 본 텍스트를 그린다.
         /// text가 null이거나 빈 문자열이면 아무것도 그리지 않는다.
         /// </summary>
         /// <param name="text">그릴 문자열.</param>
         /// <param name="centerX">텍스트 중심의 X 좌표 (내부 렌더 해상도 기준).</param>
         /// <param name="centerY">텍스트 중심의 Y 좌표 (내부 렌더 해상도 기준).</param>
-        /// <param name="color">본 텍스트 색. 그림자는 반투명 검은색으로 고정.</param>
+        /// <param name="color">본 텍스트 색. 그림자는 검은색으로 고정.</param>
         /// <param name="size">폰트 크기 (내부 렌더 해상도 기준 포인트).</param>
-        public void DrawTextCenteredShadow(string text, float centerX, float centerY, Color color, float size)
+        /// <param name="bold">굵은 글꼴로 그릴지 여부.</param>
+        public void DrawTextCenteredShadow(string text, float centerX, float centerY, Color color, float size, bool bold = false)
         {
             if (string.IsNullOrEmpty(text))
             {
@@ -365,19 +400,21 @@ namespace My2DEngine.Engine.Rendering
             centerX = (centerX + screenOffsetX) * presentationScaleX;
             centerY = (centerY + screenOffsetY) * presentationScaleY;
             float scaledSize = size * presentationScaleY;
-            SizeF measure = backend.MeasureText(text, scaledSize);
+            SizeF measure = backend.MeasureText(text, scaledSize, bold);
             float x = centerX - (measure.Width * 0.5f);
             float y = centerY - (measure.Height * 0.5f);
+            float shadow = GetTextPixelSize(scaledSize);
 
             // 그림자는 별도 DrawText 명령 두 번으로 만든다.
             // backend에 텍스트 스타일 개념을 추가하지 않고도 모든 렌더 경로에서 동일한 효과를 낼 수 있다.
             backend.DrawText(new RenderTextCommand
             {
                 Text = text,
-                X = x + 2,
-                Y = y + 2,
-                Color = Color.FromArgb(180, 0, 0, 0),
-                Size = scaledSize
+                X = x + shadow,
+                Y = y + shadow,
+                Color = Color.FromArgb(System.Math.Min((int)color.A, 220), 0, 0, 0),
+                Size = scaledSize,
+                Bold = bold
             });
             backend.DrawText(new RenderTextCommand
             {
@@ -385,8 +422,24 @@ namespace My2DEngine.Engine.Rendering
                 X = x,
                 Y = y,
                 Color = color,
-                Size = scaledSize
+                Size = scaledSize,
+                Bold = bold
             });
+        }
+
+        /// <summary>
+        /// 화면 좌표 기준 텍스트 크기에서 글꼴 픽셀 한 칸의 크기를 구한다.
+        /// 픽셀 글꼴이면 (맞춤 크기 / 격자 크기), 아니면 2픽셀.
+        /// </summary>
+        private static float GetTextPixelSize(float scaledSize)
+        {
+            int grid = OverlayFontSettings.PixelGridSize;
+            if (grid <= 0)
+            {
+                return 2f;
+            }
+
+            return System.Math.Max(1, (int)System.Math.Round(scaledSize / grid));
         }
     }
 }

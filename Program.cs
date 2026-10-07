@@ -1,5 +1,7 @@
 ﻿using System;
+using System.IO;
 using System.Windows.Forms;
+using My2DEngine.Engine.Rendering;
 
 namespace My2DEngine
 {
@@ -20,7 +22,19 @@ namespace My2DEngine
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            ConfigureOverlayFont();
             Application.Run(new Form1(ParseSeedArgument(args)));
+        }
+
+        /// <summary>UI 글꼴로 게임에 포함된 갈무리11(12px 픽셀 글꼴)을 쓴다. 파일이 없으면 엔진이 맑은 고딕으로 대체한다.</summary>
+        private static void ConfigureOverlayFont()
+        {
+            string fontDir = Path.Combine(AppContext.BaseDirectory, "Game", "Fonts");
+            OverlayFontSettings.UsePixelFont(
+                "Galmuri11",
+                12,
+                Path.Combine(fontDir, "Galmuri11.ttf"),
+                Path.Combine(fontDir, "Galmuri11-Bold.ttf"));
         }
 
         /// <summary>`--seed N` 인자가 있으면 그 값을, 없거나 잘못됐으면 null을 돌려준다.</summary>
