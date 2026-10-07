@@ -2,6 +2,7 @@ using System;
 using System.Windows.Forms;
 using My2DEngine.Engine.Input;
 using My2DEngine.Game.Config;
+using My2DEngine.Game.Systems;
 
 namespace My2DEngine.Game.Core
 {
@@ -64,7 +65,7 @@ namespace My2DEngine.Game.Core
 
         private void ActivateShotgunHook()
         {
-            Enemy target = FindNearestAliveEnemy(10f);
+            Enemy target = CombatTargeting.FindNearest(enemyManager.Enemies, player.Position.X, player.Position.Y, 10f);
             if (target == null)
             {
                 stageStatus.Show("갈고리 - 대상 없음", 1.5f);
@@ -193,34 +194,6 @@ namespace My2DEngine.Game.Core
 
             audio.PlayEffect(AudioConfig.PlazmaGunFireSoundAlias, true);
             EmitEnemyAlertSound(player.Position.X, player.Position.Y, 10f, player.Direction.X, player.Direction.Y);
-        }
-
-        // ── 공통 헬퍼 ───────────────────────────────────────────────────
-
-        private Enemy FindNearestAliveEnemy(float maxRange)
-        {
-            Enemy[] enemies = enemyManager.Enemies;
-            if (enemies == null) return null;
-
-            Enemy nearest = null;
-            float bestDist = maxRange * maxRange;
-
-            foreach (Enemy e in enemies)
-            {
-                if (e == null || !e.Alive) continue;
-
-                float dx = e.X - player.Position.X;
-                float dy = e.Y - player.Position.Y;
-                float distSq = dx * dx + dy * dy;
-
-                if (distSq < bestDist)
-                {
-                    bestDist = distSq;
-                    nearest = e;
-                }
-            }
-
-            return nearest;
         }
 
         /// <summary>GameLogic.CardReward에서 사용하는 정적 래퍼.</summary>

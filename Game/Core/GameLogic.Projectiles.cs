@@ -1,5 +1,6 @@
 using System;
 using My2DEngine.Game.Config;
+using My2DEngine.Game.Systems;
 
 namespace My2DEngine.Game.Core
 {
@@ -151,7 +152,7 @@ namespace My2DEngine.Game.Core
                     return;
                 }
 
-                Enemy hitEnemy = FindRocketHitEnemy(projectile);
+                Enemy hitEnemy = CombatTargeting.FindTouching(enemyManager.Enemies, projectile.X, projectile.Y, projectile.Radius);
                 if (hitEnemy != null)
                 {
                     projectile.X = hitEnemy.X;
@@ -175,7 +176,7 @@ namespace My2DEngine.Game.Core
             Enemy target = projectile.TrackingTarget;
             if (target == null || !target.Alive)
             {
-                target = FindNearestAliveEnemyFromPoint(projectile.X, projectile.Y, TrackingRocketRetargetRange);
+                target = CombatTargeting.FindNearest(enemyManager.Enemies, projectile.X, projectile.Y, TrackingRocketRetargetRange);
                 projectile.TrackingTarget = target;
             }
 
@@ -214,74 +215,6 @@ namespace My2DEngine.Game.Core
 
             projectile.VelocityX = (newDirX / newLength) * speed;
             projectile.VelocityY = (newDirY / newLength) * speed;
-        }
-
-        /// <summary>
-        /// 지정 좌표 기준으로 가장 가까운 생존 적을 찾는다.
-        /// </summary>
-        private Enemy FindNearestAliveEnemyFromPoint(float x, float y, float maxRange)
-        {
-            Enemy[] enemies = enemyManager.Enemies;
-            if (enemies == null)
-            {
-                return null;
-            }
-
-            Enemy nearest = null;
-            float bestDistSq = maxRange * maxRange;
-
-            for (int i = 0; i < enemies.Length; i++)
-            {
-                Enemy enemy = enemies[i];
-                if (enemy == null || !enemy.Alive)
-                {
-                    continue;
-                }
-
-                float dx = enemy.X - x;
-                float dy = enemy.Y - y;
-                float distSq = (dx * dx) + (dy * dy);
-                if (distSq < bestDistSq)
-                {
-                    bestDistSq = distSq;
-                    nearest = enemy;
-                }
-            }
-
-            return nearest;
-        }
-
-        /// <summary>
-        /// 현재 로켓과 직접 충돌한 적을 찾는다.
-        /// </summary>
-        /// <param name="projectile">충돌 검사를 수행할 플레이어 로켓.</param>
-        /// <returns>충돌한 적이 있으면 그 적, 없으면 null.</returns>
-        private Enemy FindRocketHitEnemy(EnemyProjectile projectile)
-        {
-            Enemy[] enemies = enemyManager.Enemies;
-            if (projectile == null || enemies == null)
-            {
-                return null;
-            }
-
-            for (int i = 0; i < enemies.Length; i++)
-            {
-                Enemy enemy = enemies[i];
-                if (enemy == null || !enemy.Alive)
-                {
-                    continue;
-                }
-
-                float dx = enemy.X - projectile.X;
-                float dy = enemy.Y - projectile.Y;
-                float hitRadius = enemy.Radius + projectile.Radius;
-                if ((dx * dx) + (dy * dy) <= hitRadius * hitRadius)
-                {
-                    return enemy;
-                }
-            }
-
-            return null;
         }
 
         /// <summary>

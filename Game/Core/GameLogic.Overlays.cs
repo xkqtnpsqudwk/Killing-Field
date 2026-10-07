@@ -96,8 +96,8 @@ namespace My2DEngine.Game.Core
             playerStatsView.Player = player;
             playerStatsView.Weapon = weapon;
             playerStatsView.Permanent = data;
-            playerStatsView.LifeStealNow = GetEffectiveLifeStealRatio(IsActiveToxicMistRoom());
-            playerStatsView.LifeStealToxic = GetEffectiveLifeStealRatio(true);
+            playerStatsView.LifeStealNow = modifiers.LifeStealRatio(IsActiveToxicMistRoom());
+            playerStatsView.LifeStealToxic = modifiers.LifeStealRatio(true);
             playerStatsView.ShieldRegenRate = GetEffectiveShieldRegenRate();
             playerStatsView.ShieldRegenDelay = GetEffectiveShieldRegenDelayDuration();
             return playerStatsView;

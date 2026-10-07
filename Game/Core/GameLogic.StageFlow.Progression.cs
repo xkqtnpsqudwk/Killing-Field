@@ -338,7 +338,7 @@ namespace My2DEngine.Game.Core
                 Active = true,
                 PulseTimer = 0f
             });
-            RegisterPickupToast("AMMO DROPPED");
+            feedback.ShowPickupToast("AMMO DROPPED");
         }
 
         private void TrySpawnCoinDrop(Enemy enemy)
@@ -379,7 +379,7 @@ namespace My2DEngine.Game.Core
                 PulseTimer = 0f,
                 Amount = coinAmount
             });
-            RegisterPickupToast(coinAmount > 1 ? "COIN x" + coinAmount + " DROPPED" : "COIN DROPPED");
+            feedback.ShowPickupToast(coinAmount > 1 ? "COIN x" + coinAmount + " DROPPED" : "COIN DROPPED");
         }
 
         private bool IsSupplyShortageRoomDropBlocked(Enemy enemy)
@@ -753,7 +753,7 @@ namespace My2DEngine.Game.Core
                     }
 
                     weapon.AddAmmoToCurrentWeapon(ammoAmount);
-                    RegisterPickupToast(pickup.IsRestChoice ? "AMMO BOUGHT" : "AMMO +" + addedAmmo);
+                    feedback.ShowPickupToast(pickup.IsRestChoice ? "AMMO BOUGHT" : "AMMO +" + addedAmmo);
                     return true;
                 case RewardPickupKind.Card:
                     if (pickup.CardOffer == null)
@@ -767,12 +767,12 @@ namespace My2DEngine.Game.Core
                     }
 
                     ApplyCardOffer(pickup.CardOffer);
-                    RegisterPickupToast("CARD BOUGHT");
+                    feedback.ShowPickupToast("CARD BOUGHT");
                     return true;
                 case RewardPickupKind.Coin:
                     int coinAmount = Math.Max(1, pickup.Amount);
                     player.AddCoins(coinAmount);
-                    RegisterPickupToast("COIN +" + coinAmount);
+                    feedback.ShowPickupToast("COIN +" + coinAmount);
                     return true;
                 default:
                     return false;

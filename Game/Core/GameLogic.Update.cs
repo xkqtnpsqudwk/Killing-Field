@@ -50,7 +50,6 @@ namespace My2DEngine.Game.Core
 
             stageStatus.Update(dt);
             UpdateBossIntroTimer(dt);
-            UpdatePlayerDamageFlash(dt);
             UpdateCombatFeedback(dt);
             UpdateDeathPresentation(dt);
             UpdateEndingSequence(dt);
@@ -212,65 +211,16 @@ namespace My2DEngine.Game.Core
 
             float invLen = 1f / (float)Math.Sqrt(dashLenSq);
             player.StartDash(dashX * invLen, dashY * invLen);
-            StartDashStrikeWindow();
+            modifiers.OnDash();
             EmitEnemyAlertSound(player.Position.X, player.Position.Y, 6.5f, dashX * invLen, dashY * invLen);
-            playerRecoilShakeTimer = Math.Min(0.22f, Math.Max(playerRecoilShakeTimer, 0.12f));
-            playerRecoilShakePower = Math.Min(0.45f, Math.Max(playerRecoilShakePower, 0.2f));
+            feedback.OnDash();
         }
 
-        /// <summary>
-        /// 피격 플래시·카메라 흔들림과 발사 반동 흔들림 타이머를 프레임마다 감소시킨다.
-        /// 타이머가 0 이하가 되면 해당 효과를 즉시 소거한다.
-        /// </summary>
-        /// <param name="dt">이번 프레임의 경과 시간(초).</param>
-        private void UpdatePlayerDamageFlash(float dt)
-        {
-            if (playerDamageFlashTimer <= 0f)
-            {
-                playerDamageFlashTimer = 0f;
-                playerDamageShakeTimer = 0f;
-                playerDamageShakePower = 0f;
-            }
-            else
-            {
-                playerDamageFlashTimer = Math.Max(playerDamageFlashTimer - dt, 0f);
-                playerDamageShakeTimer = Math.Max(playerDamageShakeTimer - dt, 0f);
-                playerDamageShakePower = Math.Max(playerDamageShakePower - dt * 2.2f, 0f);
-            }
-
-            if (playerRecoilShakeTimer <= 0f)
-            {
-                playerRecoilShakeTimer = 0f;
-                playerRecoilShakePower = 0f;
-            }
-            else
-            {
-                playerRecoilShakeTimer = Math.Max(playerRecoilShakeTimer - dt, 0f);
-                playerRecoilShakePower = Math.Max(playerRecoilShakePower - dt * 4.6f, 0f);
-            }
-        }
-
-        /// <summary>플레이어 공격 피드백 타이머를 프레임마다 감소시킨다.</summary>
+        /// <summary>화면 피드백, 전투 보정 창, 조작 안내 타이머를 프레임마다 줄인다.</summary>
         private void UpdateCombatFeedback(float dt)
         {
-            hitMarkerTimer = Math.Max(0f, hitMarkerTimer - dt);
-            killMarkerTimer = Math.Max(0f, killMarkerTimer - dt);
-            weaponStatusTimer = Math.Max(0f, weaponStatusTimer - dt);
-            weaponStatusRepeatGate = Math.Max(0f, weaponStatusRepeatGate - dt);
-            if (weaponStatusTimer <= 0f)
-            {
-                weaponStatusText = null;
-            }
-
-            pickupToastTimer = Math.Max(0f, pickupToastTimer - dt);
-            if (pickupToastTimer <= 0f)
-            {
-                pickupToastText = null;
-            }
-
-            UpdateDashStrikeWindow(dt);
-            UpdateKillChainWindow(dt);
-            UpdateRapidFireStreak(dt);
+            feedback.Update(dt);
+            modifiers.Update(dt);
 
             if (controlsTutorialTimer > 0f)
                 controlsTutorialTimer = Math.Max(0f, controlsTutorialTimer - dt);

@@ -101,47 +101,11 @@ namespace My2DEngine.Game.Core
         /// <summary>현재 적용된 난이도 사전 설정 값.</summary>
         private DifficultyPreset difficultyPreset;
 
-        /// <summary>피격 시 화면을 붉게 물들이는 플래시 효과의 남은 강도(0~1.2). 시간이 지나면 감소한다.</summary>
-        private float playerDamageFlashTimer;
+        /// <summary>피격·반동 흔들림, 명중 표시, 무기 상태 문구, 획득 알림.</summary>
+        private readonly CombatFeedback feedback = new CombatFeedback();
 
-        /// <summary>피격 플래시의 수평 방향 성분(월드 공간). 피격 방향을 나타낸다.</summary>
-        private float playerDamageFlashDirX;
-
-        /// <summary>피격 플래시의 수직 방향 성분(월드 공간). 피격 방향을 나타낸다.</summary>
-        private float playerDamageFlashDirY;
-
-        /// <summary>피격 카메라 흔들림 효과의 남은 시간(초).</summary>
-        private float playerDamageShakeTimer;
-
-        /// <summary>피격 카메라 흔들림 효과의 현재 강도(0~1).</summary>
-        private float playerDamageShakePower;
-
-        /// <summary>발사 반동 카메라 흔들림 효과의 남은 시간(초).</summary>
-        private float playerRecoilShakeTimer;
-
-        /// <summary>발사 반동 카메라 흔들림 효과의 현재 강도(0~1).</summary>
-        private float playerRecoilShakePower;
-
-        /// <summary>플레이어 공격이 적에게 명중했을 때 표시하는 히트마커 잔여 시간(초).</summary>
-        private float hitMarkerTimer;
-
-        /// <summary>플레이어 공격으로 적을 처치했을 때 표시하는 강화 히트마커 잔여 시간(초).</summary>
-        private float killMarkerTimer;
-
-        /// <summary>발사 불가 상태를 조준점 근처에 표시하는 짧은 HUD 문구.</summary>
-        private string weaponStatusText;
-
-        /// <summary>발사 불가 HUD 문구의 잔여 시간(초).</summary>
-        private float weaponStatusTimer;
-
-        /// <summary>연사 입력 중 동일 문구를 너무 자주 재등록하지 않기 위한 대기 시간(초).</summary>
-        private float weaponStatusRepeatGate;
-
-        /// <summary>보상 드롭/획득을 짧게 표시하는 HUD 토스트 문구.</summary>
-        private string pickupToastText;
-
-        /// <summary>보상 드롭/획득 HUD 토스트 잔여 시간(초).</summary>
-        private float pickupToastTimer;
+        /// <summary>스탯 카드의 전투 보정(조건부 피해, 치명타, 피해 감소, 흡혈).</summary>
+        private readonly CombatModifiers modifiers;
 
         /// <summary>사망 연출(화면 기울기) 진행도(0~1). 1.25초 동안 선형으로 증가한다.</summary>
         private float deathPresentationProgress;
@@ -195,6 +159,7 @@ namespace My2DEngine.Game.Core
         /// <param name="fixedRunSeed">모든 런에 쓸 고정 시드. null이면 런마다 새 시드를 뽑는다.</param>
         public GameLogic(int? fixedRunSeed)
         {
+            modifiers = new CombatModifiers(GetRunStatBonus);
             mapManager = new MapManager();
             roomLookup = new StageRoomIndex(mapManager);
 
@@ -720,20 +685,7 @@ namespace My2DEngine.Game.Core
             weapon.Reset();
             enemyManager.ResetAllEnemies();
             playerProjectiles.Clear();
-            playerDamageFlashTimer = 0f;
-            playerDamageFlashDirX = 0f;
-            playerDamageFlashDirY = 0f;
-            playerDamageShakeTimer = 0f;
-            playerDamageShakePower = 0f;
-            playerRecoilShakeTimer = 0f;
-            playerRecoilShakePower = 0f;
-            hitMarkerTimer = 0f;
-            killMarkerTimer = 0f;
-            weaponStatusText = null;
-            weaponStatusTimer = 0f;
-            weaponStatusRepeatGate = 0f;
-            pickupToastText = null;
-            pickupToastTimer = 0f;
+            feedback.Reset();
             deathPresentationProgress = 0f;
             deathRollDirection = 1f;
             dashKeyHeld = false;
@@ -764,14 +716,14 @@ namespace My2DEngine.Game.Core
             cachedRenderer = r;
             renderer.Render(r, screenWidth, screenHeight, player, weapon, rewardPickups, playerProjectiles, enemyManager.GetBossEnemy(),
                 bossIntroTimer, stageStatus.Text, stageStatus.Alpha, interactPromptText, victory,
-                playerDamageFlashTimer, playerDamageFlashDirX, playerDamageFlashDirY,
-                playerDamageShakeTimer, playerDamageShakePower,
-                playerRecoilShakeTimer, playerRecoilShakePower,
+                feedback.DamageFlash, feedback.DamageDirX, feedback.DamageDirY,
+                feedback.DamageShakeTimer, feedback.DamageShakePower,
+                feedback.RecoilShakeTimer, feedback.RecoilShakePower,
                 deathPresentationProgress, deathRollDirection,
                 GetToxicMistOverlayAlpha(),
-                GetHitMarkerAlpha(), GetKillMarkerAlpha(),
-                weaponStatusText, GetWeaponStatusAlpha(),
-                pickupToastText, GetPickupToastAlpha());
+                feedback.HitMarkerAlpha, feedback.KillMarkerAlpha,
+                feedback.WeaponStatusText, feedback.WeaponStatusAlpha,
+                feedback.PickupToastText, feedback.PickupToastAlpha);
 
             DrawOverlayScreens(r);
         }

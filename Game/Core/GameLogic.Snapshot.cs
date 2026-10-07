@@ -352,7 +352,7 @@ namespace My2DEngine.Game.Core
             try
             {
                 runStatBonusTotals[(int)StatType.LifeSteal] = lifeStealBonus;
-                return GetEffectiveLifeStealRatio(toxicMistPenaltyActive);
+                return modifiers.LifeStealRatio(toxicMistPenaltyActive);
             }
             finally
             {
@@ -403,15 +403,15 @@ namespace My2DEngine.Game.Core
             float previousShieldRegenTimer = player.ShieldRegenDelayTimer;
             float previousShieldedDamage = runStatBonusTotals[(int)StatType.ShieldedDamage];
             float previousDashStrikeDamage = runStatBonusTotals[(int)StatType.DashStrikeDamage];
-            float previousDashStrikeTimer = dashStrikeWindowTimer;
+            float previousDashStrikeTimer = modifiers.DashStrikeTimer;
             try
             {
                 player.ConfigureShield(PlayerConfig.PlayerShieldMax, PlayerConfig.PlayerShieldBaseRegenRate, PlayerConfig.PlayerShieldBaseRegenDelay);
                 player.RestoreShieldState(shield, 0f);
                 runStatBonusTotals[(int)StatType.ShieldedDamage] = shieldedDamageBonus;
                 runStatBonusTotals[(int)StatType.DashStrikeDamage] = dashStrikeDamageBonus;
-                dashStrikeWindowTimer = dashStrikeWindowActive ? RewardConfig.DashStrikeDamageWindow : 0f;
-                return ApplyOutgoingDamageModifiers(baseDamage);
+                modifiers.DashStrikeTimer = dashStrikeWindowActive ? RewardConfig.DashStrikeDamageWindow : 0f;
+                return modifiers.ApplyOutgoing(baseDamage, player, weapon);
             }
             finally
             {
@@ -419,7 +419,7 @@ namespace My2DEngine.Game.Core
                 player.RestoreShieldState(previousShield, previousShieldRegenTimer);
                 runStatBonusTotals[(int)StatType.ShieldedDamage] = previousShieldedDamage;
                 runStatBonusTotals[(int)StatType.DashStrikeDamage] = previousDashStrikeDamage;
-                dashStrikeWindowTimer = previousDashStrikeTimer;
+                modifiers.DashStrikeTimer = previousDashStrikeTimer;
             }
         }
 
@@ -443,9 +443,9 @@ namespace My2DEngine.Game.Core
             float prevHealth = player.Health;
             float prevMaxHealth = player.MaxHealth;
             WeaponType prevWeaponType = weapon.CurrentType;
-            float prevKillChainTimer = killChainWindowTimer;
-            int prevStreak = rapidFireHitStreak;
-            float prevStreakDecay = rapidFireStreakDecayTimer;
+            float prevKillChainTimer = modifiers.KillChainTimer;
+            int prevStreak = modifiers.RapidFireStreak;
+            float prevStreakDecay = modifiers.RapidFireDecayTimer;
             float prevLHR = runStatBonusTotals[(int)StatType.LowHealthRage];
             float prevKC = runStatBonusTotals[(int)StatType.KillChain];
             float prevES = runStatBonusTotals[(int)StatType.ExplosiveSpecialist];
@@ -458,24 +458,24 @@ namespace My2DEngine.Game.Core
                 weapon.SwitchTo(currentWeaponType);
                 int maxAmmo = weapon.GetMaxAmmo(currentWeaponType);
                 weapon.SetAmmoForSmoke(currentWeaponType, (int)Math.Round(maxAmmo * ammoRatio));
-                killChainWindowTimer = killChainWindowActive ? RewardConfig.KillChainWindow : 0f;
-                rapidFireHitStreak = hitStreak;
-                rapidFireStreakDecayTimer = hitStreak > 0 ? RewardConfig.RapidFireChainStreakDecayTime : 0f;
+                modifiers.KillChainTimer = killChainWindowActive ? RewardConfig.KillChainWindow : 0f;
+                modifiers.RapidFireStreak = hitStreak;
+                modifiers.RapidFireDecayTimer = hitStreak > 0 ? RewardConfig.RapidFireChainStreakDecayTime : 0f;
                 runStatBonusTotals[(int)StatType.LowHealthRage] = lowHealthRageBonus;
                 runStatBonusTotals[(int)StatType.KillChain] = killChainBonus;
                 runStatBonusTotals[(int)StatType.ExplosiveSpecialist] = explosiveSpecialistBonus;
                 runStatBonusTotals[(int)StatType.LowAmmoRage] = lowAmmoRageBonus;
                 runStatBonusTotals[(int)StatType.RapidFireChain] = rapidFireChainBonus;
-                return ApplyOutgoingDamageModifiers(baseDamage);
+                return modifiers.ApplyOutgoing(baseDamage, player, weapon);
             }
             finally
             {
                 player.MaxHealth = prevMaxHealth;
                 player.Health = prevHealth;
                 weapon.SwitchTo(prevWeaponType);
-                killChainWindowTimer = prevKillChainTimer;
-                rapidFireHitStreak = prevStreak;
-                rapidFireStreakDecayTimer = prevStreakDecay;
+                modifiers.KillChainTimer = prevKillChainTimer;
+                modifiers.RapidFireStreak = prevStreak;
+                modifiers.RapidFireDecayTimer = prevStreakDecay;
                 runStatBonusTotals[(int)StatType.LowHealthRage] = prevLHR;
                 runStatBonusTotals[(int)StatType.KillChain] = prevKC;
                 runStatBonusTotals[(int)StatType.ExplosiveSpecialist] = prevES;

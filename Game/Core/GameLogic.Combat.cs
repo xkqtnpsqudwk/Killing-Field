@@ -1,6 +1,7 @@
 using System;
 using My2DEngine.Engine.Math;
 using My2DEngine.Game.Config;
+using My2DEngine.Game.Systems;
 
 namespace My2DEngine.Game.Core
 {
@@ -17,24 +18,6 @@ namespace My2DEngine.Game.Core
     /// </summary>
     public partial class GameLogic
     {
-        private const float HitMarkerDuration = 0.16f;
-        private const float KillMarkerDuration = 0.34f;
-        private const float WeaponStatusDuration = 0.72f;
-        private const float WeaponStatusRepeatDelay = 0.24f;
-        private const float PickupToastDuration = 1.35f;
-
-        /// <summary>대시 직후 피해 증가 카드가 유효한 남은 시간(초).</summary>
-        private float dashStrikeWindowTimer;
-
-        /// <summary>처치 직후 피해 증가 카드가 유효한 남은 시간(초).</summary>
-        private float killChainWindowTimer;
-
-        /// <summary>연사 가속 카드의 현재 연속 명중 스트릭 수.</summary>
-        private int rapidFireHitStreak;
-
-        /// <summary>스트릭 감쇠 타이머. 이 값이 0으로 떨어지면 스트릭을 초기화한다.</summary>
-        private float rapidFireStreakDecayTimer;
-
         /// <summary>
         /// 보류 중인 발사 요청을 실제 탄 소비·판정·반동·사운드·적 피격으로 확정한다.
         /// </summary>
@@ -66,15 +49,15 @@ namespace My2DEngine.Game.Core
             }
             if (weapon.CurrentType == WeaponType.BearKiller)
             {
-                ApplyRecoil(WeaponConfig.ShotGunRecoilPowerMultiplier, WeaponConfig.ShotGunRecoilDurationMultiplier);
+                feedback.OnRecoil(WeaponConfig.ShotGunRecoilPowerMultiplier, WeaponConfig.ShotGunRecoilDurationMultiplier);
             }
             else if (weapon.CurrentType == WeaponType.AutoCannon)
             {
-                ApplyRecoil(1.2f, 1.08f);
+                feedback.OnRecoil(1.2f, 1.08f);
             }
             else
             {
-                ApplyRecoil();
+                feedback.OnRecoil();
             }
             if (weapon.CurrentType != WeaponType.HChainGun)
             {
@@ -204,137 +187,15 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            float modifiedDamage = ApplyOutgoingDamageModifiers(damage);
-            float finalDamage = ApplyCriticalDamage(modifiedDamage);
+            float modifiedDamage = modifiers.ApplyOutgoing(damage, player, weapon);
+            float finalDamage = modifiers.ApplyCritical(modifiedDamage, rewardRandom);
             float healthBefore = Math.Max(0f, enemy.Health);
             enemy.TakeDamage(finalDamage);
             float healthAfter = Math.Max(0f, enemy.Health);
             ApplyPlayerLifeSteal(healthBefore - healthAfter);
-            RegisterEnemyHitFeedback(!enemy.Alive);
-        }
-
-        private float ApplyCriticalDamage(float damage)
-        {
-            float criticalChance = Math.Max(0f, Math.Min(1f, GetRunStatBonus(StatType.CriticalChance)));
-            if (criticalChance <= 0f || rewardRandom.NextDouble() >= criticalChance)
-            {
-                return damage;
-            }
-
-            return damage * 2f;
-        }
-
-        private float ApplyOutgoingDamageModifiers(float damage)
-        {
-            if (damage <= 0f)
-            {
-                return 0f;
-            }
-
-            // 조건부 피해 카드는 서로 합산한 뒤 원 피해에 한 번만 곱한다.
-            // 각 카드의 개별 상한은 RewardConfig에서 관리한다.
-            float multiplier = 1f;
-
-            if (player != null && player.Shield > 0f)
-            {
-                multiplier += Math.Max(0f, Math.Min(
-                    RewardConfig.ShieldedDamageBonusCap,
-                    GetRunStatBonus(StatType.ShieldedDamage)));
-            }
-
-            if (dashStrikeWindowTimer > 0f)
-            {
-                multiplier += Math.Max(0f, Math.Min(
-                    RewardConfig.DashStrikeDamageBonusCap,
-                    GetRunStatBonus(StatType.DashStrikeDamage)));
-            }
-
-            if (player != null && player.MaxHealth > 0f &&
-                player.Health / player.MaxHealth < RewardConfig.LowHealthRageThreshold)
-            {
-                multiplier += Math.Max(0f, Math.Min(
-                    RewardConfig.LowHealthRageBonusCap,
-                    GetRunStatBonus(StatType.LowHealthRage)));
-            }
-
-            if (killChainWindowTimer > 0f)
-            {
-                multiplier += Math.Max(0f, Math.Min(
-                    RewardConfig.KillChainBonusCap,
-                    GetRunStatBonus(StatType.KillChain)));
-            }
-
-            if (weapon != null && weapon.CurrentType == WeaponType.AutoCannon)
-            {
-                multiplier += Math.Max(0f, Math.Min(
-                    RewardConfig.ExplosiveSpecialistBonusCap,
-                    GetRunStatBonus(StatType.ExplosiveSpecialist)));
-            }
-
-            if (weapon != null)
-            {
-                int maxAmmo = weapon.GetMaxAmmo(weapon.CurrentType);
-                if (maxAmmo > 0 && weapon.CurrentAmmo <= (int)(maxAmmo * RewardConfig.LowAmmoRageThreshold))
-                {
-                    multiplier += Math.Max(0f, Math.Min(
-                        RewardConfig.LowAmmoRageBonusCap,
-                        GetRunStatBonus(StatType.LowAmmoRage)));
-                }
-            }
-
-            if (rapidFireHitStreak >= RewardConfig.RapidFireChainMinStreak)
-            {
-                multiplier += Math.Max(0f, Math.Min(
-                    RewardConfig.RapidFireChainBonusCap,
-                    GetRunStatBonus(StatType.RapidFireChain)));
-            }
-
-            return Math.Max(0f, damage * multiplier);
-        }
-
-        private void StartDashStrikeWindow()
-        {
-            dashStrikeWindowTimer = GetRunStatBonus(StatType.DashStrikeDamage) > 0f
-                ? RewardConfig.DashStrikeDamageWindow
-                : 0f;
-        }
-
-        private void UpdateDashStrikeWindow(float dt)
-        {
-            if (dashStrikeWindowTimer <= 0f)
-            {
-                dashStrikeWindowTimer = 0f;
-                return;
-            }
-
-            dashStrikeWindowTimer = Math.Max(0f, dashStrikeWindowTimer - Math.Max(0f, dt));
-        }
-
-        private void UpdateKillChainWindow(float dt)
-        {
-            if (killChainWindowTimer > 0f)
-                killChainWindowTimer = Math.Max(0f, killChainWindowTimer - Math.Max(0f, dt));
-        }
-
-        private void UpdateRapidFireStreak(float dt)
-        {
-            if (rapidFireStreakDecayTimer <= 0f)
-            {
-                rapidFireHitStreak = 0;
-                return;
-            }
-
-            rapidFireStreakDecayTimer = Math.Max(0f, rapidFireStreakDecayTimer - Math.Max(0f, dt));
-            if (rapidFireStreakDecayTimer <= 0f)
-                rapidFireHitStreak = 0;
-        }
-
-        private void ResetCombatWindowTimers()
-        {
-            dashStrikeWindowTimer = 0f;
-            killChainWindowTimer = 0f;
-            rapidFireHitStreak = 0;
-            rapidFireStreakDecayTimer = 0f;
+            bool killed = !enemy.Alive;
+            feedback.OnEnemyHit(killed);
+            modifiers.OnEnemyHit(killed);
         }
 
         private void ApplyPlayerLifeSteal(float dealtDamage)
@@ -349,7 +210,7 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            float lifeStealRatio = GetEffectiveLifeStealRatio(toxicMistPenaltyActive);
+            float lifeStealRatio = modifiers.LifeStealRatio(toxicMistPenaltyActive);
             if (lifeStealRatio <= 0f)
             {
                 return;
@@ -364,66 +225,10 @@ namespace My2DEngine.Game.Core
             player.Health = Math.Min(player.MaxHealth, Math.Max(0f, player.Health) + healAmount);
         }
 
-        private float GetEffectiveLifeStealRatio(bool toxicMistPenaltyActive)
-        {
-            float ratio = Math.Max(0f, Math.Min(1f, GetRunStatBonus(StatType.LifeSteal)));
-            if (toxicMistPenaltyActive)
-            {
-                // 독 안개 방에서는 흡혈 효율을 절반으로 줄여 환경 위험이 무력화되지 않게 한다.
-                ratio *= 0.5f;
-            }
-
-            return Math.Max(0f, Math.Min(1f, ratio));
-        }
-
-        /// <summary>명중이면 흰색 히트마커, 처치이면 강화 히트마커가 표시되도록 타이머를 갱신한다.</summary>
-        private void RegisterEnemyHitFeedback(bool killed)
-        {
-            hitMarkerTimer = Math.Max(hitMarkerTimer, HitMarkerDuration);
-
-            if (GetRunStatBonus(StatType.RapidFireChain) > 0f)
-            {
-                rapidFireHitStreak++;
-                rapidFireStreakDecayTimer = RewardConfig.RapidFireChainStreakDecayTime;
-            }
-
-            if (killed)
-            {
-                killMarkerTimer = KillMarkerDuration;
-                if (GetRunStatBonus(StatType.KillChain) > 0f)
-                {
-                    killChainWindowTimer = RewardConfig.KillChainWindow;
-                }
-            }
-        }
-
-        private float GetHitMarkerAlpha()
-        {
-            return HitMarkerDuration <= 0f ? 0f : Math.Min(1f, hitMarkerTimer / HitMarkerDuration);
-        }
-
-        private float GetKillMarkerAlpha()
-        {
-            return KillMarkerDuration <= 0f ? 0f : Math.Min(1f, killMarkerTimer / KillMarkerDuration);
-        }
-
         /// <summary>발사 입력이 탄약 또는 쿨다운 때문에 막혔을 때 HUD 상태 문구를 등록한다.</summary>
         private void RegisterWeaponBlockedFeedback(bool force = false)
         {
-            string text = BuildWeaponBlockedText();
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                return;
-            }
-
-            if (!force && weaponStatusRepeatGate > 0f && string.Equals(weaponStatusText, text, StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            weaponStatusText = text;
-            weaponStatusTimer = WeaponStatusDuration;
-            weaponStatusRepeatGate = WeaponStatusRepeatDelay;
+            feedback.ShowWeaponStatus(BuildWeaponBlockedText(), force);
         }
 
         private string BuildWeaponBlockedText()
@@ -441,38 +246,6 @@ namespace My2DEngine.Game.Core
             return null;
         }
 
-        private float GetWeaponStatusAlpha()
-        {
-            if (weaponStatusTimer <= 0f)
-            {
-                return 0f;
-            }
-
-            return Math.Min(1f, weaponStatusTimer / 0.18f);
-        }
-
-        /// <summary>보상 드롭/획득 토스트를 등록한다.</summary>
-        private void RegisterPickupToast(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                return;
-            }
-
-            pickupToastText = text;
-            pickupToastTimer = PickupToastDuration;
-        }
-
-        private float GetPickupToastAlpha()
-        {
-            if (pickupToastTimer <= 0f)
-            {
-                return 0f;
-            }
-
-            return Math.Min(1f, pickupToastTimer / 0.24f);
-        }
-
         // ─── 타겟 탐색 헬퍼 ───────────────────────────────────────────────
 
         /// <summary>전방 콘·시야 기준 가장 가까운 적을 탐색한다.</summary>
@@ -487,44 +260,9 @@ namespace My2DEngine.Game.Core
         /// </summary>
         private Enemy FindBestTargetWithSpread(float spreadRadius, float range, Enemy exclude, out float bestHitDistance)
         {
-            bestHitDistance = float.MaxValue;
-            Enemy[] enemies = enemyManager.Enemies;
-            if (enemies == null) return null;
-
-            Enemy bestTarget = null;
-            float bestDistance = float.MaxValue;
-
-            foreach (Enemy enemy in enemies)
-            {
-                if (enemy == null || !enemy.Alive) continue;
-                if (enemy == exclude) continue;
-
-                float dx = enemy.X - player.Position.X;
-                float dy = enemy.Y - player.Position.Y;
-                float dist = (float)Math.Sqrt(dx * dx + dy * dy);
-
-                if (dist <= 0.001f || dist > range) continue;
-
-                float forward = (dx * player.Direction.X + dy * player.Direction.Y) / dist;
-                if (forward < 0.75f) continue;
-
-                // lateral은 플레이어 전방 벡터에 수직인 거리다.
-                // 거리가 멀수록 약간의 조준 보정을 허용해 픽셀 단위 떨림으로 빗나가는 일을 줄인다.
-                float lateral = Math.Abs(dx * player.Direction.Y - dy * player.Direction.X);
-                float allowed = spreadRadius + dist * 0.03f;
-                if (lateral > allowed) continue;
-
-                if (!collision.HasLineOfSight(player.Position.X, player.Position.Y, enemy.X, enemy.Y, dist)) continue;
-
-                if (dist < bestDistance)
-                {
-                    bestDistance = dist;
-                    bestTarget = enemy;
-                }
-            }
-
-            bestHitDistance = bestDistance;
-            return bestTarget;
+            return CombatTargeting.FindInCone(enemyManager.Enemies, collision,
+                player.Position.X, player.Position.Y, player.Direction.X, player.Direction.Y,
+                spreadRadius, range, exclude, out bestHitDistance);
         }
 
         // ─── 반동 ─────────────────────────────────────────────────────────
@@ -546,13 +284,6 @@ namespace My2DEngine.Game.Core
             return 1f - ((1f - WeaponConfig.ShotGunMinDamageMultiplier) * t);
         }
 
-        /// <summary>발사 반동 카메라 흔들림을 설정한다.</summary>
-        private void ApplyRecoil(float powerMultiplier = 1.0f, float durationMultiplier = 1.0f)
-        {
-            playerRecoilShakeTimer = System.Math.Min(0.3f, System.Math.Max(playerRecoilShakeTimer, 0.18f * durationMultiplier));
-            playerRecoilShakePower = System.Math.Min(1f, System.Math.Max(playerRecoilShakePower, 0.72f * powerMultiplier));
-        }
-
         /// <summary>
         /// 플레이어가 피해를 받았을 때 호출되는 이벤트 핸들러.
         /// 체력을 감소시키고 피격 방향에 따른 화면 플래시·카메라 흔들림 효과를 설정한다.
@@ -566,7 +297,7 @@ namespace My2DEngine.Game.Core
 
             // 피해 감소를 먼저 적용하고, 남은 피해를 보호막이 흡수한 뒤 체력에 전달한다.
             // 피격 연출 강도는 실제 체력 피해가 아니라 감소 후 총 피해를 기준으로 잡아 보호막 피격도 읽히게 한다.
-            float reducedDamage = GetIncomingDamageAfterReduction(damage);
+            float reducedDamage = modifiers.ApplyIncoming(damage);
             if (reducedDamage <= 0f)
             {
                 return;
@@ -578,48 +309,18 @@ namespace My2DEngine.Game.Core
                 player.TakeDamage(healthDamage);
             }
 
-            float flashStrength = reducedDamage / 18f;
-            if (flashStrength < 0.35f) flashStrength = 0.35f;
-            if (flashStrength > 1.2f)  flashStrength = 1.2f;
-
-            playerDamageFlashTimer = Math.Min(1.2f, Math.Max(playerDamageFlashTimer, flashStrength));
-            playerDamageShakeTimer = Math.Min(0.5f, Math.Max(playerDamageShakeTimer, 0.18f + flashStrength * 0.18f));
-            playerDamageShakePower = Math.Min(1f,   Math.Max(playerDamageShakePower, 0.35f + flashStrength * 0.45f));
-
-            float dirX = sourceX - player.Position.X;
-            float dirY = sourceY - player.Position.Y;
-            float len  = (float)Math.Sqrt((dirX * dirX) + (dirY * dirY));
-            if (len > 0.001f)
-            {
-                playerDamageFlashDirX = dirX / len;
-                playerDamageFlashDirY = dirY / len;
-            }
-            else
-            {
-                playerDamageFlashDirX = -player.Direction.X;
-                playerDamageFlashDirY = -player.Direction.Y;
-            }
+            feedback.OnPlayerHit(reducedDamage, sourceX - player.Position.X, sourceY - player.Position.Y,
+                player.Direction.X, player.Direction.Y);
 
             if (player.IsDead && deathPresentationProgress <= 0f)
             {
                 MarkRunEndedIfNeeded();
                 Vector2 right = new Vector2(-player.Direction.Y, player.Direction.X);
-                float rightDot = (playerDamageFlashDirX * right.X) + (playerDamageFlashDirY * right.Y);
+                float rightDot = (feedback.DamageDirX * right.X) + (feedback.DamageDirY * right.Y);
                 deathRollDirection = (System.Math.Abs(rightDot) > 0.08f)
                     ? (rightDot >= 0f ? -1f : 1f)
                     : 1f;
             }
-        }
-
-        private float GetIncomingDamageAfterReduction(float damage)
-        {
-            if (damage <= 0f)
-            {
-                return 0f;
-            }
-
-            float reduction = Math.Max(0f, Math.Min(0.65f, GetRunStatBonus(StatType.DamageReduction)));
-            return Math.Max(0f, damage * (1f - reduction));
         }
     }
 }

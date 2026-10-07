@@ -905,7 +905,7 @@ namespace My2DEngine.Game.Core
             ResetCardDisplayState();
             weaponCardPoolCount = 0;
             cardChoiceBonusOffered = false;
-            dashStrikeWindowTimer = 0f;
+            modifiers.DashStrikeTimer = 0f;
             for (int i = 0; i < runStatGrade.Length; i++)
             {
                 runStatGrade[i] = -1;
