@@ -94,36 +94,8 @@ namespace My2DEngine.Game.Core
         /// <summary>카드 선택지 증가 카드가 등장할 수 있는 최소 층.</summary>
         private const int CardChoiceBonusMinFloor = 10;
 
-        /// <summary>
-        /// 일반 스탯 카드 후보 풀.
-        /// 이 배열에 들어간 순서가 확률을 직접 바꾸지는 않지만,
-        /// 카드 추가/제거 시 IsStatOfferAvailable과 GetStatBonusCap도 함께 맞춰야 한다.
-        /// </summary>
-        private static readonly StatType[] RewardStatTypes =
-        {
-            StatType.MaxHealth,
-            StatType.MoveSpeed,
-            StatType.DashCooldown,
-            StatType.AmmoDropChance,
-            StatType.Damage,
-            StatType.CoinDropChance,
-            StatType.LifeSteal,
-            StatType.DamageReduction,
-            StatType.ShopDiscount,
-            StatType.KillHeal,
-            StatType.KillDashCooldownRefund,
-            StatType.CriticalChance,
-            StatType.CardChoiceBonus,
-            StatType.ShieldRegenRate,
-            StatType.ShieldRegenDelayReduction,
-            StatType.ShieldedDamage,
-            StatType.DashStrikeDamage,
-            StatType.LowHealthRage,
-            StatType.KillChain,
-            StatType.ExplosiveSpecialist,
-            StatType.LowAmmoRage,
-            StatType.RapidFireChain
-        };
+        /// <summary>일반 스탯 카드 후보 풀. 정의는 <see cref="StatCardCatalog"/>에 있다.</summary>
+        private static readonly StatType[] RewardStatTypes = StatCardCatalog.RewardPool;
 
         // ── 카드 보상 상태 ──────────────────────────────────────────────
 
@@ -589,64 +561,12 @@ namespace My2DEngine.Game.Core
 
         private float GetStatBonusCap(StatType stat)
         {
-            switch (stat)
-            {
-                case StatType.DashCooldown:
-                    return 1f - (GameConfig.DashCooldownMinDuration / GameConfig.DashCooldownDuration);
-                case StatType.AmmoDropChance:
-                    return 1f - NormalEnemyAmmoDropChance;
-                case StatType.CoinDropChance:
-                    return 0.50f;
-                case StatType.LifeSteal:
-                    return 1f;
-                case StatType.DamageReduction:
-                    return 0.65f;
-                case StatType.ShopDiscount:
-                    return 0.50f;
-                case StatType.KillHeal:
-                    return 0.10f;
-                case StatType.KillDashCooldownRefund:
-                    return 0.25f;
-                case StatType.CriticalChance:
-                    return 1f;
-                case StatType.CardChoiceBonus:
-                    return 1f;
-                case StatType.ShieldRegenRate:
-                    return Math.Max(0f, GameConfig.PlayerShieldMaxRegenRate - GameConfig.PlayerShieldBaseRegenRate);
-                case StatType.ShieldRegenDelayReduction:
-                    return 1f - (GameConfig.PlayerShieldMinRegenDelay / GameConfig.PlayerShieldBaseRegenDelay);
-                case StatType.ShieldedDamage:
-                    return GameConfig.ShieldedDamageBonusCap;
-                case StatType.DashStrikeDamage:
-                    return GameConfig.DashStrikeDamageBonusCap;
-                case StatType.LowHealthRage:
-                    return GameConfig.LowHealthRageBonusCap;
-                case StatType.KillChain:
-                    return GameConfig.KillChainBonusCap;
-                case StatType.ExplosiveSpecialist:
-                    return GameConfig.ExplosiveSpecialistBonusCap;
-                case StatType.LowAmmoRage:
-                    return GameConfig.LowAmmoRageBonusCap;
-                case StatType.RapidFireChain:
-                    return GameConfig.RapidFireChainBonusCap;
-                default:
-                    return float.PositiveInfinity;
-            }
+            return StatCardCatalog.Get(stat).Cap;
         }
 
         private static float GetBaseStatCardBonus(StatType stat, CardGrade grade)
         {
-            switch (stat)
-            {
-                case StatType.CardChoiceBonus:
-                    return 1f;
-                case StatType.ShieldRegenRate:
-                    return 1f + Math.Max(0, (int)grade);
-                default:
-                    break;
-            }
-
-            return CardGradeHelper.GetBonusValue(grade);
+            return StatCardCatalog.Get(stat).GetBaseBonus(grade);
         }
 
         // 운 레벨(0~10)별 등급 가중치 테이블. [luckLevel, (int)CardGrade]
@@ -1033,44 +953,7 @@ namespace My2DEngine.Game.Core
 
         private static float ClampRunStatBonusTotal(StatType stat, float value)
         {
-            if (float.IsNaN(value) || value < 0f)
-            {
-                value = 0f;
-            }
-
-            switch (stat)
-            {
-                case StatType.DashCooldown:
-                    return Math.Min(value, 1f - (GameConfig.DashCooldownMinDuration / GameConfig.DashCooldownDuration));
-                case StatType.AmmoDropChance:
-                    return Math.Min(value, 1f - NormalEnemyAmmoDropChance);
-                case StatType.CoinDropChance:
-                    return Math.Min(value, 0.50f);
-                case StatType.LifeSteal:
-                    return Math.Min(value, 1f);
-                case StatType.DamageReduction:
-                    return Math.Min(value, 0.65f);
-                case StatType.ShopDiscount:
-                    return Math.Min(value, 0.50f);
-                case StatType.KillHeal:
-                    return Math.Min(value, 0.10f);
-                case StatType.KillDashCooldownRefund:
-                    return Math.Min(value, 0.25f);
-                case StatType.CriticalChance:
-                    return Math.Min(value, 1f);
-                case StatType.CardChoiceBonus:
-                    return Math.Min(value, 1f);
-                case StatType.ShieldRegenRate:
-                    return Math.Min(value, Math.Max(0f, GameConfig.PlayerShieldMaxRegenRate - GameConfig.PlayerShieldBaseRegenRate));
-                case StatType.ShieldRegenDelayReduction:
-                    return Math.Min(value, 1f - (GameConfig.PlayerShieldMinRegenDelay / GameConfig.PlayerShieldBaseRegenDelay));
-                case StatType.ShieldedDamage:
-                    return Math.Min(value, GameConfig.ShieldedDamageBonusCap);
-                case StatType.DashStrikeDamage:
-                    return Math.Min(value, GameConfig.DashStrikeDamageBonusCap);
-                default:
-                    return value;
-            }
+            return StatCardCatalog.Get(stat).Clamp(value);
         }
 
         private void GetCardRewardLayout(out int slotCount, out float cardW, out float cardH, out float gap, out float startX, out float cardY)
@@ -1154,32 +1037,7 @@ namespace My2DEngine.Game.Core
 
         private static string GetStatName(StatType stat)
         {
-            switch (stat)
-            {
-                case StatType.MaxHealth:   return "최대 체력";
-                case StatType.MoveSpeed:   return "이동 속도";
-                case StatType.DashCooldown:return "대시 쿨타임";
-                case StatType.AmmoDropChance: return "탄 드랍 확률";
-                case StatType.Damage:      return "공격력";
-                case StatType.CoinDropChance: return "코인 드랍 확률";
-                case StatType.LifeSteal:   return "모든 피해 흡혈";
-                case StatType.DamageReduction: return "피해 감소";
-                case StatType.ShopDiscount: return "상점 할인";
-                case StatType.KillHeal: return "처치 시 회복";
-                case StatType.KillDashCooldownRefund: return "처치 시 대시 환급";
-                case StatType.CriticalChance: return "치명타 확률";
-                case StatType.CardChoiceBonus: return "카드 선택지 증가";
-                case StatType.ShieldRegenRate: return "보호막 회복 속도";
-                case StatType.ShieldRegenDelayReduction: return "보호막 회복 지연";
-                case StatType.ShieldedDamage: return "보호막 피해 증폭";
-                case StatType.DashStrikeDamage: return "대시 후 피해";
-                case StatType.LowHealthRage: return "저체력 분노";
-                case StatType.KillChain: return "처치 연계";
-                case StatType.ExplosiveSpecialist: return "폭발 전문가";
-                case StatType.LowAmmoRage: return "탄창 분노";
-                case StatType.RapidFireChain: return "연사 가속";
-                default:                   return "???";
-            }
+            return StatCardCatalog.Get(stat).Name;
         }
 
         private static string GetWeaponName(WeaponType type)
@@ -1233,20 +1091,7 @@ namespace My2DEngine.Game.Core
 
         private static string GetStatCardValueText(StatType stat, float bonusValue)
         {
-            int pct = (int)Math.Round(bonusValue * 100f);
-            switch (stat)
-            {
-                case StatType.DashCooldown:
-                case StatType.ShopDiscount:
-                case StatType.ShieldRegenDelayReduction:
-                    return $"-{pct}%";
-                case StatType.CardChoiceBonus:
-                    return "+1";
-                case StatType.ShieldRegenRate:
-                    return $"+{bonusValue:0.#}/s";
-                default:
-                    return $"+{pct}%";
-            }
+            return StatCardCatalog.Get(stat).FormatOfferValue(bonusValue);
         }
 
         /// <summary>
@@ -1255,25 +1100,7 @@ namespace My2DEngine.Game.Core
         /// </summary>
         private static string GetStatConditionText(StatType stat)
         {
-            switch (stat)
-            {
-                case StatType.ShieldedDamage:
-                    return "보호막이 남아 있을 때";
-                case StatType.DashStrikeDamage:
-                    return $"대시 직후 {GameConfig.DashStrikeDamageWindow:0.#}초간";
-                case StatType.LowHealthRage:
-                    return $"체력 {GameConfig.LowHealthRageThreshold * 100f:0}% 미만일 때";
-                case StatType.KillChain:
-                    return $"처치 직후 {GameConfig.KillChainWindow:0.#}초간";
-                case StatType.ExplosiveSpecialist:
-                    return "AutoCannon 장착 중";
-                case StatType.LowAmmoRage:
-                    return $"잔탄 {GameConfig.LowAmmoRageThreshold * 100f:0}% 이하일 때";
-                case StatType.RapidFireChain:
-                    return $"연속 명중 {GameConfig.RapidFireChainMinStreak}회 이상";
-                default:
-                    return null;
-            }
+            return StatCardCatalog.Get(stat).Condition;
         }
 
         // ── 카드 UI 렌더링 ──────────────────────────────────────────────
@@ -1375,20 +1202,7 @@ namespace My2DEngine.Game.Core
 
         private static string GetStatBonusTotalText(StatType stat, float totalBonus)
         {
-            int pct = (int)Math.Round(totalBonus * 100f);
-            switch (stat)
-            {
-                case StatType.DashCooldown:
-                case StatType.ShopDiscount:
-                case StatType.ShieldRegenDelayReduction:
-                    return $"-{pct}%";
-                case StatType.CardChoiceBonus:
-                    return totalBonus >= 1f ? "+1" : "+0";
-                case StatType.ShieldRegenRate:
-                    return $"+{totalBonus:0.#}/s";
-                default:
-                    return $"+{pct}%";
-            }
+            return StatCardCatalog.Get(stat).FormatTotalValue(totalBonus);
         }
 
         /// <summary>

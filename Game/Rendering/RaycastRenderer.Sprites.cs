@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using My2DEngine.Engine.Rendering;
 using My2DEngine.Game.Config;
+using My2DEngine.Game.Core;
 using My2DEngine.Game.Systems;
 
 namespace My2DEngine.Game.Rendering
@@ -557,45 +558,7 @@ namespace My2DEngine.Game.Rendering
 
         private static string GetShortStatName(StatType stat)
         {
-            switch (stat)
-            {
-                case StatType.MaxHealth:
-                    return "체력";
-                case StatType.MoveSpeed:
-                    return "속도";
-                case StatType.DashCooldown:
-                    return "대시";
-                case StatType.AmmoDropChance:
-                    return "탄드랍";
-                case StatType.Damage:
-                    return "공격";
-                case StatType.CoinDropChance:
-                    return "코인";
-                case StatType.LifeSteal:
-                    return "흡혈";
-                case StatType.DamageReduction:
-                    return "피감";
-                case StatType.ShopDiscount:
-                    return "할인";
-                case StatType.KillHeal:
-                    return "처치회복";
-                case StatType.KillDashCooldownRefund:
-                    return "대시환급";
-                case StatType.CriticalChance:
-                    return "치명";
-                case StatType.CardChoiceBonus:
-                    return "선택+";
-                case StatType.ShieldRegenRate:
-                    return "방패회복";
-                case StatType.ShieldRegenDelayReduction:
-                    return "방패지연";
-                case StatType.ShieldedDamage:
-                    return "방패공격";
-                case StatType.DashStrikeDamage:
-                    return "대시공격";
-                default:
-                    return "스탯";
-            }
+            return StatCardCatalog.Get(stat).ShortName;
         }
 
         /// <summary>

@@ -77,6 +77,7 @@ namespace My2DEngine.SmokeTests
                 RunMoveSpeedDashSynergySmokeCheck();
                 RunLayoutBehaviorChecks();
                 RunSeedDeterminismSmokeCheck();
+                RunStatCardCatalogSmokeCheck();
                 Console.WriteLine("Smoke checks passed.");
                 return 0;
             }
@@ -84,6 +85,43 @@ namespace My2DEngine.SmokeTests
             {
                 Console.Error.WriteLine(ex);
                 return 1;
+            }
+        }
+
+        /// <summary>
+        /// 모든 StatType에 이름·짧은 이름·표시 형식이 있고, 조건부 카드에는 발동 조건이 있는지 검증한다.
+        /// 새 스탯 카드를 넣고 정의를 빠뜨리면 여기서 걸린다.
+        /// </summary>
+        private static void RunStatCardCatalogSmokeCheck()
+        {
+            var shortNames = new HashSet<string>();
+            foreach (StatType stat in Enum.GetValues(typeof(StatType)))
+            {
+                StatCardDefinition definition = StatCardCatalog.Get(stat);
+                if (definition.Stat != stat ||
+                    string.IsNullOrWhiteSpace(definition.Name) ||
+                    string.IsNullOrWhiteSpace(definition.ShortName))
+                {
+                    throw new InvalidOperationException("Smoke check failed for stat card catalog: " + stat + " has an incomplete definition.");
+                }
+
+                if (!shortNames.Add(definition.ShortName))
+                {
+                    throw new InvalidOperationException("Smoke check failed for stat card catalog: short name '" + definition.ShortName + "' is used twice.");
+                }
+
+                bool conditional = stat >= StatType.ShieldedDamage;
+                if (conditional != (definition.Condition != null))
+                {
+                    throw new InvalidOperationException(
+                        "Smoke check failed for stat card catalog: " + stat + (conditional ? " needs" : " must not have") + " a trigger condition.");
+                }
+
+                float cap = definition.Cap;
+                if (!float.IsPositiveInfinity(cap) && Math.Abs(definition.Clamp(cap + 1f) - cap) > 0.0001f)
+                {
+                    throw new InvalidOperationException("Smoke check failed for stat card catalog: " + stat + " clamp does not respect its cap.");
+                }
             }
         }
 

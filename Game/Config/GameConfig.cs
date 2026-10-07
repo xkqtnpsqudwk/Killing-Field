@@ -179,6 +179,19 @@ namespace My2DEngine.Game.Config
         /// <summary>연사 가속 카드의 연속 명중 스트릭이 이 시간(초) 내에 갱신되지 않으면 초기화된다.</summary>
         public const float RapidFireChainStreakDecayTime = 2.0f;
 
+        /// <summary>일반 적 처치 시 탄약 드롭 확률. 탄 드랍 확률 카드의 상한도 1 - 이 값이다.</summary>
+        public const float NormalEnemyAmmoDropChance = 0.28f;
+        /// <summary>미니보스 처치 시 탄약 드롭 확률.</summary>
+        public const float MiniBossAmmoDropChance = 0.65f;
+        /// <summary>보스 처치 시 탄약 드롭 확률.</summary>
+        public const float BossAmmoDropChance = 0.9f;
+        /// <summary>일반 적 처치 시 코인 드롭 확률.</summary>
+        public const float NormalEnemyCoinDropChance = 0.10f;
+        /// <summary>미니보스 처치 시 코인 드롭 확률.</summary>
+        public const float MiniBossCoinDropChance = 0.25f;
+        /// <summary>보스 처치 시 코인 드롭 확률.</summary>
+        public const float BossCoinDropChance = 0.50f;
+
         /// <summary>운 레벨당 코인 드롭 확률 보정 최대값 (10레벨 = +20%).</summary>
         public const float LuckCoinDropBonusMax = 0.20f;
 

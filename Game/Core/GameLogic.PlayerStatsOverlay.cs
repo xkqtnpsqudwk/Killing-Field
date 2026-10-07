@@ -115,11 +115,11 @@ namespace My2DEngine.Game.Core
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 2f,
                 $"공격력 배율  기본 1.00x / 카드 +{runStatBonusTotals[(int)StatType.Damage] * 100f:0}% / 최종 x{weapon.StatDamageMult:0.00}");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 3f,
-                $"탄 드랍 확률  기본 {NormalEnemyAmmoDropChance * 100f:0}% / 카드 +{runStatBonusTotals[(int)StatType.AmmoDropChance] * 100f:0}% / 누적 {Math.Min(1f, NormalEnemyAmmoDropChance + runStatBonusTotals[(int)StatType.AmmoDropChance]) * 100f:0}%");
+                $"탄 드랍 확률  기본 {GameConfig.NormalEnemyAmmoDropChance * 100f:0}% / 카드 +{runStatBonusTotals[(int)StatType.AmmoDropChance] * 100f:0}% / 누적 {Math.Min(1f, GameConfig.NormalEnemyAmmoDropChance + runStatBonusTotals[(int)StatType.AmmoDropChance]) * 100f:0}%");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 4f,
                 $"대시 쿨다운  기본 {GameConfig.DashCooldownDuration:0.00}s / 카드 -{runStatBonusTotals[(int)StatType.DashCooldown] * 100f:0}% / 최종 {GameConfig.DashCooldownDuration * player.DashCooldownMult:0.00}s");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 5f,
-                $"코인 드랍(일반 적)  기본 {NormalEnemyCoinDropChance * 100f:0}% / 카드 +{runStatBonusTotals[(int)StatType.CoinDropChance] * 100f:0}% / 누적 {Math.Min(1f, NormalEnemyCoinDropChance + runStatBonusTotals[(int)StatType.CoinDropChance]) * 100f:0}%");
+                $"코인 드랍(일반 적)  기본 {GameConfig.NormalEnemyCoinDropChance * 100f:0}% / 카드 +{runStatBonusTotals[(int)StatType.CoinDropChance] * 100f:0}% / 누적 {Math.Min(1f, GameConfig.NormalEnemyCoinDropChance + runStatBonusTotals[(int)StatType.CoinDropChance]) * 100f:0}%");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 6f,
                 $"흡혈  기본 0% / 카드 +{runStatBonusTotals[(int)StatType.LifeSteal] * 100f:0}% / 독안개 {GetEffectiveLifeStealRatio(true) * 100f:0}%");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 7f,

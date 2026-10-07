@@ -12,13 +12,6 @@ namespace My2DEngine.Game.Core
     /// </summary>
     public partial class GameLogic
     {
-        private const float NormalEnemyAmmoDropChance = 0.28f;
-        private const float MiniBossAmmoDropChance = 0.65f;
-        private const float BossAmmoDropChance = 0.9f;
-        private const float NormalEnemyCoinDropChance = 0.10f;
-        private const float MiniBossCoinDropChance = 0.25f;
-        private const float BossCoinDropChance = 0.50f;
-
         /// <summary>
         /// 매 프레임 스테이지 진행 상태를 업데이트한다.
         /// <para>처리 흐름:</para>
@@ -309,10 +302,10 @@ namespace My2DEngine.Game.Core
 
             WeaponType currentWeaponType = weapon.CurrentType;
             float baseChance = enemy.IsBoss
-                ? BossAmmoDropChance
+                ? GameConfig.BossAmmoDropChance
                 : enemy.IsMiniBoss
-                    ? MiniBossAmmoDropChance
-                    : NormalEnemyAmmoDropChance;
+                    ? GameConfig.MiniBossAmmoDropChance
+                    : GameConfig.NormalEnemyAmmoDropChance;
 
             // 스탯 카드 '탄 드랍 확률' 보너스 적용
             float runBonus = GetRunStatBonus(StatType.AmmoDropChance);
@@ -357,10 +350,10 @@ namespace My2DEngine.Game.Core
 
             bool isNormalEnemy = !enemy.IsBoss && !enemy.IsMiniBoss;
             float baseChance = enemy.IsBoss
-                ? BossCoinDropChance
+                ? GameConfig.BossCoinDropChance
                 : enemy.IsMiniBoss
-                    ? MiniBossCoinDropChance
-                    : NormalEnemyCoinDropChance;
+                    ? GameConfig.MiniBossCoinDropChance
+                    : GameConfig.NormalEnemyCoinDropChance;
 
             float runBonus = isNormalEnemy ? GetRunStatBonus(StatType.CoinDropChance) : 0f;
             float luckBonus = isNormalEnemy && permanentProgression != null
