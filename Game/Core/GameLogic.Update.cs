@@ -171,7 +171,7 @@ namespace My2DEngine.Game.Core
 
             if (player.IsDashing)
             {
-                float dashStep = (GameConfig.DashDistance / GameConfig.DashDuration) * dt;
+                float dashStep = (PlayerConfig.DashDistance / PlayerConfig.DashDuration) * dt;
                 collision.TryMovePlayer(player, player.DashDirX * dashStep, player.DashDirY * dashStep);
                 return;
             }

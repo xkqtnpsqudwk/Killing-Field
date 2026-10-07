@@ -963,8 +963,8 @@ namespace My2DEngine.Game.Core
             cardH = 210f;
             gap = slotCount > BaseCardRewardOfferCount ? 12f : 15f;
 
-            float fw = GameConfig.GpuWorldMaxRenderWidth;
-            float fh = GameConfig.GpuWorldMaxRenderHeight;
+            float fw = RenderConfig.GpuWorldMaxRenderWidth;
+            float fh = RenderConfig.GpuWorldMaxRenderHeight;
             float totalW = slotCount * cardW + Math.Max(0, slotCount - 1) * gap;
             startX = (fw - totalW) * 0.5f;
             cardY = cardRewardWasBossRoom ? fh * 0.20f : fh * 0.16f;
@@ -1110,8 +1110,8 @@ namespace My2DEngine.Game.Core
         {
             if (!cardRewardActive) return;
 
-            float fw = GameConfig.GpuWorldMaxRenderWidth;
-            float fh = GameConfig.GpuWorldMaxRenderHeight;
+            float fw = RenderConfig.GpuWorldMaxRenderWidth;
+            float fh = RenderConfig.GpuWorldMaxRenderHeight;
 
             // 반투명 어둠 처리
             r.DrawRectangle(0f, 0f, fw, fh, Color.FromArgb(185, 0, 0, 0));

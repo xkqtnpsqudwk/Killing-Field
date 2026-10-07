@@ -305,13 +305,13 @@ namespace My2DEngine.Game.Core
                     break;
             }
 
-            float floorHealthMultiplier = 1f + clearedCombatFloorCount * GameConfig.EnemyHealthGrowthPerClearedCombatFloor;
-            float floorDamageMultiplier = 1f + clearedCombatFloorCount * GameConfig.EnemyDamageGrowthPerClearedCombatFloor;
-            float floorMoveSpeedMultiplier = 1f + clearedCombatFloorCount * GameConfig.EnemyMoveSpeedGrowthPerClearedCombatFloor;
+            float floorHealthMultiplier = 1f + clearedCombatFloorCount * EnemyConfig.EnemyHealthGrowthPerClearedCombatFloor;
+            float floorDamageMultiplier = 1f + clearedCombatFloorCount * EnemyConfig.EnemyDamageGrowthPerClearedCombatFloor;
+            float floorMoveSpeedMultiplier = 1f + clearedCombatFloorCount * EnemyConfig.EnemyMoveSpeedGrowthPerClearedCombatFloor;
 
-            float bossHealthMultiplier = 1f + bossClearGrowthCount * GameConfig.EnemyHealthGrowthPerBossClear;
-            float bossDamageMultiplier = 1f + bossClearGrowthCount * GameConfig.EnemyDamageGrowthPerBossClear;
-            float bossMoveSpeedMultiplier = 1f + bossClearGrowthCount * GameConfig.EnemyMoveSpeedGrowthPerBossClear;
+            float bossHealthMultiplier = 1f + bossClearGrowthCount * EnemyConfig.EnemyHealthGrowthPerBossClear;
+            float bossDamageMultiplier = 1f + bossClearGrowthCount * EnemyConfig.EnemyDamageGrowthPerBossClear;
+            float bossMoveSpeedMultiplier = 1f + bossClearGrowthCount * EnemyConfig.EnemyMoveSpeedGrowthPerBossClear;
 
             enemyManager.ConfigureDifficulty(
                 baseHealthMultiplier * floorHealthMultiplier * bossHealthMultiplier,
@@ -657,8 +657,8 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            StopWeaponEffectSound(GameConfig.LMGWindDownSoundAlias);
-            lmgSpinUpTimer = GameConfig.LMGWindUpDelay;
+            StopWeaponEffectSound(AudioConfig.LMGWindDownSoundAlias);
+            lmgSpinUpTimer = WeaponConfig.LMGWindUpDelay;
             lmgSpinActive = true;
         }
 
@@ -676,9 +676,9 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            StopWeaponEffectSound(GameConfig.LMGWindDownSoundAlias);
-            StopWeaponEffectSound(GameConfig.LMGWindUpSoundAlias);
-            PlayWeaponEffectSound(GameConfig.LMGFireSoundAlias, true, true);
+            StopWeaponEffectSound(AudioConfig.LMGWindDownSoundAlias);
+            StopWeaponEffectSound(AudioConfig.LMGWindUpSoundAlias);
+            PlayWeaponEffectSound(AudioConfig.LMGFireSoundAlias, true, true);
             lmgSpinUpTimer = 0f;
             lmgSpinActive = true;
             lmgFireLoopActive = true;
@@ -691,13 +691,13 @@ namespace My2DEngine.Game.Core
         {
             if (lmgFireLoopActive)
             {
-                StopWeaponEffectSound(GameConfig.LMGFireSoundAlias);
+                StopWeaponEffectSound(AudioConfig.LMGFireSoundAlias);
                 lmgFireLoopActive = false;
             }
 
             if (lmgSpinActive)
             {
-                StopWeaponEffectSound(GameConfig.LMGWindUpSoundAlias);
+                StopWeaponEffectSound(AudioConfig.LMGWindUpSoundAlias);
                 lmgSpinActive = false;
             }
 
@@ -710,10 +710,10 @@ namespace My2DEngine.Game.Core
         /// </summary>
         private void StopLoopingWeaponEffects()
         {
-            StopWeaponEffectSound(GameConfig.LMGFireSoundAlias);
-            StopWeaponEffectSound(GameConfig.LMGWindUpSoundAlias);
-            StopWeaponEffectSound(GameConfig.LMGWindDownSoundAlias);
-            StopWeaponEffectSound(GameConfig.RocketFlySoundAlias);
+            StopWeaponEffectSound(AudioConfig.LMGFireSoundAlias);
+            StopWeaponEffectSound(AudioConfig.LMGWindUpSoundAlias);
+            StopWeaponEffectSound(AudioConfig.LMGWindDownSoundAlias);
+            StopWeaponEffectSound(AudioConfig.RocketFlySoundAlias);
             lmgSpinActive = false;
             lmgSpinUpTimer = 0f;
             lmgFireLoopActive = false;

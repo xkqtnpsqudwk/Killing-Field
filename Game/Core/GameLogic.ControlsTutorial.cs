@@ -25,8 +25,8 @@ namespace My2DEngine.Game.Core
             int a = (int)(alpha * 200f);
             int ta = (int)(alpha * 255f);
 
-            float sw = GameConfig.GpuWorldMaxRenderWidth;
-            float sh = GameConfig.GpuWorldMaxRenderHeight;
+            float sw = RenderConfig.GpuWorldMaxRenderWidth;
+            float sh = RenderConfig.GpuWorldMaxRenderHeight;
             float cx = sw * 0.5f;
             float panelW = Math.Min(320f, sw - 40f);
             float panelH = 150f;

@@ -26,7 +26,7 @@ namespace My2DEngine.Game.Core
 
             if (mapManager.BeginDoorOpening(door))
             {
-                PlayEffectSound(GameConfig.DoorSoundAlias, true);
+                PlayEffectSound(AudioConfig.DoorSoundAlias, true);
                 EmitEnemyAlertSound(door.X + 0.5f, door.Y + 0.5f, 7.5f);
                 SetStageStatus("연결 문 개방", 1.8f);
             }
@@ -34,7 +34,7 @@ namespace My2DEngine.Game.Core
 
         /// <summary>
         /// 클리어된 방의 연결 문 중 플레이어와 가장 가까운 상호작용 가능한 문을 찾는다.
-        /// 문이 닫혀 있고 목표 방이 존재하며 거리가 <see cref="GameConfig.DoorInteractDistance"/> 이내일 때만 유효하다.
+        /// 문이 닫혀 있고 목표 방이 존재하며 거리가 <see cref="WorldConfig.DoorInteractDistance"/> 이내일 때만 유효하다.
         /// </summary>
         /// <param name="interactDoor">찾은 문의 타일 좌표. 없으면 <see cref="Point.Empty"/>.</param>
         /// <param name="nextRoom">문 너머의 목표 스테이지 방. 없으면 null.</param>
@@ -49,7 +49,7 @@ namespace My2DEngine.Game.Core
                 return false;
             }
 
-            float bestDistSq = GameConfig.DoorInteractDistance * GameConfig.DoorInteractDistance;
+            float bestDistSq = WorldConfig.DoorInteractDistance * WorldConfig.DoorInteractDistance;
             for (int i = 0; i < rooms.Length; i++)
             {
                 StageRoom room = rooms[i];
@@ -221,7 +221,7 @@ namespace My2DEngine.Game.Core
             }
 
             StageRoom room = mapManager.StageRooms[activeStageRoomIndex];
-            float interval = Math.Max(0.001f, GameConfig.ToxicMistDamageInterval);
+            float interval = Math.Max(0.001f, RoomConfig.ToxicMistDamageInterval);
             float tickPulse = 1f - Math.Max(0f, Math.Min(1f, room.State.HazardTickTimer / interval));
             return Math.Min(1f, 0.18f + tickPulse * 0.10f);
         }
@@ -262,7 +262,7 @@ namespace My2DEngine.Game.Core
                 return false;
             }
 
-            float interactDistSq = GameConfig.DoorInteractDistance * GameConfig.DoorInteractDistance;
+            float interactDistSq = WorldConfig.DoorInteractDistance * WorldConfig.DoorInteractDistance;
 
             for (int i = 0; i < rooms.Length; i++)
             {

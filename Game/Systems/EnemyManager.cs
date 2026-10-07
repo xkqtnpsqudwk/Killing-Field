@@ -337,8 +337,8 @@ namespace My2DEngine.Game.Systems
 
             StageSpawnPoint fallback = CloneSpawnPoint(source);
             fallback.IsObjectiveTarget = true;
-            fallback.HealthMultiplier = Math.Max(fallback.HealthMultiplier, GameConfig.KeyTargetHealthMultiplier);
-            fallback.ScaleMultiplier *= GameConfig.KeyTargetScaleMultiplier;
+            fallback.HealthMultiplier = Math.Max(fallback.HealthMultiplier, RoomConfig.KeyTargetHealthMultiplier);
+            fallback.ScaleMultiplier *= RoomConfig.KeyTargetScaleMultiplier;
 
             PointF[] fallbackPositions =
             {

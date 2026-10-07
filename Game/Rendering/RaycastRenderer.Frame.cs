@@ -22,14 +22,14 @@ namespace My2DEngine.Game.Rendering
                 return 0.0001;
             }
 
-            if (wallDistance >= GameConfig.NearPlane)
+            if (wallDistance >= RenderConfig.NearPlane)
             {
                 return wallDistance;
             }
 
-            double delta = GameConfig.NearPlane - wallDistance;
-            double blend = Math.Sqrt(delta * delta + GameConfig.NearPlaneSoftness * GameConfig.NearPlaneSoftness);
-            return GameConfig.NearPlane - 0.5 * (delta + GameConfig.NearPlaneSoftness - blend);
+            double delta = RenderConfig.NearPlane - wallDistance;
+            double blend = Math.Sqrt(delta * delta + RenderConfig.NearPlaneSoftness * RenderConfig.NearPlaneSoftness);
+            return RenderConfig.NearPlane - 0.5 * (delta + RenderConfig.NearPlaneSoftness - blend);
         }
 
         /// <summary>

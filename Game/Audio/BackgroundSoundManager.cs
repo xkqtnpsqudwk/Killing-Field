@@ -134,15 +134,15 @@ namespace My2DEngine.Game.Audio
         }
 
         /// <summary>
-        /// <see cref="GameConfig"/>에 정의된 BGM 파일 목록을 카테고리별로 등록하고
+        /// <see cref="AudioConfig"/>에 정의된 BGM 파일 목록을 카테고리별로 등록하고
         /// 실제 파일 경로를 미리 해석하여 재생 목록을 초기화한다.
         /// 게임 시작 시 한 번 호출하면 이후 런타임 중에는 파일 시스템 접근이 발생하지 않는다.
         /// </summary>
         public void LoadAllSounds()
         {
-            RegisterBackgroundPlaylist(BackgroundMusicCategory.Normal, GameConfig.NormalBackgroundTracks);
-            RegisterBackgroundPlaylist(BackgroundMusicCategory.MiniBoss, GameConfig.MiniBossBackgroundTracks);
-            RegisterBackgroundPlaylist(BackgroundMusicCategory.Boss, GameConfig.BossBackgroundTracks);
+            RegisterBackgroundPlaylist(BackgroundMusicCategory.Normal, AudioConfig.NormalBackgroundTracks);
+            RegisterBackgroundPlaylist(BackgroundMusicCategory.MiniBoss, AudioConfig.MiniBossBackgroundTracks);
+            RegisterBackgroundPlaylist(BackgroundMusicCategory.Boss, AudioConfig.BossBackgroundTracks);
         }
 
         /// <summary>
@@ -255,7 +255,7 @@ namespace My2DEngine.Game.Audio
         /// 유효한 파일이 하나도 없으면 해당 카테고리는 등록되지 않는다.
         /// </summary>
         /// <param name="category">등록할 BGM 카테고리</param>
-        /// <param name="fileNames">GameConfig에서 제공되는 파일 이름(논리 이름) 배열</param>
+        /// <param name="fileNames">AudioConfig에서 제공되는 파일 이름(논리 이름) 배열</param>
         private void RegisterBackgroundPlaylist(BackgroundMusicCategory category, string[] fileNames)
         {
             if (fileNames == null || fileNames.Length == 0)

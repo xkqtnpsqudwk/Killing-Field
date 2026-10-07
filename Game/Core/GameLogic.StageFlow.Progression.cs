@@ -214,8 +214,8 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            activeState.HazardTickTimer = GameConfig.ToxicMistDamageInterval;
-            OnPlayerDamaged(GameConfig.ToxicMistDamage, activeRoom.Bounds.Left + activeRoom.Bounds.Width * 0.5f, activeRoom.Bounds.Top + activeRoom.Bounds.Height * 0.5f);
+            activeState.HazardTickTimer = RoomConfig.ToxicMistDamageInterval;
+            OnPlayerDamaged(RoomConfig.ToxicMistDamage, activeRoom.Bounds.Left + activeRoom.Bounds.Width * 0.5f, activeRoom.Bounds.Top + activeRoom.Bounds.Height * 0.5f);
         }
 
         private void UpdateSurvivalRoomReinforcements(StageRoom activeRoom, StageRoomState activeState, float dt)
@@ -227,12 +227,12 @@ namespace My2DEngine.Game.Core
 
             // 생존 방은 플레이어가 시간을 버티는 동안 일정 수의 적 압박을 유지한다.
             // 이미 목표 수 이상이면 타이머를 과도하게 누적하지 않도록 상한만 잡는다.
-            int targetAlive = GameConfig.SurvivalRoomTargetAliveEnemies +
-                (activeRoom.IsMiniBossRoom ? GameConfig.SurvivalRoomEliteTargetAliveBonus : 0);
+            int targetAlive = RoomConfig.SurvivalRoomTargetAliveEnemies +
+                (activeRoom.IsMiniBossRoom ? RoomConfig.SurvivalRoomEliteTargetAliveBonus : 0);
             int alive = enemyManager.CountAliveEnemies();
             if (alive >= targetAlive)
             {
-                activeState.ReinforcementTimer = Math.Min(activeState.ReinforcementTimer, GameConfig.SurvivalRoomReinforcementInterval);
+                activeState.ReinforcementTimer = Math.Min(activeState.ReinforcementTimer, RoomConfig.SurvivalRoomReinforcementInterval);
                 return;
             }
 
@@ -242,11 +242,11 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            int spawnCount = Math.Min(GameConfig.SurvivalRoomReinforcementCount, targetAlive - alive);
+            int spawnCount = Math.Min(RoomConfig.SurvivalRoomReinforcementCount, targetAlive - alive);
             int spawned = enemyManager.SpawnStageReinforcements(activeRoom, collision, player.Position, spawnCount);
             activeState.ReinforcementTimer = spawned > 0
-                ? GameConfig.SurvivalRoomReinforcementInterval
-                : Math.Min(1.0f, GameConfig.SurvivalRoomReinforcementInterval * 0.35f);
+                ? RoomConfig.SurvivalRoomReinforcementInterval
+                : Math.Min(1.0f, RoomConfig.SurvivalRoomReinforcementInterval * 0.35f);
         }
 
         /// <summary>
@@ -302,10 +302,10 @@ namespace My2DEngine.Game.Core
 
             WeaponType currentWeaponType = weapon.CurrentType;
             float baseChance = enemy.IsBoss
-                ? GameConfig.BossAmmoDropChance
+                ? EnemyConfig.BossAmmoDropChance
                 : enemy.IsMiniBoss
-                    ? GameConfig.MiniBossAmmoDropChance
-                    : GameConfig.NormalEnemyAmmoDropChance;
+                    ? RewardConfig.MiniBossAmmoDropChance
+                    : RewardConfig.NormalEnemyAmmoDropChance;
 
             // 스탯 카드 '탄 드랍 확률' 보너스 적용
             float runBonus = GetRunStatBonus(StatType.AmmoDropChance);
@@ -350,14 +350,14 @@ namespace My2DEngine.Game.Core
 
             bool isNormalEnemy = !enemy.IsBoss && !enemy.IsMiniBoss;
             float baseChance = enemy.IsBoss
-                ? GameConfig.BossCoinDropChance
+                ? EnemyConfig.BossCoinDropChance
                 : enemy.IsMiniBoss
-                    ? GameConfig.MiniBossCoinDropChance
-                    : GameConfig.NormalEnemyCoinDropChance;
+                    ? RewardConfig.MiniBossCoinDropChance
+                    : RewardConfig.NormalEnemyCoinDropChance;
 
             float runBonus = isNormalEnemy ? GetRunStatBonus(StatType.CoinDropChance) : 0f;
             float luckBonus = isNormalEnemy && permanentProgression != null
-                ? permanentProgression.GetLuckLevel() * (GameConfig.LuckCoinDropBonusMax / 10f)
+                ? permanentProgression.GetLuckLevel() * (RewardConfig.LuckCoinDropBonusMax / 10f)
                 : 0f;
             float chance = Math.Min(1f, baseChance + runBonus + luckBonus);
             if (rewardRandom.NextDouble() > chance)
@@ -510,7 +510,7 @@ namespace My2DEngine.Game.Core
 
             if (room.IsBossRoom)
             {
-                bossIntroTimer = GameConfig.BossIntroDuration;
+                bossIntroTimer = EnemyConfig.BossIntroDuration;
                 SetStageStatus(BuildRoomStartMessage(room), 3.5f);
             }
             else if (room.IsMiniBossRoom)
@@ -529,7 +529,7 @@ namespace My2DEngine.Game.Core
             {
                 // 생존 방은 목표 시간과 첫 증원 타이머를 방 활성화 시점에 고정한다.
                 state.ObjectiveTimer = Math.Max(1f, room.ObjectiveDuration);
-                state.ReinforcementTimer = Math.Min(1.2f, GameConfig.SurvivalRoomReinforcementInterval);
+                state.ReinforcementTimer = Math.Min(1.2f, RoomConfig.SurvivalRoomReinforcementInterval);
             }
             else if (room.ObjectiveKind == RoomObjectiveKind.KeyTarget && enemyManager.CountAliveObjectiveTargets() <= 0)
             {
@@ -539,7 +539,7 @@ namespace My2DEngine.Game.Core
 
             if (room.HazardKind == RoomHazardKind.ToxicMist)
             {
-                state.HazardTickTimer = GameConfig.ToxicMistDamageInterval;
+                state.HazardTickTimer = RoomConfig.ToxicMistDamageInterval;
             }
             else
             {
@@ -949,7 +949,7 @@ namespace My2DEngine.Game.Core
 
         /// <summary>
         /// 플레이어 위치에 있는 보상 픽업을 획득 처리한다.
-        /// 픽업 반경(<see cref="GameConfig.PickupRadius"/>) 이내의 픽업을 즉시 적용하고 목록에서 제거한다.
+        /// 픽업 반경(<see cref="WorldConfig.PickupRadius"/>) 이내의 픽업을 즉시 적용하고 목록에서 제거한다.
         /// </summary>
         private void CollectRewardPickups()
         {
@@ -969,7 +969,7 @@ namespace My2DEngine.Game.Core
 
                 float dx = pickup.X - player.Position.X;
                 float dy = pickup.Y - player.Position.Y;
-                float pickupRadius = GameConfig.PickupRadius;
+                float pickupRadius = WorldConfig.PickupRadius;
                 if ((dx * dx) + (dy * dy) > pickupRadius * pickupRadius)
                 {
                     continue;
@@ -1095,10 +1095,10 @@ namespace My2DEngine.Game.Core
 
         private int GetRestShopCardCost(CardGrade grade)
         {
-            int gradeCost = Math.Max(0, (int)grade) * GameConfig.RestShopCardCostPerGrade;
-            int baseCost = GameConfig.RestShopCardBaseCost +
+            int gradeCost = Math.Max(0, (int)grade) * RewardConfig.RestShopCardCostPerGrade;
+            int baseCost = RewardConfig.RestShopCardBaseCost +
                 gradeCost +
-                Math.Max(0, bossClearGrowthCount) * GameConfig.RestShopCostIncreasePerBossClear;
+                Math.Max(0, bossClearGrowthCount) * RewardConfig.RestShopCostIncreasePerBossClear;
             float discount = Math.Max(0f, Math.Min(0.50f, GetRunStatBonus(StatType.ShopDiscount)));
             return Math.Max(1, (int)Math.Ceiling(baseCost * (1f - discount)));
         }

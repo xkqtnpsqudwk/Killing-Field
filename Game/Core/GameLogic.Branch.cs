@@ -159,8 +159,8 @@ namespace My2DEngine.Game.Core
                 pendingBranchClickX = -1f;
                 pendingBranchClickY = -1f;
 
-                float fw = GameConfig.GpuWorldMaxRenderWidth;
-                float fh = GameConfig.GpuWorldMaxRenderHeight;
+                float fw = RenderConfig.GpuWorldMaxRenderWidth;
+                float fh = RenderConfig.GpuWorldMaxRenderHeight;
                 float cardW = BranchCardWidth;
                 float cardH = BranchCardHeight;
                 float cardY = fh * BranchCardYRatio;
@@ -241,8 +241,8 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            float fw = GameConfig.GpuWorldMaxRenderWidth;
-            float fh = GameConfig.GpuWorldMaxRenderHeight;
+            float fw = RenderConfig.GpuWorldMaxRenderWidth;
+            float fh = RenderConfig.GpuWorldMaxRenderHeight;
 
             // 화면 전체 반투명 어둠 처리
             r.DrawRectangle(0f, 0f, fw, fh, Color.FromArgb(170, 0, 0, 0));

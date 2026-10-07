@@ -685,8 +685,8 @@ namespace My2DEngine.Game.Systems
             if (enemy.HitReactTimer > 0f)
             {
                 float hitReactSpeed = enemy.IsBoss
-                    ? GameConfig.BossHitReactMoveMultiplier
-                    : GameConfig.EnemyHitReactMoveMultiplier;
+                    ? EnemyConfig.BossHitReactMoveMultiplier
+                    : EnemyConfig.EnemyHitReactMoveMultiplier;
                 speed *= Math.Max(0.05f, hitReactSpeed);
             }
 

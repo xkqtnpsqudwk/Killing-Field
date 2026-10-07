@@ -275,7 +275,7 @@ namespace My2DEngine.Game.Rendering
                 return false;
             }
 
-            int sz = GameConfig.TextureSize;
+            int sz = RenderConfig.TextureSize;
             Bitmap bmp;
             try { bmp = new Bitmap(sheetPath); }
             catch { return false; }
@@ -794,7 +794,7 @@ namespace My2DEngine.Game.Rendering
             float scaleBias,
             int seed)
         {
-            int size = GameConfig.TextureSize;
+            int size = RenderConfig.TextureSize;
             var pixels = new Color[size * size];
 
             (Color primary, Color accent) = GetPatternPalette(pattern, bossPool, seed);
@@ -1141,7 +1141,7 @@ namespace My2DEngine.Game.Rendering
 
         private Color[] BuildFallbackCardPickupSprite()
         {
-            int size = GameConfig.TextureSize;
+            int size = RenderConfig.TextureSize;
             Color[] sprite = new Color[size * size];
             Color edge = Color.FromArgb(255, 255, 226, 122);
             Color face = Color.FromArgb(255, 46, 58, 84);
@@ -1174,7 +1174,7 @@ namespace My2DEngine.Game.Rendering
 
         private Color[] BuildFallbackCoinPickupSprite()
         {
-            int size = GameConfig.TextureSize;
+            int size = RenderConfig.TextureSize;
             Color[] sprite = new Color[size * size];
             Color rim = Color.FromArgb(255, 255, 238, 150);
             Color fill = Color.FromArgb(255, 214, 164, 56);
@@ -1205,7 +1205,7 @@ namespace My2DEngine.Game.Rendering
 
         private Color[] BuildWeaponAmmoSprite(Color accentColor)
         {
-            int size = GameConfig.TextureSize;
+            int size = RenderConfig.TextureSize;
             Color[] sprite = new Color[size * size];
             Color crateColor = Color.FromArgb(255,
                 (int)(accentColor.R * 0.55f),

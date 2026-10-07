@@ -315,7 +315,7 @@ namespace My2DEngine.Game
             }
 
             idleAnimationTimer += Math.Max(0f, dt);
-            float idleLoopDuration = GameConfig.WeaponIdleAnimFrameDuration * GameConfig.WeaponIdleFrameCount;
+            float idleLoopDuration = WeaponConfig.WeaponIdleAnimFrameDuration * WeaponConfig.WeaponIdleFrameCount;
             if (idleLoopDuration > 0f && idleAnimationTimer >= idleLoopDuration)
             {
                 idleAnimationTimer %= idleLoopDuration;
@@ -434,7 +434,7 @@ namespace My2DEngine.Game
             if (!CanFire()) return;
 
             MuzzleFlashTimer = 0.08f;
-            WeaponAnimTimer = GameConfig.WeaponAnimDuration;
+            WeaponAnimTimer = WeaponConfig.WeaponAnimDuration;
             ShotCooldown = currentShotCooldownDuration;
 
             int idx = (int)CurrentType;
@@ -456,15 +456,15 @@ namespace My2DEngine.Game
             switch (CurrentType)
             {
                 case WeaponType.AMPistol:
-                    return GameConfig.PistolFireSoundAlias;
+                    return AudioConfig.PistolFireSoundAlias;
                 case WeaponType.BearKiller:
-                    return GameConfig.ShotGunFireSoundAlias;
+                    return AudioConfig.ShotGunFireSoundAlias;
                 case WeaponType.HChainGun:
-                    return GameConfig.LMGFireSoundAlias;
+                    return AudioConfig.LMGFireSoundAlias;
                 case WeaponType.AutoCannon:
-                    return GameConfig.RocketFireSoundAlias;
+                    return AudioConfig.RocketFireSoundAlias;
                 case WeaponType.DuelBerettas:
-                    return GameConfig.PlazmaGunFireSoundAlias;
+                    return AudioConfig.PlazmaGunFireSoundAlias;
                 default:
                     return null;
             }
@@ -476,20 +476,20 @@ namespace My2DEngine.Game
         /// </summary>
         public int GetCurrentWeaponFrameIndex()
         {
-            if (WeaponAnimTimer <= 0f || GameConfig.WeaponAnimDuration <= 0f)
+            if (WeaponAnimTimer <= 0f || WeaponConfig.WeaponAnimDuration <= 0f)
             {
-                int idleFrame = (int)(idleAnimationTimer / GameConfig.WeaponIdleAnimFrameDuration)
-                    % GameConfig.WeaponIdleFrameCount;
+                int idleFrame = (int)(idleAnimationTimer / WeaponConfig.WeaponIdleAnimFrameDuration)
+                    % WeaponConfig.WeaponIdleFrameCount;
                 return idleFrame;
             }
 
-            float progress = 1f - (WeaponAnimTimer / GameConfig.WeaponAnimDuration);
+            float progress = 1f - (WeaponAnimTimer / WeaponConfig.WeaponAnimDuration);
             if (progress < 0f) progress = 0f;
             int fireFrame = Math.Min(
-                (int)(progress * GameConfig.WeaponFireSequenceFrameCount),
-                GameConfig.WeaponFireSequenceFrameCount - 1);
+                (int)(progress * WeaponConfig.WeaponFireSequenceFrameCount),
+                WeaponConfig.WeaponFireSequenceFrameCount - 1);
 
-            return GameConfig.WeaponIdleFrameCount + fireFrame;
+            return WeaponConfig.WeaponIdleFrameCount + fireFrame;
         }
 
         // ─── 비공개 헬퍼 ──────────────────────────────────────────────
@@ -499,61 +499,61 @@ namespace My2DEngine.Game
             switch (type)
             {
                 case WeaponType.AMPistol:
-                    MagazineSize                = GameConfig.PistolMaxAmmo;
-                    Damage                      = GameConfig.PistolDamage * PermanentPistolDamageMult;
-                    Range                       = GameConfig.PistolRange;
-                    SpreadRadius                = GameConfig.PistolSpread;
-                    currentShotCooldownDuration = GameConfig.PistolCooldown;
+                    MagazineSize                = WeaponConfig.PistolMaxAmmo;
+                    Damage                      = WeaponConfig.PistolDamage * PermanentPistolDamageMult;
+                    Range                       = WeaponConfig.PistolRange;
+                    SpreadRadius                = WeaponConfig.PistolSpread;
+                    currentShotCooldownDuration = WeaponConfig.PistolCooldown;
                     PelletCount                 = 1;
                     SplashRadius                = 0f;
                     break;
 
                 case WeaponType.BearKiller:
-                    MagazineSize                = GameConfig.ShotGunMaxAmmo;
-                    Damage                      = GameConfig.ShotGunDamagePerPellet
+                    MagazineSize                = WeaponConfig.ShotGunMaxAmmo;
+                    Damage                      = WeaponConfig.ShotGunDamagePerPellet
                         * (1f + GetUpgradeMult(type, WeaponUpgradeCategory.Damage));
-                    Range                       = GameConfig.ShotGunRange
+                    Range                       = WeaponConfig.ShotGunRange
                         * (1f + GetUpgradeMult(type, WeaponUpgradeCategory.Range));
-                    SpreadRadius                = GameConfig.ShotGunSpread;
-                    currentShotCooldownDuration = GameConfig.ShotGunCooldown;
-                    PelletCount                 = GameConfig.ShotGunPelletCount
+                    SpreadRadius                = WeaponConfig.ShotGunSpread;
+                    currentShotCooldownDuration = WeaponConfig.ShotGunCooldown;
+                    PelletCount                 = WeaponConfig.ShotGunPelletCount
                         + (int)GetUpgradeMult(type, WeaponUpgradeCategory.Pellets);
                     SplashRadius                = 0f;
                     break;
 
                 case WeaponType.HChainGun:
-                    MagazineSize                = GameConfig.LMGMaxAmmo;
-                    Damage                      = GameConfig.LMGDamage
+                    MagazineSize                = WeaponConfig.LMGMaxAmmo;
+                    Damage                      = WeaponConfig.LMGDamage
                         * (1f + GetUpgradeMult(type, WeaponUpgradeCategory.Damage));
-                    Range                       = GameConfig.LMGRange;
-                    SpreadRadius                = GameConfig.LMGSpread
+                    Range                       = WeaponConfig.LMGRange;
+                    SpreadRadius                = WeaponConfig.LMGSpread
                         * (1f - GetUpgradeMult(type, WeaponUpgradeCategory.Spread));
-                    currentShotCooldownDuration = GameConfig.LMGCooldown
+                    currentShotCooldownDuration = WeaponConfig.LMGCooldown
                         * (1f - GetUpgradeMult(type, WeaponUpgradeCategory.FireRate));
                     PelletCount                 = 1;
                     SplashRadius                = 0f;
                     break;
 
                 case WeaponType.AutoCannon:
-                    MagazineSize                = GameConfig.RocketMaxAmmo;
-                    Damage                      = GameConfig.RocketDamage
+                    MagazineSize                = WeaponConfig.RocketMaxAmmo;
+                    Damage                      = WeaponConfig.RocketDamage
                         * (1f + GetUpgradeMult(type, WeaponUpgradeCategory.Damage));
-                    Range                       = GameConfig.RocketRange;
-                    SpreadRadius                = GameConfig.RocketSpread;
-                    currentShotCooldownDuration = GameConfig.RocketCooldown;
+                    Range                       = WeaponConfig.RocketRange;
+                    SpreadRadius                = WeaponConfig.RocketSpread;
+                    currentShotCooldownDuration = WeaponConfig.RocketCooldown;
                     PelletCount                 = 1;
-                    SplashRadius                = GameConfig.RocketSplashRadius
+                    SplashRadius                = WeaponConfig.RocketSplashRadius
                         * (1f + GetUpgradeMult(type, WeaponUpgradeCategory.Splash));
                     break;
 
                 case WeaponType.DuelBerettas:
-                    MagazineSize                = GameConfig.PlazmaGunMaxAmmo;
-                    Damage                      = GameConfig.PlazmaGunMinDamage
+                    MagazineSize                = WeaponConfig.PlazmaGunMaxAmmo;
+                    Damage                      = WeaponConfig.PlazmaGunMinDamage
                         * (1f + GetUpgradeMult(type, WeaponUpgradeCategory.Damage));
-                    Range                       = GameConfig.PlazmaGunRange
+                    Range                       = WeaponConfig.PlazmaGunRange
                         * (1f + GetUpgradeMult(type, WeaponUpgradeCategory.Range));
-                    SpreadRadius                = GameConfig.PlazmaGunSpread;
-                    currentShotCooldownDuration = GameConfig.PlazmaGunCooldown
+                    SpreadRadius                = WeaponConfig.PlazmaGunSpread;
+                    currentShotCooldownDuration = WeaponConfig.PlazmaGunCooldown
                         * (1f - GetUpgradeMult(type, WeaponUpgradeCategory.FireRate));
                     PelletCount                 = 1;
                     SplashRadius                = 0f;
@@ -595,12 +595,12 @@ namespace My2DEngine.Game
         {
             switch (type)
             {
-                case WeaponType.AMPistol:         return GameConfig.PistolMaxAmmo;
-                case WeaponType.BearKiller:        return GameConfig.ShotGunMaxAmmo;
-                case WeaponType.HChainGun:            return GameConfig.LMGMaxAmmo;
-                case WeaponType.AutoCannon: return GameConfig.RocketMaxAmmo;
-                case WeaponType.DuelBerettas:      return GameConfig.PlazmaGunMaxAmmo;
-                default:                        return GameConfig.PistolMaxAmmo;
+                case WeaponType.AMPistol:         return WeaponConfig.PistolMaxAmmo;
+                case WeaponType.BearKiller:        return WeaponConfig.ShotGunMaxAmmo;
+                case WeaponType.HChainGun:            return WeaponConfig.LMGMaxAmmo;
+                case WeaponType.AutoCannon: return WeaponConfig.RocketMaxAmmo;
+                case WeaponType.DuelBerettas:      return WeaponConfig.PlazmaGunMaxAmmo;
+                default:                        return WeaponConfig.PistolMaxAmmo;
             }
         }
     }

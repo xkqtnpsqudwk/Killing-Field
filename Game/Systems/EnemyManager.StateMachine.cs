@@ -443,7 +443,7 @@ namespace My2DEngine.Game.Systems
             float meleeWindow = enemy.AttackRange +
                 enemy.AiProfile.AttackWindowBonus +
                 enemy.Radius +
-                GameConfig.PlayerRadius;
+                PlayerConfig.PlayerRadius;
             return perception.Distance <= meleeWindow &&
                 perception.FacingDot >= Math.Min(0.18f, enemy.AiProfile.PreferredAttackFacingDot);
         }
@@ -592,7 +592,7 @@ namespace My2DEngine.Game.Systems
             float hitDistance = enemy.AttackRange +
                 enemy.AiProfile.AttackWindowBonus +
                 enemy.Radius +
-                GameConfig.PlayerRadius;
+                PlayerConfig.PlayerRadius;
             if (distSq > hitDistance * hitDistance)
             {
                 return;

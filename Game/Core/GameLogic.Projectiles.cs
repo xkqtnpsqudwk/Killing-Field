@@ -27,10 +27,10 @@ namespace My2DEngine.Game.Core
             dirX /= dirLength;
             dirY /= dirLength;
 
-            float radius = GameConfig.RocketProjectileRadius;
+            float radius = WeaponConfig.RocketProjectileRadius;
             FindRocketSpawnPosition(dirX, dirY, radius, out float startX, out float startY);
 
-            float speed = Math.Max(0.1f, GameConfig.RocketProjectileSpeed);
+            float speed = Math.Max(0.1f, WeaponConfig.RocketProjectileSpeed);
             playerProjectiles.Add(new EnemyProjectile
             {
                 Kind = EnemyProjectileKind.PlayerRocket,
@@ -41,7 +41,7 @@ namespace My2DEngine.Game.Core
                 Radius = radius,
                 ExplosionRadius = Math.Max(radius, splashRadius),
                 Damage = damage,
-                Lifetime = Math.Min(GameConfig.RocketProjectileLifetime, weapon.Range / speed),
+                Lifetime = Math.Min(WeaponConfig.RocketProjectileLifetime, weapon.Range / speed),
                 Active = true
             });
 
@@ -198,7 +198,7 @@ namespace My2DEngine.Game.Core
             float speed = (float)Math.Sqrt((projectile.VelocityX * projectile.VelocityX) + (projectile.VelocityY * projectile.VelocityY));
             if (speed <= 0.001f)
             {
-                speed = GameConfig.RocketProjectileSpeed;
+                speed = WeaponConfig.RocketProjectileSpeed;
             }
 
             float currentX = projectile.VelocityX / speed;
@@ -328,7 +328,7 @@ namespace My2DEngine.Game.Core
                 }
             }
 
-            PlayWeaponEffectSound(GameConfig.RocketBoomSoundAlias, false);
+            PlayWeaponEffectSound(AudioConfig.RocketBoomSoundAlias, false);
             EmitEnemyAlertSound(projectile.X, projectile.Y, 15.5f);
 
             projectile.Kind = EnemyProjectileKind.PlayerRocketExplosion;
@@ -336,7 +336,7 @@ namespace My2DEngine.Game.Core
             projectile.VelocityY = 0f;
             projectile.Radius = Math.Min(Math.Max(0.42f, splashRadius * 0.42f), 1.35f);
             projectile.Damage = 0f;
-            projectile.Lifetime = GameConfig.RocketExplosionVisualDuration;
+            projectile.Lifetime = WeaponConfig.RocketExplosionVisualDuration;
             projectile.Active = true;
         }
 
@@ -362,13 +362,13 @@ namespace My2DEngine.Game.Core
             {
                 if (!rocketFlyLoopActive)
                 {
-                    PlayWeaponEffectSound(GameConfig.RocketFlySoundAlias, true, true);
+                    PlayWeaponEffectSound(AudioConfig.RocketFlySoundAlias, true, true);
                     rocketFlyLoopActive = true;
                 }
             }
             else if (rocketFlyLoopActive)
             {
-                StopWeaponEffectSound(GameConfig.RocketFlySoundAlias);
+                StopWeaponEffectSound(AudioConfig.RocketFlySoundAlias);
                 rocketFlyLoopActive = false;
             }
         }

@@ -87,10 +87,10 @@ namespace My2DEngine.Game.Map
             int entryDoorY = roomBounds.Bottom - 1;
 
             // 5. 시작실 입구 문 / 전투실 출구 문 배치 (ApplyRoomLayouts 이후 덮어쓰기)
-            SetTile(entryDoorX, entryDoorY, GameConfig.DoorTileType, GameConfig.DoorTextureId);
+            SetTile(entryDoorX, entryDoorY, WorldConfig.DoorTileType, WorldConfig.DoorTextureId);
             int exitDoorX = MapCenter;
             int exitDoorY = roomBounds.Top;
-            SetTile(exitDoorX, exitDoorY, GameConfig.DoorTileType, GameConfig.DoorTextureId);
+            SetTile(exitDoorX, exitDoorY, WorldConfig.DoorTileType, WorldConfig.DoorTextureId);
 
             startRoom.HasExitDoor = true;
             startRoom.ExitDoor = new Point(entryDoorX, entryDoorY);
@@ -158,7 +158,7 @@ namespace My2DEngine.Game.Map
             float spawnY = startRoomBounds.Top + 1.5f;
             playerStartPosition = new Vector2(spawnX, spawnY);
             playerStartDirection = new Vector2(0f, -1f);
-            playerStartFov = GameConfig.DefaultFovDegrees;
+            playerStartFov = PlayerConfig.DefaultFovDegrees;
 
             startPosition = playerStartPosition;
             startDirection = playerStartDirection;

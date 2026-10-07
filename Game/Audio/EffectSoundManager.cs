@@ -52,20 +52,20 @@ namespace My2DEngine.Game.Audio
         }
 
         /// <summary>
-        /// GameConfig에 정의된 기본 효과음을 모두 등록한다.
+        /// AudioConfig에 정의된 기본 효과음을 모두 등록한다.
         /// </summary>
         public void LoadAllSounds()
         {
-            PreloadSoundEffect(GameConfig.PistolFireSoundPath, GameConfig.PistolFireSoundAlias);
-            PreloadSoundEffect(GameConfig.ShotGunFireSoundPath, GameConfig.ShotGunFireSoundAlias);
-            PreloadSoundEffect(GameConfig.LMGFireSoundPath, GameConfig.LMGFireSoundAlias);
-            PreloadSoundEffect(GameConfig.LMGWindUpSoundPath, GameConfig.LMGWindUpSoundAlias);
-            PreloadSoundEffect(GameConfig.LMGWindDownSoundPath, GameConfig.LMGWindDownSoundAlias);
-            PreloadSoundEffect(GameConfig.RocketFireSoundPath, GameConfig.RocketFireSoundAlias);
-            PreloadSoundEffect(GameConfig.RocketBoomSoundPath, GameConfig.RocketBoomSoundAlias);
-            PreloadSoundEffect(GameConfig.RocketFlySoundPath, GameConfig.RocketFlySoundAlias);
-            PreloadSoundEffect(GameConfig.PlazmaGunFireSoundPath, GameConfig.PlazmaGunFireSoundAlias);
-            PreloadSoundEffect(GameConfig.DoorSoundPath, GameConfig.DoorSoundAlias);
+            PreloadSoundEffect(AudioConfig.PistolFireSoundPath, AudioConfig.PistolFireSoundAlias);
+            PreloadSoundEffect(AudioConfig.ShotGunFireSoundPath, AudioConfig.ShotGunFireSoundAlias);
+            PreloadSoundEffect(AudioConfig.LMGFireSoundPath, AudioConfig.LMGFireSoundAlias);
+            PreloadSoundEffect(AudioConfig.LMGWindUpSoundPath, AudioConfig.LMGWindUpSoundAlias);
+            PreloadSoundEffect(AudioConfig.LMGWindDownSoundPath, AudioConfig.LMGWindDownSoundAlias);
+            PreloadSoundEffect(AudioConfig.RocketFireSoundPath, AudioConfig.RocketFireSoundAlias);
+            PreloadSoundEffect(AudioConfig.RocketBoomSoundPath, AudioConfig.RocketBoomSoundAlias);
+            PreloadSoundEffect(AudioConfig.RocketFlySoundPath, AudioConfig.RocketFlySoundAlias);
+            PreloadSoundEffect(AudioConfig.PlazmaGunFireSoundPath, AudioConfig.PlazmaGunFireSoundAlias);
+            PreloadSoundEffect(AudioConfig.DoorSoundPath, AudioConfig.DoorSoundAlias);
         }
 
         private void PreloadSoundEffect(string relativePath, string alias)

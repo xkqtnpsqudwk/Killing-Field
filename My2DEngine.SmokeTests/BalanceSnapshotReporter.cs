@@ -121,51 +121,51 @@ namespace My2DEngine.SmokeTests
         private static void WriteCoreValues(TextWriter writer, List<BalanceSnapshotRow> rows)
         {
             const string section = "Core";
-            AddValue(rows, section, "PlayerHealthMax", GameConfig.PlayerHealthMax);
-            AddValue(rows, section, "PlayerShieldMax", GameConfig.PlayerShieldMax);
-            AddValue(rows, section, "PlayerShieldBaseRegenRate", GameConfig.PlayerShieldBaseRegenRate);
-            AddValue(rows, section, "PlayerShieldBaseRegenDelay", GameConfig.PlayerShieldBaseRegenDelay);
-            AddValue(rows, section, "EnemyHealthGrowthPerClearedCombatFloor", GameConfig.EnemyHealthGrowthPerClearedCombatFloor);
-            AddValue(rows, section, "EnemyDamageGrowthPerClearedCombatFloor", GameConfig.EnemyDamageGrowthPerClearedCombatFloor);
-            AddValue(rows, section, "EnemyMoveSpeedGrowthPerClearedCombatFloor", GameConfig.EnemyMoveSpeedGrowthPerClearedCombatFloor);
-            AddValue(rows, section, "EnemyHealthGrowthPerBossClear", GameConfig.EnemyHealthGrowthPerBossClear);
-            AddValue(rows, section, "EnemyDamageGrowthPerBossClear", GameConfig.EnemyDamageGrowthPerBossClear);
-            AddValue(rows, section, "EnemyMoveSpeedGrowthPerBossClear", GameConfig.EnemyMoveSpeedGrowthPerBossClear);
-            AddValue(rows, section, "SurvivalRoomBaseDuration", GameConfig.SurvivalRoomBaseDuration);
-            AddValue(rows, section, "SurvivalRoomDurationPerFloor", GameConfig.SurvivalRoomDurationPerFloor);
-            AddValue(rows, section, "SurvivalRoomMaxDuration", GameConfig.SurvivalRoomMaxDuration);
-            AddValue(rows, section, "KeyTargetHealthMultiplier", GameConfig.KeyTargetHealthMultiplier);
-            AddValue(rows, section, "KeyTargetRevealHealthRatio", GameConfig.KeyTargetRevealHealthRatio);
-            AddValue(rows, section, "ShieldedDamageBonusCap", GameConfig.ShieldedDamageBonusCap);
-            AddValue(rows, section, "DashStrikeDamageBonusCap", GameConfig.DashStrikeDamageBonusCap);
-            AddValue(rows, section, "DashStrikeDamageWindow", GameConfig.DashStrikeDamageWindow);
-            AddValue(rows, section, "ToxicMistDamage", GameConfig.ToxicMistDamage);
-            AddValue(rows, section, "ToxicMistDamageInterval", GameConfig.ToxicMistDamageInterval);
+            AddValue(rows, section, "PlayerHealthMax", PlayerConfig.PlayerHealthMax);
+            AddValue(rows, section, "PlayerShieldMax", PlayerConfig.PlayerShieldMax);
+            AddValue(rows, section, "PlayerShieldBaseRegenRate", PlayerConfig.PlayerShieldBaseRegenRate);
+            AddValue(rows, section, "PlayerShieldBaseRegenDelay", PlayerConfig.PlayerShieldBaseRegenDelay);
+            AddValue(rows, section, "EnemyHealthGrowthPerClearedCombatFloor", EnemyConfig.EnemyHealthGrowthPerClearedCombatFloor);
+            AddValue(rows, section, "EnemyDamageGrowthPerClearedCombatFloor", EnemyConfig.EnemyDamageGrowthPerClearedCombatFloor);
+            AddValue(rows, section, "EnemyMoveSpeedGrowthPerClearedCombatFloor", EnemyConfig.EnemyMoveSpeedGrowthPerClearedCombatFloor);
+            AddValue(rows, section, "EnemyHealthGrowthPerBossClear", EnemyConfig.EnemyHealthGrowthPerBossClear);
+            AddValue(rows, section, "EnemyDamageGrowthPerBossClear", EnemyConfig.EnemyDamageGrowthPerBossClear);
+            AddValue(rows, section, "EnemyMoveSpeedGrowthPerBossClear", EnemyConfig.EnemyMoveSpeedGrowthPerBossClear);
+            AddValue(rows, section, "SurvivalRoomBaseDuration", RoomConfig.SurvivalRoomBaseDuration);
+            AddValue(rows, section, "SurvivalRoomDurationPerFloor", RoomConfig.SurvivalRoomDurationPerFloor);
+            AddValue(rows, section, "SurvivalRoomMaxDuration", RoomConfig.SurvivalRoomMaxDuration);
+            AddValue(rows, section, "KeyTargetHealthMultiplier", RoomConfig.KeyTargetHealthMultiplier);
+            AddValue(rows, section, "KeyTargetRevealHealthRatio", RoomConfig.KeyTargetRevealHealthRatio);
+            AddValue(rows, section, "ShieldedDamageBonusCap", RewardConfig.ShieldedDamageBonusCap);
+            AddValue(rows, section, "DashStrikeDamageBonusCap", RewardConfig.DashStrikeDamageBonusCap);
+            AddValue(rows, section, "DashStrikeDamageWindow", RewardConfig.DashStrikeDamageWindow);
+            AddValue(rows, section, "ToxicMistDamage", RoomConfig.ToxicMistDamage);
+            AddValue(rows, section, "ToxicMistDamageInterval", RoomConfig.ToxicMistDamageInterval);
 
             writer.WriteLine("Core combat values");
-            writer.WriteLine("- Player HP: " + Format(GameConfig.PlayerHealthMax));
-            writer.WriteLine("- Player shield: " + Format(GameConfig.PlayerShieldMax) +
-                ", regen " + Format(GameConfig.PlayerShieldBaseRegenRate) + "/s after " +
-                Format(GameConfig.PlayerShieldBaseRegenDelay) + "s");
+            writer.WriteLine("- Player HP: " + Format(PlayerConfig.PlayerHealthMax));
+            writer.WriteLine("- Player shield: " + Format(PlayerConfig.PlayerShieldMax) +
+                ", regen " + Format(PlayerConfig.PlayerShieldBaseRegenRate) + "/s after " +
+                Format(PlayerConfig.PlayerShieldBaseRegenDelay) + "s");
             writer.WriteLine("- Enemy growth per combat floor: HP +" +
-                FormatPercent(GameConfig.EnemyHealthGrowthPerClearedCombatFloor) +
-                ", damage +" + FormatPercent(GameConfig.EnemyDamageGrowthPerClearedCombatFloor) +
-                ", speed +" + FormatPercent(GameConfig.EnemyMoveSpeedGrowthPerClearedCombatFloor));
+                FormatPercent(EnemyConfig.EnemyHealthGrowthPerClearedCombatFloor) +
+                ", damage +" + FormatPercent(EnemyConfig.EnemyDamageGrowthPerClearedCombatFloor) +
+                ", speed +" + FormatPercent(EnemyConfig.EnemyMoveSpeedGrowthPerClearedCombatFloor));
             writer.WriteLine("- Enemy growth per boss clear: HP +" +
-                FormatPercent(GameConfig.EnemyHealthGrowthPerBossClear) +
-                ", damage +" + FormatPercent(GameConfig.EnemyDamageGrowthPerBossClear) +
-                ", speed +" + FormatPercent(GameConfig.EnemyMoveSpeedGrowthPerBossClear));
-            writer.WriteLine("- Survival room: " + Format(GameConfig.SurvivalRoomBaseDuration) +
-                "s base, +" + Format(GameConfig.SurvivalRoomDurationPerFloor) +
-                "s/floor, cap " + Format(GameConfig.SurvivalRoomMaxDuration) + "s");
-            writer.WriteLine("- Key target: HP x" + Format(GameConfig.KeyTargetHealthMultiplier) +
-                ", reveal below " + FormatPercent(GameConfig.KeyTargetRevealHealthRatio));
+                FormatPercent(EnemyConfig.EnemyHealthGrowthPerBossClear) +
+                ", damage +" + FormatPercent(EnemyConfig.EnemyDamageGrowthPerBossClear) +
+                ", speed +" + FormatPercent(EnemyConfig.EnemyMoveSpeedGrowthPerBossClear));
+            writer.WriteLine("- Survival room: " + Format(RoomConfig.SurvivalRoomBaseDuration) +
+                "s base, +" + Format(RoomConfig.SurvivalRoomDurationPerFloor) +
+                "s/floor, cap " + Format(RoomConfig.SurvivalRoomMaxDuration) + "s");
+            writer.WriteLine("- Key target: HP x" + Format(RoomConfig.KeyTargetHealthMultiplier) +
+                ", reveal below " + FormatPercent(RoomConfig.KeyTargetRevealHealthRatio));
             writer.WriteLine("- Synergy cards: shielded damage cap +" +
-                FormatPercent(GameConfig.ShieldedDamageBonusCap) +
-                ", dash-strike damage cap +" + FormatPercent(GameConfig.DashStrikeDamageBonusCap) +
-                " for " + Format(GameConfig.DashStrikeDamageWindow) + "s after dash");
-            writer.WriteLine("- Toxic mist: " + Format(GameConfig.ToxicMistDamage) +
-                " damage every " + Format(GameConfig.ToxicMistDamageInterval) + "s");
+                FormatPercent(RewardConfig.ShieldedDamageBonusCap) +
+                ", dash-strike damage cap +" + FormatPercent(RewardConfig.DashStrikeDamageBonusCap) +
+                " for " + Format(RewardConfig.DashStrikeDamageWindow) + "s after dash");
+            writer.WriteLine("- Toxic mist: " + Format(RoomConfig.ToxicMistDamage) +
+                " damage every " + Format(RoomConfig.ToxicMistDamageInterval) + "s");
             writer.WriteLine();
         }
 
@@ -239,7 +239,7 @@ namespace My2DEngine.SmokeTests
 
             RewardCardOffer[] luck0 = world.CreateRestShopCardOfferSmokeSnapshot(0f);
             RewardCardOffer[] luck5 = world.CreateRestShopCardOfferSmokeSnapshot(5f);
-            RewardCardOffer[] luckMax = world.CreateRestShopCardOfferSmokeSnapshot(GameConfig.PermanentLuckMax);
+            RewardCardOffer[] luckMax = world.CreateRestShopCardOfferSmokeSnapshot(PlayerConfig.PermanentLuckMax);
             AddOffers(rows, section, "RestShopOffersLuck0", luck0);
             AddOffers(rows, section, "RestShopOffersLuck5", luck5);
             AddOffers(rows, section, "RestShopOffersLuckMax", luckMax);

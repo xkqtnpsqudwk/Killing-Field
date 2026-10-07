@@ -246,9 +246,9 @@ namespace My2DEngine.Game
             }
 
             Health -= damage;
-            HitFlash = Math.Max(HitFlash, GameConfig.EnemyHitFlashDuration);
-            HitReactTimer = Math.Max(HitReactTimer, GameConfig.EnemyHitReactDuration);
-            if (IsObjectiveTarget && Health <= MaxHealth * GameConfig.KeyTargetRevealHealthRatio)
+            HitFlash = Math.Max(HitFlash, EnemyConfig.EnemyHitFlashDuration);
+            HitReactTimer = Math.Max(HitReactTimer, EnemyConfig.EnemyHitReactDuration);
+            if (IsObjectiveTarget && Health <= MaxHealth * RoomConfig.KeyTargetRevealHealthRatio)
             {
                 RevealObjectiveTarget();
             }

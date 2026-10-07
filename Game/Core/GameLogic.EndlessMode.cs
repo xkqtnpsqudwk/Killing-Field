@@ -146,8 +146,8 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            float fw = GameConfig.GpuWorldMaxRenderWidth;
-            float fh = GameConfig.GpuWorldMaxRenderHeight;
+            float fw = RenderConfig.GpuWorldMaxRenderWidth;
+            float fh = RenderConfig.GpuWorldMaxRenderHeight;
             float progress = 1f - (endingSequenceTimer / EndingSequenceDuration);
             if (progress < 0f) progress = 0f;
             if (progress > 1f) progress = 1f;

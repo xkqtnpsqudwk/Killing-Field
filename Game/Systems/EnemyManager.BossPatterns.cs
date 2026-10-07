@@ -112,12 +112,12 @@ namespace My2DEngine.Game.Systems
         private static int GetBossPhaseIndex(Enemy enemy)
         {
             float healthRatio = GetBossHealthRatio(enemy);
-            if (healthRatio <= GameConfig.BossPhaseThreeHealthRatio)
+            if (healthRatio <= EnemyConfig.BossPhaseThreeHealthRatio)
             {
                 return 2;
             }
 
-            if (healthRatio <= GameConfig.BossPhaseTwoHealthRatio)
+            if (healthRatio <= EnemyConfig.BossPhaseTwoHealthRatio)
             {
                 return 1;
             }
@@ -140,12 +140,12 @@ namespace My2DEngine.Game.Systems
             int phase = GetBossPhaseIndex(enemy);
             if (phase >= 2)
             {
-                return GameConfig.BossPhaseThreeWindupMultiplier;
+                return EnemyConfig.BossPhaseThreeWindupMultiplier;
             }
 
             if (phase == 1)
             {
-                return GameConfig.BossPhaseTwoWindupMultiplier;
+                return EnemyConfig.BossPhaseTwoWindupMultiplier;
             }
 
             return 1f;
@@ -156,12 +156,12 @@ namespace My2DEngine.Game.Systems
             int phase = GetBossPhaseIndex(enemy);
             if (phase >= 2)
             {
-                return GameConfig.BossPhaseThreeCooldownMultiplier;
+                return EnemyConfig.BossPhaseThreeCooldownMultiplier;
             }
 
             if (phase == 1)
             {
-                return GameConfig.BossPhaseTwoCooldownMultiplier;
+                return EnemyConfig.BossPhaseTwoCooldownMultiplier;
             }
 
             return 1f;
@@ -169,32 +169,32 @@ namespace My2DEngine.Game.Systems
 
         private static float GetBossPhasePowerScale(Enemy enemy)
         {
-            return 1f + GetBossPhaseIndex(enemy) * GameConfig.BossPhasePowerBonusPerPhase;
+            return 1f + GetBossPhaseIndex(enemy) * EnemyConfig.BossPhasePowerBonusPerPhase;
         }
 
         private static float GetBossPhaseProjectileSpeedScale(Enemy enemy)
         {
-            return GetBossPhaseIndex(enemy) * GameConfig.BossPhaseProjectileSpeedBonusPerPhase;
+            return GetBossPhaseIndex(enemy) * EnemyConfig.BossPhaseProjectileSpeedBonusPerPhase;
         }
 
         private static float GetBossPhaseProjectileRadiusScale(Enemy enemy)
         {
-            return GetBossPhaseIndex(enemy) * GameConfig.BossPhaseProjectileRadiusBonusPerPhase;
+            return GetBossPhaseIndex(enemy) * EnemyConfig.BossPhaseProjectileRadiusBonusPerPhase;
         }
 
         private static float GetBossPhaseDashDistanceScale(Enemy enemy)
         {
-            return 1f + GetBossPhaseIndex(enemy) * GameConfig.BossPhaseDashDistanceBonusPerPhase;
+            return 1f + GetBossPhaseIndex(enemy) * EnemyConfig.BossPhaseDashDistanceBonusPerPhase;
         }
 
         private static int GetBossPhaseProjectileBonus(Enemy enemy)
         {
-            return GetBossPhaseIndex(enemy) * GameConfig.BossPhaseProjectileBonusPerPhase;
+            return GetBossPhaseIndex(enemy) * EnemyConfig.BossPhaseProjectileBonusPerPhase;
         }
 
         private static int GetBossPhaseMinorProjectileBonus(Enemy enemy)
         {
-            return GetBossPhaseIndex(enemy) * GameConfig.BossPhaseMinorProjectileBonusPerPhase;
+            return GetBossPhaseIndex(enemy) * EnemyConfig.BossPhaseMinorProjectileBonusPerPhase;
         }
 
         private void ExecuteAzazelInfernoDash(
@@ -398,7 +398,7 @@ namespace My2DEngine.Game.Systems
             };
 
             int start = rng.Next(candidateOffsets.Length);
-            float minPlayerDistance = enemy.Radius + GameConfig.PlayerRadius + 0.16f;
+            float minPlayerDistance = enemy.Radius + PlayerConfig.PlayerRadius + 0.16f;
             for (int i = 0; i < candidateOffsets.Length; i++)
             {
                 Vector2 offset = candidateOffsets[(start + i) % candidateOffsets.Length];
@@ -538,7 +538,7 @@ namespace My2DEngine.Game.Systems
             float dx = playerPosition.X - enemy.X;
             float dy = playerPosition.Y - enemy.Y;
             float distSq = (dx * dx) + (dy * dy);
-            float hitRadius = radius + GameConfig.PlayerRadius;
+            float hitRadius = radius + PlayerConfig.PlayerRadius;
             if (distSq > hitRadius * hitRadius)
             {
                 return;

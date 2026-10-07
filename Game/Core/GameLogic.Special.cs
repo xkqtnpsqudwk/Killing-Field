@@ -134,7 +134,7 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            PlayWeaponEffectSound(GameConfig.RocketFireSoundAlias, true);
+            PlayWeaponEffectSound(AudioConfig.RocketFireSoundAlias, true);
             ApplyExplosionDamage(target.X, target.Y, weapon.CurrentDamage * 1.55f, weapon.SplashRadius * 1.65f);
             EmitEnemyAlertSound(target.X, target.Y, 16.5f);
             weapon.StartSpecialCooldown(14f);
@@ -191,7 +191,7 @@ namespace My2DEngine.Game.Core
                 DamageEnemy(secondary, primaryDamage * 0.75f);
             }
 
-            PlayWeaponEffectSound(GameConfig.PlazmaGunFireSoundAlias, true);
+            PlayWeaponEffectSound(AudioConfig.PlazmaGunFireSoundAlias, true);
             EmitEnemyAlertSound(player.Position.X, player.Position.Y, 10f, player.Direction.X, player.Direction.Y);
         }
 

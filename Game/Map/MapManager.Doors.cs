@@ -25,9 +25,9 @@ namespace My2DEngine.Game.Map
                 return 0;
             }
 
-            if (map[x, y] == GameConfig.DoorTileType)
+            if (map[x, y] == WorldConfig.DoorTileType)
             {
-                return GameConfig.DoorTextureId;
+                return WorldConfig.DoorTextureId;
             }
 
             if (textureIds == null)
@@ -61,7 +61,7 @@ namespace My2DEngine.Game.Map
         /// <param name="door">닫을 문의 타일 좌표</param>
         public void CloseDoor(Point door)
         {
-            SetTile(door.X, door.Y, GameConfig.DoorTileType, GameConfig.DoorTextureId);
+            SetTile(door.X, door.Y, WorldConfig.DoorTileType, WorldConfig.DoorTextureId);
             doorProgress[GetDoorKey(door.X, door.Y)] = 0f;
         }
 
@@ -78,7 +78,7 @@ namespace My2DEngine.Game.Map
                 return false;
             }
 
-            if (map[door.X, door.Y] != GameConfig.DoorTileType)
+            if (map[door.X, door.Y] != WorldConfig.DoorTileType)
             {
                 return false;
             }
@@ -121,7 +121,7 @@ namespace My2DEngine.Game.Map
                     continue;
                 }
 
-                progress += dt / GameConfig.DoorOpenDuration;
+                progress += dt / WorldConfig.DoorOpenDuration;
                 int x = key & 0xFFFF;
                 int y = key >> 16;
 
@@ -154,7 +154,7 @@ namespace My2DEngine.Game.Map
                 return false;
             }
 
-            return map[door.X, door.Y] == GameConfig.DoorTileType;
+            return map[door.X, door.Y] == WorldConfig.DoorTileType;
         }
 
         /// <summary>
@@ -180,7 +180,7 @@ namespace My2DEngine.Game.Map
             map[x, y] = tileType;
             textureIds[x, y] = textureId;
 
-            if (tileType != GameConfig.DoorTileType)
+            if (tileType != WorldConfig.DoorTileType)
             {
                 doorProgress.Remove(GetDoorKey(x, y));
             }

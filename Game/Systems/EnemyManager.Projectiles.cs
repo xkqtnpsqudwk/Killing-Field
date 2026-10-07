@@ -102,7 +102,7 @@ namespace My2DEngine.Game.Systems
             float dtClamped = Math.Max(0f, dt);
             float playerX = playerPosition.X;
             float playerY = playerPosition.Y;
-            float playerRadius = GameConfig.PlayerRadius;
+            float playerRadius = PlayerConfig.PlayerRadius;
 
             for (int i = enemyProjectiles.Count - 1; i >= 0; i--)
             {

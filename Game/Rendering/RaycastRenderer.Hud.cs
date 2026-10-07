@@ -164,7 +164,7 @@ namespace My2DEngine.Game.Rendering
 
             if (bossIntroTimer > 0f && bossEnemy != null && bossEnemy.Alive)
             {
-                float a = Math.Min(1f, bossIntroTimer / GameConfig.BossIntroDuration);
+                float a = Math.Min(1f, bossIntroTimer / EnemyConfig.BossIntroDuration);
                 r.DrawTextCenteredShadow("BOSS ENCOUNTER", frameW * 0.5f, frameH * 0.29f,
                     Color.FromArgb((int)(255f * a), 255, 145, 95), 20f);
                 r.DrawTextCenteredShadow(string.IsNullOrWhiteSpace(bossEnemy.DisplayName) ? "Arena Warden" : bossEnemy.DisplayName,
@@ -410,7 +410,7 @@ namespace My2DEngine.Game.Rendering
             {
                 case 0:
                     return Color.FromArgb(105, 46, 46, 46);
-                case GameConfig.DoorTileType:
+                case WorldConfig.DoorTileType:
                     return Color.FromArgb(220, 190, 150, 60);
                 case 6:
                     return Color.FromArgb(205, 74, 132, 78);
@@ -487,7 +487,7 @@ namespace My2DEngine.Game.Rendering
 
             if (bossIntroTimer > 0f && bossEnemy != null && bossEnemy.Alive)
             {
-                float alpha = Math.Min(1f, bossIntroTimer / GameConfig.BossIntroDuration);
+                float alpha = Math.Min(1f, bossIntroTimer / EnemyConfig.BossIntroDuration);
                 GetBossIntroRect(out float bx, out float by, out float bw, out float bh);
                 DrawHudMessagePanel(r, bx, by, bw, bh, alpha);
             }

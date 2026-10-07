@@ -361,7 +361,7 @@ namespace My2DEngine.SmokeTests
             }
 
             const int expectedDoorCount = 2;
-            int actualDoorCount = CountTiles(snapshot.Map, GameConfig.DoorTileType);
+            int actualDoorCount = CountTiles(snapshot.Map, WorldConfig.DoorTileType);
             if (actualDoorCount != expectedDoorCount)
             {
                 throw new InvalidOperationException("Smoke check failed for " + scenarioName + ": expected " + expectedDoorCount + " doors, got " + actualDoorCount + ".");
@@ -455,13 +455,13 @@ namespace My2DEngine.SmokeTests
 
         private static void AssertKeyTargetSpawnReworked(StageSpawnPoint targetSpawn)
         {
-            if (targetSpawn.HealthMultiplier < GameConfig.KeyTargetHealthMultiplier)
+            if (targetSpawn.HealthMultiplier < RoomConfig.KeyTargetHealthMultiplier)
             {
                 throw new InvalidOperationException(
                     "Smoke check failed for room objectives: key target health multiplier is too low.");
             }
 
-            if (Math.Abs(targetSpawn.ScaleMultiplier - GameConfig.KeyTargetScaleMultiplier) > 0.001f)
+            if (Math.Abs(targetSpawn.ScaleMultiplier - RoomConfig.KeyTargetScaleMultiplier) > 0.001f)
             {
                 throw new InvalidOperationException(
                     "Smoke check failed for room objectives: key target should not use scale as an obvious visual marker.");
@@ -725,13 +725,13 @@ namespace My2DEngine.SmokeTests
         {
             AssertRestShopCardOffers(0f, CardGrade.Green, "luck level 0");
             AssertRestShopCardOffers(5.0f, CardGrade.Purple, "luck level 4");
-            AssertRestShopCardOffers(GameConfig.PermanentLuckMax, CardGrade.Red, "max luck");
+            AssertRestShopCardOffers(PlayerConfig.PermanentLuckMax, CardGrade.Red, "max luck");
 
             var world = new GameLogic();
             int greenCost = world.GetRestShopCardCostSmokeSnapshot(CardGrade.Green);
             int redCost = world.GetRestShopCardCostSmokeSnapshot(CardGrade.Red);
-            if (greenCost != GameConfig.RestShopCardBaseCost + (int)CardGrade.Green * GameConfig.RestShopCardCostPerGrade ||
-                redCost != GameConfig.RestShopCardBaseCost + (int)CardGrade.Red * GameConfig.RestShopCardCostPerGrade)
+            if (greenCost != RewardConfig.RestShopCardBaseCost + (int)CardGrade.Green * RewardConfig.RestShopCardCostPerGrade ||
+                redCost != RewardConfig.RestShopCardBaseCost + (int)CardGrade.Red * RewardConfig.RestShopCardCostPerGrade)
             {
                 throw new InvalidOperationException("Smoke check failed for rest shop card offers: card costs do not match grade scaling.");
             }
@@ -896,8 +896,8 @@ namespace My2DEngine.SmokeTests
             AssertNearlyEqual(1f, world.ClampRunStatBonusSmokeSnapshot(StatType.CardChoiceBonus, 2f), "card choice cap");
             AssertNearlyEqual(19f, world.ClampRunStatBonusSmokeSnapshot(StatType.ShieldRegenRate, 99f), "shield regen rate cap");
             AssertNearlyEqual(0.80f, world.ClampRunStatBonusSmokeSnapshot(StatType.ShieldRegenDelayReduction, 1f), "shield regen delay cap");
-            AssertNearlyEqual(GameConfig.ShieldedDamageBonusCap, world.ClampRunStatBonusSmokeSnapshot(StatType.ShieldedDamage, 1f), "shielded damage cap");
-            AssertNearlyEqual(GameConfig.DashStrikeDamageBonusCap, world.ClampRunStatBonusSmokeSnapshot(StatType.DashStrikeDamage, 1f), "dash strike damage cap");
+            AssertNearlyEqual(RewardConfig.ShieldedDamageBonusCap, world.ClampRunStatBonusSmokeSnapshot(StatType.ShieldedDamage, 1f), "shielded damage cap");
+            AssertNearlyEqual(RewardConfig.DashStrikeDamageBonusCap, world.ClampRunStatBonusSmokeSnapshot(StatType.DashStrikeDamage, 1f), "dash strike damage cap");
 
             if (world.IsStatOfferAvailableSmokeSnapshot(StatType.CardChoiceBonus, floor: 5, cardChoiceOffered: false, currentBonus: 0f))
             {
@@ -965,8 +965,8 @@ namespace My2DEngine.SmokeTests
             ShieldSettingsSmokeResult shieldSettings = world.GetShieldSettingsSmokeSnapshot(
                 regenRateBonus: 99f,
                 regenDelayReduction: 0.90f);
-            AssertNearlyEqual(GameConfig.PlayerShieldMaxRegenRate, shieldSettings.RegenRate, "shield regen rate max");
-            AssertNearlyEqual(GameConfig.PlayerShieldMinRegenDelay, shieldSettings.RegenDelayDuration, "shield regen delay min");
+            AssertNearlyEqual(PlayerConfig.PlayerShieldMaxRegenRate, shieldSettings.RegenRate, "shield regen rate max");
+            AssertNearlyEqual(PlayerConfig.PlayerShieldMinRegenDelay, shieldSettings.RegenDelayDuration, "shield regen delay min");
 
             AssertNearlyEqual(100f, world.GetOutgoingDamageSmokeSnapshot(
                 baseDamage: 100f,
@@ -1112,7 +1112,7 @@ namespace My2DEngine.SmokeTests
                 throw new InvalidOperationException("Smoke check failed for autocannon projectile: rocket velocity is zero.");
             }
 
-            if (snapshot.FirstPlayerProjectileExplosionRadius <= GameConfig.RocketProjectileRadius)
+            if (snapshot.FirstPlayerProjectileExplosionRadius <= WeaponConfig.RocketProjectileRadius)
             {
                 throw new InvalidOperationException("Smoke check failed for autocannon projectile: explosion radius was not set.");
             }
@@ -1255,12 +1255,12 @@ namespace My2DEngine.SmokeTests
             if (lv0 != 0f)
                 throw new InvalidOperationException("Smoke check failed for luck coin bonus: lv0 should be 0, got " + lv0 + ".");
 
-            if (Math.Abs(lv10 - GameConfig.LuckCoinDropBonusMax) > 0.0001f)
-                throw new InvalidOperationException("Smoke check failed for luck coin bonus: lv10 should be " + GameConfig.LuckCoinDropBonusMax + ", got " + lv10 + ".");
+            if (Math.Abs(lv10 - RewardConfig.LuckCoinDropBonusMax) > 0.0001f)
+                throw new InvalidOperationException("Smoke check failed for luck coin bonus: lv10 should be " + RewardConfig.LuckCoinDropBonusMax + ", got " + lv10 + ".");
 
             float lv5 = world.GetLuckCoinDropBonusSmokeSnapshot(5);
-            if (Math.Abs(lv5 - GameConfig.LuckCoinDropBonusMax * 0.5f) > 0.0001f)
-                throw new InvalidOperationException("Smoke check failed for luck coin bonus: lv5 should be " + (GameConfig.LuckCoinDropBonusMax * 0.5f) + ", got " + lv5 + ".");
+            if (Math.Abs(lv5 - RewardConfig.LuckCoinDropBonusMax * 0.5f) > 0.0001f)
+                throw new InvalidOperationException("Smoke check failed for luck coin bonus: lv5 should be " + (RewardConfig.LuckCoinDropBonusMax * 0.5f) + ", got " + lv5 + ".");
         }
 
         /// <summary>이동 속도 영구 스탯 3포인트 이상일 때 대시 쿨다운 시너지가 활성화되는지 검증한다.</summary>

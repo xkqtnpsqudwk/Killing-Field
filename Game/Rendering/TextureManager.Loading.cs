@@ -26,7 +26,7 @@ namespace My2DEngine.Game.Rendering
         {
             // wallTextures/doorOpenTexture 슬롯은 WorldTextureSize² 크기이므로 폴백도 같은 해상도로 채운다.
             // 문 패널 테두리는 64px 기준 절대 좌표였으므로 해상도 비율(scale)에 맞춰 환산한다.
-            int size = GameConfig.WorldTextureSize;
+            int size = RenderConfig.WorldTextureSize;
             float scale = size / 64f;
             int doorBorderX = (int)(6 * scale);
             int doorBorderTop = (int)(4 * scale);
@@ -136,7 +136,7 @@ namespace My2DEngine.Game.Rendering
             // Door.png → 슬롯 DoorTextureId (닫힌 문 텍스처)
             if (doorTexture != null)
             {
-                Array.Copy(doorTexture, wallTextures[GameConfig.DoorTextureId], doorTexture.Length);
+                Array.Copy(doorTexture, wallTextures[WorldConfig.DoorTextureId], doorTexture.Length);
             }
 
             // 열린 문 텍스처 갱신
@@ -201,7 +201,7 @@ namespace My2DEngine.Game.Rendering
             }
 
             int typeIndex = (int)type;
-            for (int frame = 0; frame < GameConfig.WeaponOverlayFrameCount; frame++)
+            for (int frame = 0; frame < WeaponConfig.WeaponOverlayFrameCount; frame++)
             {
                 SetWeaponOverlayFrame(typeIndex, frame, spritePixels);
             }
@@ -299,11 +299,11 @@ namespace My2DEngine.Game.Rendering
             (Color baseColor, Color accentColor) = GetWeaponPalette(type);
             int seed = (typeIndex + 3) * 97;
 
-            for (int frame = 0; frame < GameConfig.WeaponOverlayFrameCount; frame++)
+            for (int frame = 0; frame < WeaponConfig.WeaponOverlayFrameCount; frame++)
             {
-                int fireFrameIndex = frame < GameConfig.WeaponIdleFrameCount
+                int fireFrameIndex = frame < WeaponConfig.WeaponIdleFrameCount
                     ? 0
-                    : (frame - GameConfig.WeaponIdleFrameCount) + 1;
+                    : (frame - WeaponConfig.WeaponIdleFrameCount) + 1;
                 Color[] pixels = BuildProceduralWeaponFrame(baseColor, accentColor, seed, fireFrameIndex, reloadPhase: -1f);
                 SetWeaponOverlayFrame(typeIndex, frame, pixels);
             }
@@ -431,7 +431,7 @@ namespace My2DEngine.Game.Rendering
             int fireFrameIndex,
             float reloadPhase)
         {
-            int size = GameConfig.TextureSize;
+            int size = RenderConfig.TextureSize;
             var pixels = new Color[size * size];
 
             float fireKick = fireFrameIndex == 0 ? 0f : 0.02f * fireFrameIndex;
@@ -504,7 +504,7 @@ namespace My2DEngine.Game.Rendering
                 return null;
             }
 
-            int size = GameConfig.TextureSize;
+            int size = RenderConfig.TextureSize;
             var bitmap = new Bitmap(size, size, PixelFormat.Format32bppArgb);
             for (int y = 0; y < size; y++)
             {
@@ -532,7 +532,7 @@ namespace My2DEngine.Game.Rendering
                 return null;
             }
 
-            int size = GameConfig.TextureSize;
+            int size = RenderConfig.TextureSize;
             using (Bitmap source = new Bitmap(path))
             using (Bitmap scaled = new Bitmap(size, size))
             using (Graphics g = Graphics.FromImage(scaled))
@@ -571,7 +571,7 @@ namespace My2DEngine.Game.Rendering
         private Color[] LoadTextureFromPath(string path)
         {
             // 기본은 스프라이트/무기용 TextureSize. 월드 텍스처는 WorldTextureSize 오버로드를 쓴다.
-            return LoadTextureFromPath(path, GameConfig.TextureSize);
+            return LoadTextureFromPath(path, RenderConfig.TextureSize);
         }
 
         private Color[] LoadTextureFromPath(string path, int size)
@@ -596,7 +596,7 @@ namespace My2DEngine.Game.Rendering
         /// <summary>월드 벽/바닥/천장/문 텍스처를 WorldTextureSize 해상도로 로드한다.</summary>
         private Color[] LoadWorldTextureFromPath(string path)
         {
-            return LoadTextureFromPath(path, GameConfig.WorldTextureSize);
+            return LoadTextureFromPath(path, RenderConfig.WorldTextureSize);
         }
 
         /// <summary>파일 이름을 해석해 월드 텍스처를 WorldTextureSize 해상도로 로드한다.</summary>
@@ -616,7 +616,7 @@ namespace My2DEngine.Game.Rendering
                 return false;
             }
 
-            int sz = GameConfig.TextureSize;
+            int sz = RenderConfig.TextureSize;
             Bitmap bmp;
             try { bmp = new Bitmap(path); }
             catch { return false; }
@@ -697,11 +697,11 @@ namespace My2DEngine.Game.Rendering
                 }
             }
 
-            if (bmp.Width % GameConfig.TextureSize == 0 && bmp.Height % GameConfig.TextureSize == 0)
+            if (bmp.Width % RenderConfig.TextureSize == 0 && bmp.Height % RenderConfig.TextureSize == 0)
             {
-                cols = Math.Max(1, bmp.Width / GameConfig.TextureSize);
-                rows = Math.Max(1, bmp.Height / GameConfig.TextureSize);
-                cellSize = GameConfig.TextureSize;
+                cols = Math.Max(1, bmp.Width / RenderConfig.TextureSize);
+                rows = Math.Max(1, bmp.Height / RenderConfig.TextureSize);
+                cellSize = RenderConfig.TextureSize;
                 return true;
             }
 
@@ -948,15 +948,15 @@ namespace My2DEngine.Game.Rendering
             {
                 int sourceFrameSize = bmp.Height;
                 if (sourceFrameSize <= 0 ||
-                    bmp.Width < sourceFrameSize * GameConfig.WeaponOverlayFrameCount)
+                    bmp.Width < sourceFrameSize * WeaponConfig.WeaponOverlayFrameCount)
                 {
                     return false;
                 }
 
                 int typeIndex = (int)type;
-                for (int frame = 0; frame < GameConfig.WeaponOverlayFrameCount; frame++)
+                for (int frame = 0; frame < WeaponConfig.WeaponOverlayFrameCount; frame++)
                 {
-                    Color[] pixels = ExtractFrameFromSheet(bmp, frame, 0, sourceFrameSize, GameConfig.TextureSize);
+                    Color[] pixels = ExtractFrameFromSheet(bmp, frame, 0, sourceFrameSize, RenderConfig.TextureSize);
                     SetWeaponOverlayFrame(typeIndex, frame, pixels);
                 }
 

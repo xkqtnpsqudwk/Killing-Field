@@ -160,9 +160,9 @@ namespace My2DEngine.Game.Map
             {
                 for (int x = 0; x < w; x++)
                 {
-                    if (tileTypes[x, y] == GameConfig.DoorTileType)
+                    if (tileTypes[x, y] == WorldConfig.DoorTileType)
                     {
-                        ids[x, y] = GameConfig.DoorTextureId;
+                        ids[x, y] = WorldConfig.DoorTextureId;
                     }
                     else
                     {
@@ -181,7 +181,7 @@ namespace My2DEngine.Game.Map
         {
             playerStartPosition = new Vector2(3.5f, 3.5f);
             playerStartDirection = new Vector2(1f, 0f);
-            playerStartFov = GameConfig.DefaultFovDegrees;
+            playerStartFov = PlayerConfig.DefaultFovDegrees;
         }
     }
 }

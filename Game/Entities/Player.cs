@@ -25,13 +25,13 @@ namespace My2DEngine.Game
         /// <summary>현재 체력. 0 이하가 되면 IsDead가 true로 바뀐다.</summary>
         public float Health { get; set; }
 
-        /// <summary>최대 체력. GameConfig.PlayerHealthMax로 초기화된다. 카드 보너스로 증가할 수 있다.</summary>
+        /// <summary>최대 체력. PlayerConfig.PlayerHealthMax로 초기화된다. 카드 보너스로 증가할 수 있다.</summary>
         public float MaxHealth { get; set; }
 
         /// <summary>현재 보호막. 피해를 먼저 흡수하고, 일정 시간 피해가 없으면 회복된다.</summary>
         public float Shield { get; private set; }
 
-        /// <summary>최대 보호막. 기본값은 GameConfig.PlayerShieldMax다.</summary>
+        /// <summary>최대 보호막. 기본값은 PlayerConfig.PlayerShieldMax다.</summary>
         public float MaxShield { get; private set; }
 
         /// <summary>보호막 초당 회복량.</summary>
@@ -49,7 +49,7 @@ namespace My2DEngine.Game
         /// <summary>현재 스태미나. 달리기/대시 시 소모되고 멈추면 자동 회복된다.</summary>
         public float Stamina { get; set; }
 
-        /// <summary>최대 스태미나. GameConfig.StaminaMax로 초기화된다.</summary>
+        /// <summary>최대 스태미나. PlayerConfig.StaminaMax로 초기화된다.</summary>
         public float MaxStamina { get; private set; }
 
         /// <summary>스태미나 회복 지연 타이머(초). 0이 돼야 회복이 시작된다.</summary>
@@ -70,7 +70,7 @@ namespace My2DEngine.Game
         /// <summary>DashTimer > 0이면 대시 중임을 나타낸다.</summary>
         public bool IsDashing => DashTimer > 0f;
 
-        /// <summary>기본 이동 속도(타일/초). GameConfig.MoveSpeed로 초기화된다.</summary>
+        /// <summary>기본 이동 속도(타일/초). PlayerConfig.MoveSpeed로 초기화된다.</summary>
         public float MoveSpeed { get; set; }
 
         /// <summary>마우스 수평 이동 1픽셀당 회전 각도(라디안). 설정에서 조절 가능하다.</summary>
@@ -104,7 +104,7 @@ namespace My2DEngine.Game
             get => fovDegrees;
             set
             {
-                fovDegrees = System.Math.Max(GameConfig.MinFovDegrees, System.Math.Min(GameConfig.MaxFovDegrees, value));
+                fovDegrees = System.Math.Max(PlayerConfig.MinFovDegrees, System.Math.Min(PlayerConfig.MaxFovDegrees, value));
                 UpdatePlaneFromFov();
             }
         }
@@ -120,29 +120,29 @@ namespace My2DEngine.Game
             Direction = new Vector2(1f, 0f);
             Plane = new Vector2(0f, 0f);
 
-            Health = GameConfig.PlayerHealthMax;
-            MaxHealth = GameConfig.PlayerHealthMax;
-            MaxShield = GameConfig.PlayerShieldMax;
+            Health = PlayerConfig.PlayerHealthMax;
+            MaxHealth = PlayerConfig.PlayerHealthMax;
+            MaxShield = PlayerConfig.PlayerShieldMax;
             Shield = MaxShield;
-            ShieldRegenRate = GameConfig.PlayerShieldBaseRegenRate;
-            ShieldRegenDelayDuration = GameConfig.PlayerShieldBaseRegenDelay;
+            ShieldRegenRate = PlayerConfig.PlayerShieldBaseRegenRate;
+            ShieldRegenDelayDuration = PlayerConfig.PlayerShieldBaseRegenDelay;
             ShieldRegenDelayTimer = 0f;
             IsDead = false;
 
-            Stamina = GameConfig.StaminaMax;
-            MaxStamina = GameConfig.StaminaMax;
+            Stamina = PlayerConfig.StaminaMax;
+            MaxStamina = PlayerConfig.StaminaMax;
             StaminaRecoverTimer = 0f;
             DashCooldownTimer = 0f;
             DashTimer = 0f;
             DashDirX = 0f;
             DashDirY = 0f;
 
-            MoveSpeed = GameConfig.MoveSpeed;
-            MouseSensitivity = GameConfig.MouseSensitivity;
-            Radius = GameConfig.PlayerRadius;
+            MoveSpeed = PlayerConfig.MoveSpeed;
+            MouseSensitivity = PlayerConfig.MouseSensitivity;
+            Radius = PlayerConfig.PlayerRadius;
             CoinCount = 0;
 
-            fovDegrees = GameConfig.DefaultFovDegrees;
+            fovDegrees = PlayerConfig.DefaultFovDegrees;
             UpdatePlaneFromFov();
         }
 
@@ -235,9 +235,9 @@ namespace My2DEngine.Game
             if (isSprinting)
             {
                 // 달리는 동안에는 즉시 회복 지연을 갱신해 짧게 끊어 달려도 바로 차오르지 않게 한다.
-                Stamina -= GameConfig.StaminaDrainPerSec * dt;
+                Stamina -= PlayerConfig.StaminaDrainPerSec * dt;
                 if (Stamina < 0f) Stamina = 0f;
-                StaminaRecoverTimer = GameConfig.StaminaRecoverDelay;
+                StaminaRecoverTimer = PlayerConfig.StaminaRecoverDelay;
             }
             else
             {
@@ -249,7 +249,7 @@ namespace My2DEngine.Game
                 }
                 else
                 {
-                    Stamina += GameConfig.StaminaRecoverPerSec * dt;
+                    Stamina += PlayerConfig.StaminaRecoverPerSec * dt;
                     if (Stamina > MaxStamina) Stamina = MaxStamina;
                 }
             }
@@ -356,7 +356,7 @@ namespace My2DEngine.Game
             MaxShield = System.Math.Max(0f, maxShield);
             Shield = System.Math.Max(0f, System.Math.Min(MaxShield, Shield));
             ShieldRegenRate = System.Math.Max(0f, regenRate);
-            ShieldRegenDelayDuration = System.Math.Max(GameConfig.PlayerShieldMinRegenDelay, regenDelayDuration);
+            ShieldRegenDelayDuration = System.Math.Max(PlayerConfig.PlayerShieldMinRegenDelay, regenDelayDuration);
             ShieldRegenDelayTimer = System.Math.Max(0f, System.Math.Min(ShieldRegenDelayDuration, ShieldRegenDelayTimer));
         }
 
@@ -374,11 +374,11 @@ namespace My2DEngine.Game
             float speed;
             if (exhausted)
             {
-                speed = MoveSpeed * GameConfig.ExhaustedSpeedMultiplier;
+                speed = MoveSpeed * PlayerConfig.ExhaustedSpeedMultiplier;
             }
             else if (canSprint)
             {
-                speed = MoveSpeed * GameConfig.SprintMultiplier;
+                speed = MoveSpeed * PlayerConfig.SprintMultiplier;
             }
             else
             {
@@ -397,7 +397,7 @@ namespace My2DEngine.Game
         {
             return !IsDead &&
                 DashCooldownTimer <= 0f &&
-                Stamina >= GameConfig.DashStaminaCost;
+                Stamina >= PlayerConfig.DashStaminaCost;
         }
 
         /// <summary>
@@ -412,14 +412,14 @@ namespace My2DEngine.Game
                 return false;
             }
 
-            Stamina -= GameConfig.DashStaminaCost;
+            Stamina -= PlayerConfig.DashStaminaCost;
             if (Stamina < 0f)
             {
                 Stamina = 0f;
             }
 
-            DashCooldownTimer = GameConfig.DashCooldownDuration * DashCooldownMult;
-            StaminaRecoverTimer = GameConfig.StaminaRecoverDelay;
+            DashCooldownTimer = PlayerConfig.DashCooldownDuration * DashCooldownMult;
+            StaminaRecoverTimer = PlayerConfig.StaminaRecoverDelay;
             return true;
         }
 
@@ -429,7 +429,7 @@ namespace My2DEngine.Game
         /// <param name="mult">새 배율 (1.0 = 기본, 0.4 = 60% 감소).</param>
         public void SetDashCooldownMult(float mult)
         {
-            float minMult = GameConfig.DashCooldownMinDuration / GameConfig.DashCooldownDuration;
+            float minMult = PlayerConfig.DashCooldownMinDuration / PlayerConfig.DashCooldownDuration;
             DashCooldownMult = System.Math.Max(minMult, mult);
         }
 
@@ -439,13 +439,13 @@ namespace My2DEngine.Game
         /// </summary>
         public void ResetRunBonuses()
         {
-            MaxHealth = GameConfig.PlayerHealthMax;
-            MaxShield = GameConfig.PlayerShieldMax;
+            MaxHealth = PlayerConfig.PlayerHealthMax;
+            MaxShield = PlayerConfig.PlayerShieldMax;
             Shield = System.Math.Min(Shield, MaxShield);
-            ShieldRegenRate = GameConfig.PlayerShieldBaseRegenRate;
-            ShieldRegenDelayDuration = GameConfig.PlayerShieldBaseRegenDelay;
+            ShieldRegenRate = PlayerConfig.PlayerShieldBaseRegenRate;
+            ShieldRegenDelayDuration = PlayerConfig.PlayerShieldBaseRegenDelay;
             ShieldRegenDelayTimer = 0f;
-            MoveSpeed = GameConfig.MoveSpeed;
+            MoveSpeed = PlayerConfig.MoveSpeed;
             DashCooldownMult = 1f;
         }
 
@@ -470,7 +470,7 @@ namespace My2DEngine.Game
 
             DashDirX = dirX / len;
             DashDirY = dirY / len;
-            DashTimer = GameConfig.DashDuration;
+            DashTimer = PlayerConfig.DashDuration;
         }
 
         /// <summary>

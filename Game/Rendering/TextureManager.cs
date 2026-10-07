@@ -132,13 +132,13 @@ namespace My2DEngine.Game.Rendering
             for (int i = 0; i < wallTextures.Length; i++)
             {
                 // 월드 벽/바닥/천장/문 텍스처는 고해상도(WorldTextureSize)로 보관한다.
-                wallTextures[i] = new Color[GameConfig.WorldTextureSize * GameConfig.WorldTextureSize];
+                wallTextures[i] = new Color[RenderConfig.WorldTextureSize * RenderConfig.WorldTextureSize];
             }
 
             enemySprites = new Color[3][];
             for (int i = 0; i < enemySprites.Length; i++)
             {
-                enemySprites[i] = new Color[GameConfig.TextureSize * GameConfig.TextureSize];
+                enemySprites[i] = new Color[RenderConfig.TextureSize * RenderConfig.TextureSize];
             }
 
             enemySpriteVariants = new Dictionary<string, Color[]>(StringComparer.OrdinalIgnoreCase);
@@ -152,10 +152,10 @@ namespace My2DEngine.Game.Rendering
             weaponTypeFireImages   = new Image[weaponCount][];
             for (int i = 0; i < weaponCount; i++)
             {
-                weaponTypeFireImages[i]   = new Image[GameConfig.WeaponOverlayFrameCount];
+                weaponTypeFireImages[i]   = new Image[WeaponConfig.WeaponOverlayFrameCount];
             }
 
-            doorOpenTexture = new Color[GameConfig.WorldTextureSize * GameConfig.WorldTextureSize];
+            doorOpenTexture = new Color[RenderConfig.WorldTextureSize * RenderConfig.WorldTextureSize];
             resolvedAssetPathCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             resolvedAssetDirectoryCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
@@ -783,7 +783,7 @@ namespace My2DEngine.Game.Rendering
         {
             if (doorOpenTexturePixels == null)
             {
-                int pixelCount = GameConfig.WorldTextureSize * GameConfig.WorldTextureSize;
+                int pixelCount = RenderConfig.WorldTextureSize * RenderConfig.WorldTextureSize;
                 doorOpenTexturePixels = new int[pixelCount];
                 for (int i = 0; i < pixelCount; i++)
                 {
@@ -791,8 +791,8 @@ namespace My2DEngine.Game.Rendering
                 }
             }
 
-            width = GameConfig.WorldTextureSize;
-            height = GameConfig.WorldTextureSize;
+            width = RenderConfig.WorldTextureSize;
+            height = RenderConfig.WorldTextureSize;
             return doorOpenTexturePixels;
         }
 
@@ -817,19 +817,19 @@ namespace My2DEngine.Game.Rendering
         /// </summary>
         private void BuildWallTextureAtlasPixels()
         {
-            wallTextureAtlasWidth = GameConfig.WorldTextureSize * wallTextures.Length;
-            wallTextureAtlasHeight = GameConfig.WorldTextureSize;
+            wallTextureAtlasWidth = RenderConfig.WorldTextureSize * wallTextures.Length;
+            wallTextureAtlasHeight = RenderConfig.WorldTextureSize;
             wallTextureAtlasPixels = new int[wallTextureAtlasWidth * wallTextureAtlasHeight];
 
             for (int textureIndex = 0; textureIndex < wallTextures.Length; textureIndex++)
             {
                 Color[] sourceTexture = wallTextures[textureIndex];
-                int atlasOffsetX = textureIndex * GameConfig.WorldTextureSize;
-                for (int y = 0; y < GameConfig.WorldTextureSize; y++)
+                int atlasOffsetX = textureIndex * RenderConfig.WorldTextureSize;
+                for (int y = 0; y < RenderConfig.WorldTextureSize; y++)
                 {
-                    int sourceRow = y * GameConfig.WorldTextureSize;
+                    int sourceRow = y * RenderConfig.WorldTextureSize;
                     int atlasRow = y * wallTextureAtlasWidth;
-                    for (int x = 0; x < GameConfig.WorldTextureSize; x++)
+                    for (int x = 0; x < RenderConfig.WorldTextureSize; x++)
                     {
                         wallTextureAtlasPixels[atlasRow + atlasOffsetX + x] = sourceTexture[sourceRow + x].ToArgb();
                     }

@@ -90,7 +90,7 @@ namespace My2DEngine.Game.Core
             // 카드 선택, 런 시작, 저장 데이터 로드 후 모두 이 경로를 거쳐 파생 스탯을 동기화한다.
             float previousMaxHealth = player.MaxHealth;
             float previousHealth = player.Health;
-            float newMaxHealth = GameConfig.PlayerHealthMax * (1f + data.GetHealthBonus() + GetRunStatBonus(StatType.MaxHealth));
+            float newMaxHealth = PlayerConfig.PlayerHealthMax * (1f + data.GetHealthBonus() + GetRunStatBonus(StatType.MaxHealth));
 
             player.MaxHealth = newMaxHealth;
             if (refillHealth)
@@ -106,14 +106,14 @@ namespace My2DEngine.Game.Core
                 player.Health = Math.Min(previousHealth, newMaxHealth);
             }
 
-            player.MoveSpeed = GameConfig.MoveSpeed * (1f + data.GetMoveSpeedBonus() + GetRunStatBonus(StatType.MoveSpeed));
+            player.MoveSpeed = PlayerConfig.MoveSpeed * (1f + data.GetMoveSpeedBonus() + GetRunStatBonus(StatType.MoveSpeed));
             float dashCooldownReduction = GetRunStatBonus(StatType.DashCooldown);
-            if (data.MoveSpeedPoints >= GameConfig.MoveSpeedDashSynergyThreshold)
-                dashCooldownReduction = Math.Min(1f - (GameConfig.DashCooldownMinDuration / GameConfig.DashCooldownDuration),
-                    dashCooldownReduction + GameConfig.MoveSpeedDashSynergyBonus);
+            if (data.MoveSpeedPoints >= PlayerConfig.MoveSpeedDashSynergyThreshold)
+                dashCooldownReduction = Math.Min(1f - (PlayerConfig.DashCooldownMinDuration / PlayerConfig.DashCooldownDuration),
+                    dashCooldownReduction + PlayerConfig.MoveSpeedDashSynergyBonus);
             player.SetDashCooldownMult(1f - dashCooldownReduction);
             player.ConfigureShield(
-                GameConfig.PlayerShieldMax,
+                PlayerConfig.PlayerShieldMax,
                 GetEffectiveShieldRegenRate(),
                 GetEffectiveShieldRegenDelayDuration());
 
@@ -127,16 +127,16 @@ namespace My2DEngine.Game.Core
         {
             float bonus = Math.Max(0f, GetRunStatBonus(StatType.ShieldRegenRate));
             // 보호막 회복 속도 카드는 기본 회복량에 더해지고, 전역 상한에서 멈춘다.
-            return Math.Min(GameConfig.PlayerShieldMaxRegenRate, GameConfig.PlayerShieldBaseRegenRate + bonus);
+            return Math.Min(PlayerConfig.PlayerShieldMaxRegenRate, PlayerConfig.PlayerShieldBaseRegenRate + bonus);
         }
 
         private float GetEffectiveShieldRegenDelayDuration()
         {
             // 지연 감소는 비율 카드지만 최소 2초 지연은 반드시 남겨 전투 중 즉시 회복을 막는다.
             float reduction = Math.Max(0f, Math.Min(
-                1f - (GameConfig.PlayerShieldMinRegenDelay / GameConfig.PlayerShieldBaseRegenDelay),
+                1f - (PlayerConfig.PlayerShieldMinRegenDelay / PlayerConfig.PlayerShieldBaseRegenDelay),
                 GetRunStatBonus(StatType.ShieldRegenDelayReduction)));
-            return Math.Max(GameConfig.PlayerShieldMinRegenDelay, GameConfig.PlayerShieldBaseRegenDelay * (1f - reduction));
+            return Math.Max(PlayerConfig.PlayerShieldMinRegenDelay, PlayerConfig.PlayerShieldBaseRegenDelay * (1f - reduction));
         }
 
         private void HandlePermanentStatsInput()
@@ -328,8 +328,8 @@ namespace My2DEngine.Game.Core
             pendingPermanentStatClickX = -1f;
             pendingPermanentStatClickY = -1f;
 
-            float fw = GameConfig.GpuWorldMaxRenderWidth;
-            float fh = GameConfig.GpuWorldMaxRenderHeight;
+            float fw = RenderConfig.GpuWorldMaxRenderWidth;
+            float fh = RenderConfig.GpuWorldMaxRenderHeight;
             float panelW = 470f;
             float panelH = 338f;
             float panelX = (fw - panelW) * 0.5f;
@@ -380,8 +380,8 @@ namespace My2DEngine.Game.Core
             }
 
             PermanentProgressionData data = permanentProgression ?? PermanentProgressionData.CreateDefault();
-            float fw = GameConfig.GpuWorldMaxRenderWidth;
-            float fh = GameConfig.GpuWorldMaxRenderHeight;
+            float fw = RenderConfig.GpuWorldMaxRenderWidth;
+            float fh = RenderConfig.GpuWorldMaxRenderHeight;
 
             r.DrawRectangle(0f, 0f, fw, fh, Color.FromArgb(190, 0, 0, 0));
 
@@ -426,7 +426,7 @@ namespace My2DEngine.Game.Core
             int senseNext = data.GetSensePointsToNextLevel();
             string senseProgress = senseNext > 0 ? $"다음 Lv까지 -{senseNext}pt" : "최대 레벨";
             DrawPermanentStatCard(r, leftX, topY + cardH + gapY, cardW, cardH, "[3] 감각",
-                $"Lv {data.GetSenseTier()} / 5  ({data.SenseValue:0.0} / {GameConfig.PermanentSenseMax:0.0})",
+                $"Lv {data.GetSenseTier()} / 5  ({data.SenseValue:0.0} / {PlayerConfig.PermanentSenseMax:0.0})",
                 $"{GetSenseDescription(data.GetSenseTier())}  {senseProgress}",
                 Color.FromArgb(255, 195, 150, 255));
 
@@ -438,7 +438,7 @@ namespace My2DEngine.Game.Core
             int luckNext = data.GetLuckPointsToNextLevel();
             string luckProgress = luckNext > 0 ? $"다음 Lv까지 -{luckNext}pt" : "최대 레벨";
             DrawPermanentStatCard(r, panelCenterX - cardW * 0.5f, thirdRowY, cardW, cardH, "[5] 행운",
-                $"Lv {data.GetLuckLevel()} / 10  ({data.LuckValue:0.0} / {GameConfig.PermanentLuckMax:0.0})",
+                $"Lv {data.GetLuckLevel()} / 10  ({data.LuckValue:0.0} / {PlayerConfig.PermanentLuckMax:0.0})",
                 $"고급 카드 확률 +{data.GetLuckLevel() * 10}%  {luckProgress}",
                 Color.FromArgb(255, 245, 210, 110));
 

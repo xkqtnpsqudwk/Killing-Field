@@ -264,7 +264,7 @@ namespace My2DEngine.Engine.Rendering.Abstractions
         public RenderWorldSpritePassCommand EnemySpritePass;
         /// <summary>기타 스프라이트 렌더 패스 데이터(투사체·픽업 등).</summary>
         public RenderWorldSpritePassCommand MiscSpritePass;
-        /// <summary>문 타일 타입 번호(= GameConfig.DoorTileType). 셰이더가 문과 일반 벽을 구분한다.</summary>
+        /// <summary>문 타일 타입 번호(= WorldConfig.DoorTileType). 셰이더가 문과 일반 벽을 구분한다.</summary>
         public int DoorTileType;
         /// <summary>바닥 텍스처로 사용할 아틀라스 인덱스.</summary>
         public int FloorTextureIndex;

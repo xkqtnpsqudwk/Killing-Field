@@ -66,8 +66,8 @@ namespace My2DEngine.Game.Core
             PermanentProgressionData data = permanentProgression ?? PermanentProgressionData.CreateDefault();
             data.Sanitize();
 
-            float fw = GameConfig.GpuWorldMaxRenderWidth;
-            float fh = GameConfig.GpuWorldMaxRenderHeight;
+            float fw = RenderConfig.GpuWorldMaxRenderWidth;
+            float fh = RenderConfig.GpuWorldMaxRenderHeight;
             float panelW = 496f;
             float panelH = 344f;
             float panelX = (fw - panelW) * 0.5f;
@@ -99,7 +99,7 @@ namespace My2DEngine.Game.Core
             DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep, $"보호막 {player.Shield:0} / {player.MaxShield:0}");
             DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 2f, $"스태미나 {player.Stamina:0} / {player.MaxStamina:0}");
             DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 3f, $"이동 속도 {player.MoveSpeed:0.00}");
-            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 4f, $"대시 쿨다운 {GameConfig.DashCooldownDuration * player.DashCooldownMult:0.00}s");
+            DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 4f, $"대시 쿨다운 {PlayerConfig.DashCooldownDuration * player.DashCooldownMult:0.00}s");
             DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 5f, $"현재 무기 {currentWeaponName}");
             DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 6f, $"탄약 {ammoText}");
             DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 7f, $"현재 공격력 {currentWeaponDamage:0.00}");
@@ -109,17 +109,17 @@ namespace My2DEngine.Game.Core
             DrawPlayerStatsLine(r, leftX, headerY + 24f + lineStep * 11f, $"코인 {player.CoinCount}");
 
             DrawPlayerStatsLine(r, rightX, headerY + 24f,
-                BuildStatBreakdown("최대 체력", GameConfig.PlayerHealthMax, data.GetHealthBonus(), runStatBonusTotals[(int)StatType.MaxHealth], player.MaxHealth, suffix: string.Empty));
+                BuildStatBreakdown("최대 체력", PlayerConfig.PlayerHealthMax, data.GetHealthBonus(), runStatBonusTotals[(int)StatType.MaxHealth], player.MaxHealth, suffix: string.Empty));
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep,
-                BuildStatBreakdown("이동 속도", GameConfig.MoveSpeed, data.GetMoveSpeedBonus(), runStatBonusTotals[(int)StatType.MoveSpeed], player.MoveSpeed, suffix: string.Empty));
+                BuildStatBreakdown("이동 속도", PlayerConfig.MoveSpeed, data.GetMoveSpeedBonus(), runStatBonusTotals[(int)StatType.MoveSpeed], player.MoveSpeed, suffix: string.Empty));
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 2f,
                 $"공격력 배율  기본 1.00x / 카드 +{runStatBonusTotals[(int)StatType.Damage] * 100f:0}% / 최종 x{weapon.StatDamageMult:0.00}");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 3f,
-                $"탄 드랍 확률  기본 {GameConfig.NormalEnemyAmmoDropChance * 100f:0}% / 카드 +{runStatBonusTotals[(int)StatType.AmmoDropChance] * 100f:0}% / 누적 {Math.Min(1f, GameConfig.NormalEnemyAmmoDropChance + runStatBonusTotals[(int)StatType.AmmoDropChance]) * 100f:0}%");
+                $"탄 드랍 확률  기본 {RewardConfig.NormalEnemyAmmoDropChance * 100f:0}% / 카드 +{runStatBonusTotals[(int)StatType.AmmoDropChance] * 100f:0}% / 누적 {Math.Min(1f, RewardConfig.NormalEnemyAmmoDropChance + runStatBonusTotals[(int)StatType.AmmoDropChance]) * 100f:0}%");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 4f,
-                $"대시 쿨다운  기본 {GameConfig.DashCooldownDuration:0.00}s / 카드 -{runStatBonusTotals[(int)StatType.DashCooldown] * 100f:0}% / 최종 {GameConfig.DashCooldownDuration * player.DashCooldownMult:0.00}s");
+                $"대시 쿨다운  기본 {PlayerConfig.DashCooldownDuration:0.00}s / 카드 -{runStatBonusTotals[(int)StatType.DashCooldown] * 100f:0}% / 최종 {PlayerConfig.DashCooldownDuration * player.DashCooldownMult:0.00}s");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 5f,
-                $"코인 드랍(일반 적)  기본 {GameConfig.NormalEnemyCoinDropChance * 100f:0}% / 카드 +{runStatBonusTotals[(int)StatType.CoinDropChance] * 100f:0}% / 누적 {Math.Min(1f, GameConfig.NormalEnemyCoinDropChance + runStatBonusTotals[(int)StatType.CoinDropChance]) * 100f:0}%");
+                $"코인 드랍(일반 적)  기본 {RewardConfig.NormalEnemyCoinDropChance * 100f:0}% / 카드 +{runStatBonusTotals[(int)StatType.CoinDropChance] * 100f:0}% / 누적 {Math.Min(1f, RewardConfig.NormalEnemyCoinDropChance + runStatBonusTotals[(int)StatType.CoinDropChance]) * 100f:0}%");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 6f,
                 $"흡혈  기본 0% / 카드 +{runStatBonusTotals[(int)StatType.LifeSteal] * 100f:0}% / 독안개 {GetEffectiveLifeStealRatio(true) * 100f:0}%");
             DrawPlayerStatsLine(r, rightX, headerY + 24f + lineStep * 7f,

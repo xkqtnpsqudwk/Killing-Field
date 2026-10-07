@@ -66,7 +66,7 @@ namespace My2DEngine.Game.Core
             }
             if (weapon.CurrentType == WeaponType.BearKiller)
             {
-                ApplyRecoil(GameConfig.ShotGunRecoilPowerMultiplier, GameConfig.ShotGunRecoilDurationMultiplier);
+                ApplyRecoil(WeaponConfig.ShotGunRecoilPowerMultiplier, WeaponConfig.ShotGunRecoilDurationMultiplier);
             }
             else if (weapon.CurrentType == WeaponType.AutoCannon)
             {
@@ -232,60 +232,60 @@ namespace My2DEngine.Game.Core
             }
 
             // 조건부 피해 카드는 서로 합산한 뒤 원 피해에 한 번만 곱한다.
-            // 각 카드의 개별 상한은 GameConfig에서 관리한다.
+            // 각 카드의 개별 상한은 RewardConfig에서 관리한다.
             float multiplier = 1f;
 
             if (player != null && player.Shield > 0f)
             {
                 multiplier += Math.Max(0f, Math.Min(
-                    GameConfig.ShieldedDamageBonusCap,
+                    RewardConfig.ShieldedDamageBonusCap,
                     GetRunStatBonus(StatType.ShieldedDamage)));
             }
 
             if (dashStrikeWindowTimer > 0f)
             {
                 multiplier += Math.Max(0f, Math.Min(
-                    GameConfig.DashStrikeDamageBonusCap,
+                    RewardConfig.DashStrikeDamageBonusCap,
                     GetRunStatBonus(StatType.DashStrikeDamage)));
             }
 
             if (player != null && player.MaxHealth > 0f &&
-                player.Health / player.MaxHealth < GameConfig.LowHealthRageThreshold)
+                player.Health / player.MaxHealth < RewardConfig.LowHealthRageThreshold)
             {
                 multiplier += Math.Max(0f, Math.Min(
-                    GameConfig.LowHealthRageBonusCap,
+                    RewardConfig.LowHealthRageBonusCap,
                     GetRunStatBonus(StatType.LowHealthRage)));
             }
 
             if (killChainWindowTimer > 0f)
             {
                 multiplier += Math.Max(0f, Math.Min(
-                    GameConfig.KillChainBonusCap,
+                    RewardConfig.KillChainBonusCap,
                     GetRunStatBonus(StatType.KillChain)));
             }
 
             if (weapon != null && weapon.CurrentType == WeaponType.AutoCannon)
             {
                 multiplier += Math.Max(0f, Math.Min(
-                    GameConfig.ExplosiveSpecialistBonusCap,
+                    RewardConfig.ExplosiveSpecialistBonusCap,
                     GetRunStatBonus(StatType.ExplosiveSpecialist)));
             }
 
             if (weapon != null)
             {
                 int maxAmmo = weapon.GetMaxAmmo(weapon.CurrentType);
-                if (maxAmmo > 0 && weapon.CurrentAmmo <= (int)(maxAmmo * GameConfig.LowAmmoRageThreshold))
+                if (maxAmmo > 0 && weapon.CurrentAmmo <= (int)(maxAmmo * RewardConfig.LowAmmoRageThreshold))
                 {
                     multiplier += Math.Max(0f, Math.Min(
-                        GameConfig.LowAmmoRageBonusCap,
+                        RewardConfig.LowAmmoRageBonusCap,
                         GetRunStatBonus(StatType.LowAmmoRage)));
                 }
             }
 
-            if (rapidFireHitStreak >= GameConfig.RapidFireChainMinStreak)
+            if (rapidFireHitStreak >= RewardConfig.RapidFireChainMinStreak)
             {
                 multiplier += Math.Max(0f, Math.Min(
-                    GameConfig.RapidFireChainBonusCap,
+                    RewardConfig.RapidFireChainBonusCap,
                     GetRunStatBonus(StatType.RapidFireChain)));
             }
 
@@ -295,7 +295,7 @@ namespace My2DEngine.Game.Core
         private void StartDashStrikeWindow()
         {
             dashStrikeWindowTimer = GetRunStatBonus(StatType.DashStrikeDamage) > 0f
-                ? GameConfig.DashStrikeDamageWindow
+                ? RewardConfig.DashStrikeDamageWindow
                 : 0f;
         }
 
@@ -384,7 +384,7 @@ namespace My2DEngine.Game.Core
             if (GetRunStatBonus(StatType.RapidFireChain) > 0f)
             {
                 rapidFireHitStreak++;
-                rapidFireStreakDecayTimer = GameConfig.RapidFireChainStreakDecayTime;
+                rapidFireStreakDecayTimer = RewardConfig.RapidFireChainStreakDecayTime;
             }
 
             if (killed)
@@ -392,7 +392,7 @@ namespace My2DEngine.Game.Core
                 killMarkerTimer = KillMarkerDuration;
                 if (GetRunStatBonus(StatType.KillChain) > 0f)
                 {
-                    killChainWindowTimer = GameConfig.KillChainWindow;
+                    killChainWindowTimer = RewardConfig.KillChainWindow;
                 }
             }
         }
@@ -535,15 +535,15 @@ namespace My2DEngine.Game.Core
         /// </summary>
         private float GetShotGunDamageMultiplier(float distance)
         {
-            if (distance <= GameConfig.ShotGunFullDamageRange)
+            if (distance <= WeaponConfig.ShotGunFullDamageRange)
             {
                 return 1f;
             }
 
-            float falloffSpan = Math.Max(0.001f, weapon.Range - GameConfig.ShotGunFullDamageRange);
-            float t = (distance - GameConfig.ShotGunFullDamageRange) / falloffSpan;
+            float falloffSpan = Math.Max(0.001f, weapon.Range - WeaponConfig.ShotGunFullDamageRange);
+            float t = (distance - WeaponConfig.ShotGunFullDamageRange) / falloffSpan;
             t = Math.Max(0f, Math.Min(1f, t));
-            return 1f - ((1f - GameConfig.ShotGunMinDamageMultiplier) * t);
+            return 1f - ((1f - WeaponConfig.ShotGunMinDamageMultiplier) * t);
         }
 
         /// <summary>발사 반동 카메라 흔들림을 설정한다.</summary>

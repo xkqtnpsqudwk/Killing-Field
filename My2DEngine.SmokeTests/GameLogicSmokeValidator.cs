@@ -79,7 +79,7 @@ namespace My2DEngine.SmokeTests
                 throw new InvalidOperationException("Smoke check failed for " + scenarioName + ": player direction is not normalized.");
             }
 
-            if (snapshot.PlayerFovDegrees < GameConfig.MinFovDegrees || snapshot.PlayerFovDegrees > GameConfig.MaxFovDegrees)
+            if (snapshot.PlayerFovDegrees < PlayerConfig.MinFovDegrees || snapshot.PlayerFovDegrees > PlayerConfig.MaxFovDegrees)
             {
                 throw new InvalidOperationException("Smoke check failed for " + scenarioName + ": FOV is out of range.");
             }

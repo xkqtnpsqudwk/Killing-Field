@@ -279,7 +279,7 @@ namespace My2DEngine.Game.Core
                 player.MaxHealth = maxHealth;
                 player.Health = startingHealth;
                 player.IsDead = false;
-                player.ConfigureShield(GameConfig.PlayerShieldMax, GameConfig.PlayerShieldBaseRegenRate, GameConfig.PlayerShieldBaseRegenDelay);
+                player.ConfigureShield(PlayerConfig.PlayerShieldMax, PlayerConfig.PlayerShieldBaseRegenRate, PlayerConfig.PlayerShieldBaseRegenDelay);
                 player.RestoreShieldState(startingShield, 0f);
                 player.DashTimer = 0f;
                 runStatBonusTotals[(int)StatType.DamageReduction] = damageReduction;
@@ -406,11 +406,11 @@ namespace My2DEngine.Game.Core
             float previousDashStrikeTimer = dashStrikeWindowTimer;
             try
             {
-                player.ConfigureShield(GameConfig.PlayerShieldMax, GameConfig.PlayerShieldBaseRegenRate, GameConfig.PlayerShieldBaseRegenDelay);
+                player.ConfigureShield(PlayerConfig.PlayerShieldMax, PlayerConfig.PlayerShieldBaseRegenRate, PlayerConfig.PlayerShieldBaseRegenDelay);
                 player.RestoreShieldState(shield, 0f);
                 runStatBonusTotals[(int)StatType.ShieldedDamage] = shieldedDamageBonus;
                 runStatBonusTotals[(int)StatType.DashStrikeDamage] = dashStrikeDamageBonus;
-                dashStrikeWindowTimer = dashStrikeWindowActive ? GameConfig.DashStrikeDamageWindow : 0f;
+                dashStrikeWindowTimer = dashStrikeWindowActive ? RewardConfig.DashStrikeDamageWindow : 0f;
                 return ApplyOutgoingDamageModifiers(baseDamage);
             }
             finally
@@ -458,9 +458,9 @@ namespace My2DEngine.Game.Core
                 weapon.SwitchTo(currentWeaponType);
                 int maxAmmo = weapon.GetMaxAmmo(currentWeaponType);
                 weapon.SetAmmoForSmoke(currentWeaponType, (int)Math.Round(maxAmmo * ammoRatio));
-                killChainWindowTimer = killChainWindowActive ? GameConfig.KillChainWindow : 0f;
+                killChainWindowTimer = killChainWindowActive ? RewardConfig.KillChainWindow : 0f;
                 rapidFireHitStreak = hitStreak;
-                rapidFireStreakDecayTimer = hitStreak > 0 ? GameConfig.RapidFireChainStreakDecayTime : 0f;
+                rapidFireStreakDecayTimer = hitStreak > 0 ? RewardConfig.RapidFireChainStreakDecayTime : 0f;
                 runStatBonusTotals[(int)StatType.LowHealthRage] = lowHealthRageBonus;
                 runStatBonusTotals[(int)StatType.KillChain] = killChainBonus;
                 runStatBonusTotals[(int)StatType.ExplosiveSpecialist] = explosiveSpecialistBonus;
@@ -487,7 +487,7 @@ namespace My2DEngine.Game.Core
         /// <summary>Luck 레벨에 따른 코인 드롭 확률 보너스 값을 반환한다.</summary>
         internal float GetLuckCoinDropBonusSmokeSnapshot(int luckLevel)
         {
-            return luckLevel * (GameConfig.LuckCoinDropBonusMax / 10f);
+            return luckLevel * (RewardConfig.LuckCoinDropBonusMax / 10f);
         }
 
         /// <summary>카드 UI에 표시되는 조건부 카드 발동 조건 설명 텍스트를 반환한다.</summary>
@@ -499,7 +499,7 @@ namespace My2DEngine.Game.Core
         /// <summary>MoveSpeed 포인트 3 이상일 때 대시 쿨다운 추가 감소가 적용되는지 반환한다.</summary>
         internal bool GetMoveSpeedDashSynergySmokeSnapshot(int moveSpeedPoints)
         {
-            return moveSpeedPoints >= GameConfig.MoveSpeedDashSynergyThreshold;
+            return moveSpeedPoints >= PlayerConfig.MoveSpeedDashSynergyThreshold;
         }
 
         internal RunSummarySnapshot CreateRunSummarySmokeSnapshot(

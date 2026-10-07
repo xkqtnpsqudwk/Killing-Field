@@ -77,8 +77,8 @@ namespace My2DEngine.Rendering.WorldData
     /// </summary>
     internal sealed class WorldRenderDataBuilder
     {
-        /// <summary>스프라이트 셀(텍스처) 크기(픽셀). GameConfig.TextureSize와 동일하다.</summary>
-        private const int SpriteCellSize = GameConfig.TextureSize;
+        /// <summary>스프라이트 셀(텍스처) 크기(픽셀). RenderConfig.TextureSize와 동일하다.</summary>
+        private const int SpriteCellSize = RenderConfig.TextureSize;
 
         /// <summary>아틀라스 셀 주변에 추가하는 패딩 픽셀 수. 경계 블리딩 방지용.</summary>
         private const int SpriteAtlasPadding = 1;
@@ -249,7 +249,7 @@ namespace My2DEngine.Rendering.WorldData
                 WallColumnDoorProgress = wallColumnDoorProgressBuffer,
                 DepthBufferLength = depthBufferData?.Length ?? 0,
                 DepthBuffer = depthBufferData,
-                TextureSize = GameConfig.WorldTextureSize,
+                TextureSize = RenderConfig.WorldTextureSize,
                 WallTextureCount = textureManager.WallTextureCount,
                 WallTextureAtlasPixels = wallAtlasPixels,
                 WallTextureAtlasWidth = wallAtlasWidth,
@@ -289,18 +289,18 @@ namespace My2DEngine.Rendering.WorldData
                     Sprites = miscSpritePass.Sprites,
                     SpriteCount = miscSpritePass.SpriteCount
                 },
-                DoorTileType = GameConfig.DoorTileType,
+                DoorTileType = WorldConfig.DoorTileType,
                 FloorTextureIndex = 3,
-                UseTexturedFloor = GameConfig.GpuWorldUseTexturedFloor,
+                UseTexturedFloor = RenderConfig.GpuWorldUseTexturedFloor,
                 CeilingTextureIndex = 0,
-                UseTexturedCeiling = GameConfig.GpuWorldUseTexturedCeiling,
+                UseTexturedCeiling = RenderConfig.GpuWorldUseTexturedCeiling,
                 CeilingBlend = 0.22f,
-                NearPlane = GameConfig.NearPlane,
-                NearPlaneSoftness = GameConfig.NearPlaneSoftness,
+                NearPlane = RenderConfig.NearPlane,
+                NearPlaneSoftness = RenderConfig.NearPlaneSoftness,
                 FloorBlend = 0.22f,
                 FogDensity = 0.15f,
-                FloorColor = GameConfig.FloorColor,
-                CeilingColor = GameConfig.CeilingColor,
+                FloorColor = RenderConfig.FloorColor,
+                CeilingColor = RenderConfig.CeilingColor,
                 Beams = beamCount > 0 ? beamBuffer : null,
                 BeamCount = beamCount
             };
@@ -501,7 +501,7 @@ namespace My2DEngine.Rendering.WorldData
 
                 int tileType = map[mapX, mapY];
                 float doorProgress = 0f;
-                if (tileType == GameConfig.DoorTileType)
+                if (tileType == WorldConfig.DoorTileType)
                 {
                     doorProgress = mapManager.GetDoorOpenProgress(mapX, mapY);
                     if (doorProgress > 0f)
@@ -532,11 +532,11 @@ namespace My2DEngine.Rendering.WorldData
                 wallX -= Math.Floor(wallX);
 
                 // 벽 텍셀 X는 월드 텍스처 해상도(WorldTextureSize) 기준으로 계산한다(아틀라스 셀 크기와 일치).
-                int texX = (int)(wallX * GameConfig.WorldTextureSize);
-                if (side == 0 && rayDirX > 0) texX = GameConfig.WorldTextureSize - texX - 1;
-                if (side == 1 && rayDirY < 0) texX = GameConfig.WorldTextureSize - texX - 1;
+                int texX = (int)(wallX * RenderConfig.WorldTextureSize);
+                if (side == 0 && rayDirX > 0) texX = RenderConfig.WorldTextureSize - texX - 1;
+                if (side == 1 && rayDirY < 0) texX = RenderConfig.WorldTextureSize - texX - 1;
                 if (texX < 0) texX = 0;
-                if (texX >= GameConfig.WorldTextureSize) texX = GameConfig.WorldTextureSize - 1;
+                if (texX >= RenderConfig.WorldTextureSize) texX = RenderConfig.WorldTextureSize - 1;
 
                 int textureId = textureIds[mapX, mapY] % wallTextureCount;
                 if (textureId < 0)
@@ -639,12 +639,12 @@ namespace My2DEngine.Rendering.WorldData
                     float dx = enemy.X - playerX;
                     float dy = enemy.Y - playerY;
                     float hitReactRatio = 0f;
-                    if (enemy.HitReactTimer > 0f && GameConfig.EnemyHitReactDuration > 0f)
+                    if (enemy.HitReactTimer > 0f && EnemyConfig.EnemyHitReactDuration > 0f)
                     {
-                        hitReactRatio = Math.Min(1f, enemy.HitReactTimer / GameConfig.EnemyHitReactDuration);
+                        hitReactRatio = Math.Min(1f, enemy.HitReactTimer / EnemyConfig.EnemyHitReactDuration);
                     }
 
-                    float enemyRenderScale = enemy.Scale * (1f + (GameConfig.EnemyHitReactScalePulse * hitReactRatio));
+                    float enemyRenderScale = enemy.Scale * (1f + (EnemyConfig.EnemyHitReactScalePulse * hitReactRatio));
                     if (!IsPotentiallyVisible(dx, dy, enemyRenderScale, renderWidth, renderHeight, dirX, dirY, planeX, planeY, invDet))
                     {
                         continue;
@@ -1405,7 +1405,7 @@ namespace My2DEngine.Rendering.WorldData
         /// <param name="innerColor">스프라이트 중심 색상.</param>
         /// <param name="outerRadius">외곽 반지름(정규화, 0~1 범위). 이 값 바깥은 투명하다.</param>
         /// <param name="innerRadius">내부 단색 반지름(정규화). 이 값 안쪽은 innerColor로 채워진다.</param>
-        /// <returns>GameConfig.TextureSize × TextureSize 크기의 Color[] 픽셀 배열.</returns>
+        /// <returns>RenderConfig.TextureSize × TextureSize 크기의 Color[] 픽셀 배열.</returns>
         private Color[] BuildCircularSprite(Color outerColor, Color innerColor, float outerRadius, float innerRadius)
         {
             var pixels = new Color[SpriteCellSize * SpriteCellSize];
@@ -1718,11 +1718,11 @@ namespace My2DEngine.Rendering.WorldData
                 return;
             }
 
-            double widthScale = renderWidth > GameConfig.GpuWorldMaxRenderWidth
-                ? GameConfig.GpuWorldMaxRenderWidth / (double)renderWidth
+            double widthScale = renderWidth > RenderConfig.GpuWorldMaxRenderWidth
+                ? RenderConfig.GpuWorldMaxRenderWidth / (double)renderWidth
                 : 1.0;
-            double heightScale = renderHeight > GameConfig.GpuWorldMaxRenderHeight
-                ? GameConfig.GpuWorldMaxRenderHeight / (double)renderHeight
+            double heightScale = renderHeight > RenderConfig.GpuWorldMaxRenderHeight
+                ? RenderConfig.GpuWorldMaxRenderHeight / (double)renderHeight
                 : 1.0;
             double scale = Math.Min(1.0, Math.Min(widthScale, heightScale));
 
@@ -1808,14 +1808,14 @@ namespace My2DEngine.Rendering.WorldData
                 return 0.0001;
             }
 
-            if (wallDistance >= GameConfig.NearPlane)
+            if (wallDistance >= RenderConfig.NearPlane)
             {
                 return wallDistance;
             }
 
-            double delta = GameConfig.NearPlane - wallDistance;
-            double blend = Math.Sqrt(delta * delta + GameConfig.NearPlaneSoftness * GameConfig.NearPlaneSoftness);
-            return GameConfig.NearPlane - 0.5 * (delta + GameConfig.NearPlaneSoftness - blend);
+            double delta = RenderConfig.NearPlane - wallDistance;
+            double blend = Math.Sqrt(delta * delta + RenderConfig.NearPlaneSoftness * RenderConfig.NearPlaneSoftness);
+            return RenderConfig.NearPlane - 0.5 * (delta + RenderConfig.NearPlaneSoftness - blend);
         }
 
         /// <summary>

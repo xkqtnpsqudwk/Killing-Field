@@ -233,13 +233,13 @@ namespace My2DEngine.Game.Map
 
         private static float GetSurvivalDuration(int floor, bool isElite)
         {
-            float duration = GameConfig.SurvivalRoomBaseDuration + Math.Max(0, floor - 1) * GameConfig.SurvivalRoomDurationPerFloor;
+            float duration = RoomConfig.SurvivalRoomBaseDuration + Math.Max(0, floor - 1) * RoomConfig.SurvivalRoomDurationPerFloor;
             if (isElite)
             {
-                duration += GameConfig.SurvivalRoomEliteExtraDuration;
+                duration += RoomConfig.SurvivalRoomEliteExtraDuration;
             }
 
-            return Math.Min(GameConfig.SurvivalRoomMaxDuration, duration);
+            return Math.Min(RoomConfig.SurvivalRoomMaxDuration, duration);
         }
 
         private static string BuildCombatTemplateId(bool isElite, RoomObjectiveKind objective, RoomHazardKind hazard)
@@ -505,8 +505,8 @@ namespace My2DEngine.Game.Map
             }
 
             spawn.IsObjectiveTarget = true;
-            spawn.HealthMultiplier *= GameConfig.KeyTargetHealthMultiplier;
-            spawn.ScaleMultiplier *= GameConfig.KeyTargetScaleMultiplier;
+            spawn.HealthMultiplier *= RoomConfig.KeyTargetHealthMultiplier;
+            spawn.ScaleMultiplier *= RoomConfig.KeyTargetScaleMultiplier;
         }
 
         private static int PickKeyTargetSpawnIndex(StageSpawnPoint[] spawns, Random rng)

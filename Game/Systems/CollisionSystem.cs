@@ -67,7 +67,7 @@ namespace My2DEngine.Game.Systems
         private bool CanStep(float currentFloor, float destX, float destY)
         {
             float destFloor = GetFloorHeightAt(destX, destY);
-            return (destFloor - currentFloor) <= GameConfig.MaxStepHeight;
+            return (destFloor - currentFloor) <= WorldConfig.MaxStepHeight;
         }
 
         /// <summary>
@@ -103,7 +103,7 @@ namespace My2DEngine.Game.Systems
         /// <returns>고체 타입이면 true</returns>
         public static bool IsSolidType(int type)
         {
-            return (type >= 1 && type <= 8) || type == GameConfig.DoorTileType;
+            return (type >= 1 && type <= 8) || type == WorldConfig.DoorTileType;
         }
 
         /// <summary>
@@ -149,7 +149,7 @@ namespace My2DEngine.Game.Systems
             // 한 단계에서 이동할 수 있는 최대 거리를 CollisionStepSize로 제한해
             // 빠른 이동에서도 벽 내부로 파고드는 현상을 방지한다.
             float maxDelta = Math.Max(Math.Abs(dx), Math.Abs(dy));
-            int steps = Math.Max(1, (int)Math.Ceiling(maxDelta / GameConfig.CollisionStepSize));
+            int steps = Math.Max(1, (int)Math.Ceiling(maxDelta / WorldConfig.CollisionStepSize));
             float stepX = dx / steps;
             float stepY = dy / steps;
 
@@ -188,7 +188,7 @@ namespace My2DEngine.Game.Systems
         public void TryMoveEnemy(Enemy enemy, float dx, float dy, Vector2 playerPosition)
         {
             float maxDelta = Math.Max(Math.Abs(dx), Math.Abs(dy));
-            int steps = Math.Max(1, (int)Math.Ceiling(maxDelta / GameConfig.CollisionStepSize));
+            int steps = Math.Max(1, (int)Math.Ceiling(maxDelta / WorldConfig.CollisionStepSize));
             float stepX = dx / steps;
             float stepY = dy / steps;
 
@@ -215,7 +215,7 @@ namespace My2DEngine.Game.Systems
                 return true;
             }
 
-            float minPlayerDist = GameConfig.PlayerRadius + enemy.Radius + 0.08f;
+            float minPlayerDist = PlayerConfig.PlayerRadius + enemy.Radius + 0.08f;
             float dxPlayer = x - playerPosition.X;
             float dyPlayer = y - playerPosition.Y;
             if ((dxPlayer * dxPlayer) + (dyPlayer * dyPlayer) < minPlayerDist * minPlayerDist)

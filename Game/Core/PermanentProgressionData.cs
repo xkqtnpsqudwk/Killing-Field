@@ -57,28 +57,28 @@ namespace My2DEngine.Game.Core
             if (MoveSpeedPoints < 0) MoveSpeedPoints = 0;
             if (PistolDamagePoints < 0) PistolDamagePoints = 0;
 
-            SenseValue = ClampToStep(SenseValue, 0f, GameConfig.PermanentSenseMax);
-            LuckValue = ClampToStep(LuckValue, 0f, GameConfig.PermanentLuckMax);
+            SenseValue = ClampToStep(SenseValue, 0f, PlayerConfig.PermanentSenseMax);
+            LuckValue = ClampToStep(LuckValue, 0f, PlayerConfig.PermanentLuckMax);
         }
 
         public float GetHealthBonus()
         {
-            return HealthPoints * GameConfig.PermanentHealthPerPoint;
+            return HealthPoints * PlayerConfig.PermanentHealthPerPoint;
         }
 
         public float GetMoveSpeedBonus()
         {
-            return MoveSpeedPoints * GameConfig.PermanentMoveSpeedPerPoint;
+            return MoveSpeedPoints * PlayerConfig.PermanentMoveSpeedPerPoint;
         }
 
         public float GetPistolDamageBonus()
         {
-            return PistolDamagePoints * GameConfig.PermanentPistolDamagePerPoint;
+            return PistolDamagePoints * PlayerConfig.PermanentPistolDamagePerPoint;
         }
 
         public float GetSenseValue()
         {
-            return ClampToStep(SenseValue, 0f, GameConfig.PermanentSenseMax);
+            return ClampToStep(SenseValue, 0f, PlayerConfig.PermanentSenseMax);
         }
 
         /// <summary>현재 감각 레벨 (0~5). 임계값 배열로 계산.</summary>
@@ -96,13 +96,13 @@ namespace My2DEngine.Game.Core
             int tier = GetSenseTier();
             if (tier >= SenseLevelThresholds.Length) return 0;
             float needed = SenseLevelThresholds[tier] - GetSenseValue();
-            return (int)Math.Ceiling(Math.Max(0.0, (double)needed / GameConfig.PermanentSensePerPoint));
+            return (int)Math.Ceiling(Math.Max(0.0, (double)needed / PlayerConfig.PermanentSensePerPoint));
         }
 
         /// <summary>현재 운 레벨 (0~10). 임계값 배열로 계산.</summary>
         public int GetLuckLevel()
         {
-            float val = ClampToStep(LuckValue, 0f, GameConfig.PermanentLuckMax);
+            float val = ClampToStep(LuckValue, 0f, PlayerConfig.PermanentLuckMax);
             for (int i = LuckLevelThresholds.Length - 1; i >= 0; i--)
                 if (val >= LuckLevelThresholds[i]) return i + 1;
             return 0;
@@ -113,9 +113,9 @@ namespace My2DEngine.Game.Core
         {
             int level = GetLuckLevel();
             if (level >= LuckLevelThresholds.Length) return 0;
-            float val = ClampToStep(LuckValue, 0f, GameConfig.PermanentLuckMax);
+            float val = ClampToStep(LuckValue, 0f, PlayerConfig.PermanentLuckMax);
             float needed = LuckLevelThresholds[level] - val;
-            return (int)Math.Ceiling(Math.Max(0.0, (double)needed / GameConfig.PermanentLuckPerPoint));
+            return (int)Math.Ceiling(Math.Max(0.0, (double)needed / PlayerConfig.PermanentLuckPerPoint));
         }
 
         /// <summary>운 레벨 기반 확률 값 (0.0~1.0). 레벨당 0.1씩 증가.</summary>
@@ -150,25 +150,25 @@ namespace My2DEngine.Game.Core
 
         public bool TrySpendSensePoint()
         {
-            if (UnspentPoints <= 0 || SenseValue >= GameConfig.PermanentSenseMax)
+            if (UnspentPoints <= 0 || SenseValue >= PlayerConfig.PermanentSenseMax)
             {
                 return false;
             }
 
             UnspentPoints--;
-            SenseValue = ClampToStep(SenseValue + GameConfig.PermanentSensePerPoint, 0f, GameConfig.PermanentSenseMax);
+            SenseValue = ClampToStep(SenseValue + PlayerConfig.PermanentSensePerPoint, 0f, PlayerConfig.PermanentSenseMax);
             return true;
         }
 
         public bool TrySpendLuckPoint()
         {
-            if (UnspentPoints <= 0 || LuckValue >= GameConfig.PermanentLuckMax)
+            if (UnspentPoints <= 0 || LuckValue >= PlayerConfig.PermanentLuckMax)
             {
                 return false;
             }
 
             UnspentPoints--;
-            LuckValue = ClampToStep(LuckValue + GameConfig.PermanentLuckPerPoint, 0f, GameConfig.PermanentLuckMax);
+            LuckValue = ClampToStep(LuckValue + PlayerConfig.PermanentLuckPerPoint, 0f, PlayerConfig.PermanentLuckMax);
             return true;
         }
 

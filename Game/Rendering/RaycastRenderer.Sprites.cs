@@ -206,12 +206,12 @@ namespace My2DEngine.Game.Rendering
             if (enemy != null && enemy.IsBoss)
             {
                 float ratio = enemy.MaxHealth > 0f ? enemy.Health / enemy.MaxHealth : 1f;
-                if (ratio <= GameConfig.BossPhaseThreeHealthRatio)
+                if (ratio <= EnemyConfig.BossPhaseThreeHealthRatio)
                 {
                     return Color.FromArgb(220, 255, 55, 45);
                 }
 
-                if (ratio <= GameConfig.BossPhaseTwoHealthRatio)
+                if (ratio <= EnemyConfig.BossPhaseTwoHealthRatio)
                 {
                     return Color.FromArgb(205, 255, 155, 55);
                 }
@@ -233,13 +233,13 @@ namespace My2DEngine.Game.Rendering
             if (enemy.IsBoss)
             {
                 float ratio = enemy.MaxHealth > 0f ? enemy.Health / enemy.MaxHealth : 1f;
-                if (ratio <= GameConfig.BossPhaseThreeHealthRatio)
+                if (ratio <= EnemyConfig.BossPhaseThreeHealthRatio)
                 {
-                    intensity += GameConfig.BossPhaseThreeTelegraphIntensityBonus;
+                    intensity += EnemyConfig.BossPhaseThreeTelegraphIntensityBonus;
                 }
-                else if (ratio <= GameConfig.BossPhaseTwoHealthRatio)
+                else if (ratio <= EnemyConfig.BossPhaseTwoHealthRatio)
                 {
-                    intensity += GameConfig.BossPhaseTwoTelegraphIntensityBonus;
+                    intensity += EnemyConfig.BossPhaseTwoTelegraphIntensityBonus;
                 }
             }
 
