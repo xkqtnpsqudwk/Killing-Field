@@ -388,17 +388,6 @@ namespace My2DEngine.Game
             PlazmaLaserActive = false;
         }
 
-        /// <summary>카드 선택 시 전체 무기 탄약을 가득 충전한다.</summary>
-        public void RefillAllOnCardSelect()
-        {
-            for (int i = 0; i < 5; i++)
-            {
-                WeaponType t = (WeaponType)i;
-                int max = GetMaxAmmoForType(t);
-                ammoPerWeapon[i] = max;
-            }
-        }
-
         /// <summary>
         /// 지정 무기에 탄약을 추가한다 (적 처치 드랍 등). 최대치를 초과하지 않는다.
         /// </summary>

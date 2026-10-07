@@ -196,12 +196,6 @@ namespace My2DEngine.Game.Core
             EmitEnemyAlertSound(player.Position.X, player.Position.Y, 10f, player.Direction.X, player.Direction.Y);
         }
 
-        /// <summary>GameLogic.CardReward에서 사용하는 정적 래퍼.</summary>
-        internal static WeaponUpgradeCategory[] GetUpgradeCategoriesForWeaponStatic(WeaponType type)
-        {
-            return GetUpgradeCategoriesForWeapon(type);
-        }
-
         /// <summary>
         /// 특수기 관련 상태를 매 프레임 업데이트한다. Update() 루프에서 호출한다.
         /// </summary>

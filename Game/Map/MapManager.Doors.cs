@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Drawing;
 using My2DEngine.Game.Config;
 
@@ -11,38 +10,6 @@ namespace My2DEngine.Game.Map
     /// </summary>
     public partial class MapManager
     {
-        /// <summary>
-        /// 지정 타일 좌표의 텍스처 ID를 반환한다.
-        /// 문 타일이면 항상 DoorTextureId를 반환하고, 아니면 textureIds 배열 값을 반환한다.
-        /// 범위 밖이거나 null이면 0을 반환한다.
-        /// </summary>
-        /// <param name="x">타일 X 좌표</param>
-        /// <param name="y">타일 Y 좌표</param>
-        public int GetTextureId(int x, int y)
-        {
-            if (map == null || x < 0 || y < 0 || x >= map.GetLength(0) || y >= map.GetLength(1))
-            {
-                return 0;
-            }
-
-            if (map[x, y] == WorldConfig.DoorTileType)
-            {
-                return WorldConfig.DoorTextureId;
-            }
-
-            if (textureIds == null)
-            {
-                return map[x, y];
-            }
-
-            if (x >= textureIds.GetLength(0) || y >= textureIds.GetLength(1))
-            {
-                return 0;
-            }
-
-            return textureIds[x, y];
-        }
-
         /// <summary>
         /// 문을 즉시 열어 빈 공간 타일로 교체하고 애니메이션 진행도를 제거한다.
         /// UpdateDoorAnimations에서 진행도가 1에 도달하면 자동으로 호출된다.

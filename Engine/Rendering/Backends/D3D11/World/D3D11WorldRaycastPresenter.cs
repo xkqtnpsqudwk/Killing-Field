@@ -598,25 +598,6 @@ float4 PSMain(float4 position : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET
         }
 
         /// <summary>
-        /// 내부 씬 렌더 타깃 뷰를 반환한다.
-        /// 필요 시 씬 텍스처를 재생성하여 크기를 맞춘다.
-        /// 외부 시스템이 씬 텍스처에 직접 그려야 할 때 사용한다.
-        /// </summary>
-        /// <param name="command">렌더 타깃 크기를 결정하는 명령 객체다.</param>
-        /// <returns>현재 씬 렌더 타깃 뷰를 반환한다.</returns>
-        /// <exception cref="ObjectDisposedException">이 인스턴스가 이미 해제된 경우 발생한다.</exception>
-        public ID3D11RenderTargetView GetSceneRenderTargetView(RenderWorldCommand command)
-        {
-            if (disposed)
-            {
-                throw new ObjectDisposedException(nameof(D3D11WorldRaycastPresenter));
-            }
-
-            EnsureSceneRenderTarget(command.TargetWidth, command.TargetHeight);
-            return sceneRenderTargetView;
-        }
-
-        /// <summary>
         /// 이 프레젠터가 보유한 모든 GPU 리소스(셰이더·버퍼·텍스처·뷰)를 해제한다.
         /// 중복 호출은 무시된다.
         /// </summary>

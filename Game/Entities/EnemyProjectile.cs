@@ -48,15 +48,6 @@ namespace My2DEngine.Game
         /// <summary>LaserBeam의 빔 끝점 월드 Y 좌표.</summary>
         public float EndY { get; set; }
 
-        /// <summary>LaserBeam 현재 각도(라디안). BeamRotateSpeed * dt만큼 매 프레임 회전한다.</summary>
-        public float BeamAngle { get; set; }
-
-        /// <summary>LaserBeam 회전 속도(라디안/초). 양수면 시계 방향.</summary>
-        public float BeamRotateSpeed { get; set; }
-
-        /// <summary>LaserBeam 최대 빔 길이(타일). 0이면 기본값(16)이 사용된다.</summary>
-        public float BeamMaxDistance { get; set; }
-
         /// <summary>충돌 판정 원 반지름(타일). AcidGlob는 장판 전환 시 더 커진다.</summary>
         public float Radius { get; set; }
 
@@ -77,12 +68,6 @@ namespace My2DEngine.Game
         /// 0이 되면 본격적인 빔 회전과 피해가 시작된다.
         /// </summary>
         public float WarmupTimer { get; set; }
-
-        /// <summary>틱 피해 간격(초). AcidGlob·LaserBeam에서 반복 피해 주기를 결정한다.</summary>
-        public float TickInterval { get; set; }
-
-        /// <summary>다음 틱 피해까지의 잔여 시간(초). 0이 되면 피해를 주고 다시 TickInterval로 초기화된다.</summary>
-        public float TickTimer { get; set; }
 
         /// <summary>플레이어 추적 로켓이 따라갈 대상 적이다. null이면 현재 진행 방향을 유지한다.</summary>
         public Enemy TrackingTarget { get; set; }

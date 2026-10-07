@@ -533,16 +533,6 @@ namespace My2DEngine.Game.Core
             }
         }
 
-        private bool HasRow()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
-            {
-                cmd.CommandText = "SELECT COUNT(*) FROM permanent_progression WHERE id = 1";
-                return Convert.ToInt64(cmd.ExecuteScalar()) > 0;
-            }
-        }
-
         private PermanentProgressionData ReadRow()
         {
             using (var conn = OpenConnection())

@@ -63,7 +63,6 @@ namespace My2DEngine.Game.Map
         public int[,] Map => map;
         public int[,] TextureIds => textureIds;
         public float[,] FloorHeights => floorHeights;
-        public float[,] CeilHeights => ceilHeights;
         public Vector2 PlayerStartPosition => playerStartPosition;
         public Vector2 PlayerStartDirection => playerStartDirection;
         public float PlayerStartFov => playerStartFov;

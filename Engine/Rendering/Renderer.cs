@@ -343,43 +343,6 @@ namespace My2DEngine.Engine.Rendering
         }
 
         /// <summary>
-        /// 지정한 중심 좌표를 기준으로 텍스트를 가로/세로 중앙 정렬로 그린다.
-        /// text가 null이거나 빈 문자열이면 아무것도 그리지 않는다.
-        /// </summary>
-        /// <param name="text">그릴 문자열.</param>
-        /// <param name="centerX">텍스트 중심의 X 좌표 (내부 렌더 해상도 기준).</param>
-        /// <param name="centerY">텍스트 중심의 Y 좌표 (내부 렌더 해상도 기준).</param>
-        /// <param name="color">텍스트 색.</param>
-        /// <param name="size">폰트 크기 (내부 렌더 해상도 기준 포인트).</param>
-        /// <param name="bold">굵은 글꼴로 그릴지 여부.</param>
-        public void DrawTextCentered(string text, float centerX, float centerY, Color color, float size, bool bold = false)
-        {
-            if (string.IsNullOrEmpty(text))
-            {
-                return;
-            }
-
-            centerX = (centerX + screenOffsetX) * presentationScaleX;
-            centerY = (centerY + screenOffsetY) * presentationScaleY;
-            float scaledSize = size * presentationScaleY;
-
-            // 중앙 정렬은 backend의 실제 텍스트 측정값에 의존한다.
-            // DirectWrite/GDI 계열 백엔드마다 글리프 폭이 다를 수 있으므로 추정식으로 맞추지 않는다.
-            SizeF measure = backend.MeasureText(text, scaledSize, bold);
-            float x = centerX - (measure.Width * 0.5f);
-            float y = centerY - (measure.Height * 0.5f);
-            backend.DrawText(new RenderTextCommand
-            {
-                Text = text,
-                X = x,
-                Y = y,
-                Color = color,
-                Size = scaledSize,
-                Bold = bold
-            });
-        }
-
-        /// <summary>
         /// 지정한 중심 좌표를 기준으로 텍스트를 가로/세로 중앙 정렬로 그리되,
         /// 오른쪽 아래로 글꼴 픽셀 한 칸만큼 어긋난 검은 그림자를 먼저 그린 뒤 본 텍스트를 그린다.
         /// text가 null이거나 빈 문자열이면 아무것도 그리지 않는다.

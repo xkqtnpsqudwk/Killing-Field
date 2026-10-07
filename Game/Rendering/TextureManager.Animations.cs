@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using My2DEngine.Game;
 using My2DEngine.Game.Config;
 
 namespace My2DEngine.Game.Rendering
@@ -58,45 +57,20 @@ namespace My2DEngine.Game.Rendering
                     continue;
                 }
 
-                // 서브폴더 구조(IDLE/MOVE/ATTACK/DEATH)를 먼저 시도
+                // 그림은 Game/Images/<Enemy|Bosses>/<이름>/{IDLE,MOVE,ATTACK,DEATH}/*.png (Tools/ArtGen이 만든다).
+                // 폴더가 없으면 건너뛰고, 뒤이어 등록하는 절차적 스프라이트가 대신 그린다.
                 string entityDir = ResolveEntityImageDirectory(imageGroup, archetype);
-                if (!string.IsNullOrWhiteSpace(entityDir))
-                {
-                    BossSpriteSheet subfolderSheet = TryBuildSheetFromSubfolders(entityDir, bossPool);
-                    if (subfolderSheet != null)
-                    {
-                        Color[] idleSprite = subfolderSheet.GetFrame(BossAnimationKind.Idle, 0f);
-                        if (idleSprite != null && idleSprite.Length > 0)
-                        {
-                            RegisterAllAliases(archetype, bossPool, idleSprite, subfolderSheet);
-                            continue;
-                        }
-                    }
-                }
-
-                // 폴백: 단일 스프라이트 시트 파일 방식
-                if (!TryResolveArchetypeSpritePath(archetype, imageGroup, out string spritePath))
+                if (string.IsNullOrWhiteSpace(entityDir))
                 {
                     continue;
                 }
 
-                Color[] sprite = LoadTextureFromPath(spritePath);
-                BossSpriteSheet sheet = TryBuildSheetFromSpritePath(spritePath, bossPool, sprite);
-                if (sheet != null)
+                BossSpriteSheet sheet = TryBuildSheetFromSubfolders(entityDir, bossPool);
+                Color[] idleSprite = sheet?.GetFrame(BossAnimationKind.Idle, 0f);
+                if (idleSprite != null && idleSprite.Length > 0)
                 {
-                    Color[] idleFrame = sheet.GetFrame(BossAnimationKind.Idle, 0f);
-                    if (idleFrame != null && idleFrame.Length > 0)
-                    {
-                        sprite = idleFrame;
-                    }
+                    RegisterAllAliases(archetype, bossPool, idleSprite, sheet);
                 }
-
-                if (sprite == null || sprite.Length == 0)
-                {
-                    continue;
-                }
-
-                RegisterAllAliases(archetype, bossPool, sprite, sheet);
             }
         }
 
@@ -233,215 +207,6 @@ namespace My2DEngine.Game.Rendering
             return new BossSpriteSheet(animations, fpsMap);
         }
 
-        private BossSpriteSheet TryBuildSheetFromSpritePath(string spritePath, bool bossPool, Color[] fallbackSprite)
-        {
-            string sheetPath = ResolvePreferredAnimationSheetPath(spritePath);
-            if (!string.IsNullOrWhiteSpace(sheetPath))
-            {
-                string stem = Path.GetFileNameWithoutExtension(sheetPath);
-                if (SpriteSheetCatalog.TryGet(stem, out SpriteSheetCatalog.SheetSpec spec) &&
-                    TryBuildSheetFromCatalogSpec(sheetPath, spec, out Dictionary<BossAnimationKind, Color[][]> catalogAnimations))
-                {
-                    return new BossSpriteSheet(catalogAnimations, BuildFpsMapFromSpec(spec));
-                }
-
-                if (TryLoadAnimationSheet(sheetPath, out Dictionary<BossAnimationKind, Color[][]> animations))
-                {
-                    float baseFps = bossPool ? 5.0f : 6.5f;
-                    var fpsMap = new Dictionary<BossAnimationKind, float>
-                    {
-                        [BossAnimationKind.Idle]    = baseFps,
-                        [BossAnimationKind.Move]    = baseFps + 1.5f,
-                        [BossAnimationKind.Attack]  = baseFps + 3.5f,
-                        [BossAnimationKind.Special] = baseFps + 2.5f,
-                        [BossAnimationKind.Death]   = Math.Max(3.0f, baseFps - 1.5f),
-                        [BossAnimationKind.Spawn]   = Math.Max(3.0f, baseFps - 1.5f),
-                    };
-                    return new BossSpriteSheet(animations, fpsMap);
-                }
-            }
-
-            return bossPool ? BuildStaticBossSpriteSheet(fallbackSprite) : null;
-        }
-
-        private bool TryBuildSheetFromCatalogSpec(
-            string sheetPath,
-            SpriteSheetCatalog.SheetSpec spec,
-            out Dictionary<BossAnimationKind, Color[][]> animations)
-        {
-            animations = null;
-            if (string.IsNullOrWhiteSpace(sheetPath) || !File.Exists(sheetPath))
-            {
-                return false;
-            }
-
-            int sz = RenderConfig.TextureSize;
-            Bitmap bmp;
-            try { bmp = new Bitmap(sheetPath); }
-            catch { return false; }
-
-            using (bmp)
-            {
-                animations = new Dictionary<BossAnimationKind, Color[][]>();
-                var deathAccum = new List<Color[]>();
-
-                for (int rowIdx = 0; rowIdx < spec.RowKinds.Length; rowIdx++)
-                {
-                    BossAnimationKind kind = spec.RowKinds[rowIdx];
-                    int count = spec.FramesPerRow[rowIdx];
-                    if (count <= 0)
-                    {
-                        continue;
-                    }
-
-                    var frames = new Color[count][];
-                    for (int col = 0; col < count; col++)
-                    {
-                        frames[col] = ExtractFrameFromSheet(bmp, col, rowIdx, spec.CellSize, sz);
-                    }
-
-                    if (kind == BossAnimationKind.Death)
-                    {
-                        deathAccum.AddRange(frames);
-                    }
-                    else if (!animations.ContainsKey(kind))
-                    {
-                        animations[kind] = frames;
-                    }
-                }
-
-                if (deathAccum.Count > 0)
-                {
-                    Color[][] deathFrames = deathAccum.ToArray();
-                    animations[BossAnimationKind.Death] = deathFrames;
-                    animations[BossAnimationKind.Spawn] = deathFrames;
-                }
-
-                if (!animations.ContainsKey(BossAnimationKind.Special) &&
-                    animations.TryGetValue(BossAnimationKind.Attack, out Color[][] attackFallback))
-                {
-                    animations[BossAnimationKind.Special] = attackFallback;
-                }
-
-                return animations.Count > 0;
-            }
-        }
-
-        private static Dictionary<BossAnimationKind, float> BuildFpsMapFromSpec(SpriteSheetCatalog.SheetSpec spec)
-        {
-            var fpsMap = new Dictionary<BossAnimationKind, float>();
-            for (int i = 0; i < spec.RowKinds.Length; i++)
-            {
-                BossAnimationKind kind = spec.RowKinds[i];
-                if (!fpsMap.ContainsKey(kind))
-                {
-                    fpsMap[kind] = spec.RowFps[i];
-                }
-            }
-
-            if (fpsMap.TryGetValue(BossAnimationKind.Death, out float deathFps) &&
-                !fpsMap.ContainsKey(BossAnimationKind.Spawn))
-            {
-                fpsMap[BossAnimationKind.Spawn] = deathFps;
-            }
-
-            if (fpsMap.TryGetValue(BossAnimationKind.Attack, out float attackFps) &&
-                !fpsMap.ContainsKey(BossAnimationKind.Special))
-            {
-                fpsMap[BossAnimationKind.Special] = attackFps;
-            }
-
-            return fpsMap;
-        }
-
-        private static string ResolvePreferredAnimationSheetPath(string spritePath)
-        {
-            if (string.IsNullOrWhiteSpace(spritePath))
-            {
-                return null;
-            }
-
-            string directory = Path.GetDirectoryName(spritePath);
-            if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
-            {
-                return null;
-            }
-
-            string fileStem = Path.GetFileNameWithoutExtension(spritePath);
-            string baseStem = fileStem;
-            if (baseStem.EndsWith("_sheet_doom", StringComparison.OrdinalIgnoreCase))
-            {
-                baseStem = baseStem.Substring(0, baseStem.Length - "_sheet_doom".Length);
-            }
-            else if (baseStem.EndsWith("_sheet", StringComparison.OrdinalIgnoreCase))
-            {
-                baseStem = baseStem.Substring(0, baseStem.Length - "_sheet".Length);
-            }
-
-            string[] preferredCandidates =
-            {
-                Path.Combine(directory, baseStem + "_sheet_doom.png"),
-                Path.Combine(directory, baseStem + "_sheet.png"),
-                Path.Combine(directory, fileStem + ".png")
-            };
-
-            for (int i = 0; i < preferredCandidates.Length; i++)
-            {
-                if (File.Exists(preferredCandidates[i]))
-                {
-                    return preferredCandidates[i];
-                }
-            }
-
-            string[] doomSheets = Directory.GetFiles(directory, "*_sheet_doom.png", SearchOption.TopDirectoryOnly);
-            if (doomSheets.Length > 0)
-            {
-                Array.Sort(doomSheets, StringComparer.OrdinalIgnoreCase);
-                return doomSheets[0];
-            }
-
-            string[] normalSheets = Directory.GetFiles(directory, "*_sheet.png", SearchOption.TopDirectoryOnly);
-            if (normalSheets.Length > 0)
-            {
-                Array.Sort(normalSheets, StringComparer.OrdinalIgnoreCase);
-                return normalSheets[0];
-            }
-
-            return null;
-        }
-
-        private bool TryResolveArchetypeSpritePath(EnemyArchetype archetype, string imageGroup, out string resolvedPath)
-        {
-            resolvedPath = null;
-            if (archetype == null)
-            {
-                return false;
-            }
-
-            var searchKeys = new List<string>();
-            AddUniqueSearchKey(searchKeys, archetype.SpriteVariantKey);
-            AddUniqueSearchKey(searchKeys, archetype.AssetId);
-
-            string[] variantPool = archetype.SpriteVariantKeyPool;
-            if (variantPool != null)
-            {
-                for (int i = 0; i < variantPool.Length; i++)
-                {
-                    AddUniqueSearchKey(searchKeys, variantPool[i]);
-                }
-            }
-
-            for (int i = 0; i < searchKeys.Count; i++)
-            {
-                if (TryResolveSpritePathFromGroup(imageGroup, searchKeys[i], out resolvedPath))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         private static void AddUniqueSearchKey(List<string> searchKeys, string key)
         {
             if (searchKeys == null || string.IsNullOrWhiteSpace(key))
@@ -458,46 +223,6 @@ namespace My2DEngine.Game.Rendering
             }
 
             searchKeys.Add(key);
-        }
-
-        private bool TryResolveSpritePathFromGroup(string imageGroup, string variantKey, out string resolvedPath)
-        {
-            resolvedPath = null;
-            if (string.IsNullOrWhiteSpace(imageGroup) || string.IsNullOrWhiteSpace(variantKey))
-            {
-                return false;
-            }
-
-            foreach (string candidate in EnumerateVariantSearchKeys(variantKey))
-            {
-                string groupDir = ResolveImageDirectory(imageGroup, candidate);
-                if (!string.IsNullOrWhiteSpace(groupDir))
-                {
-                    string exactPath = Path.Combine(groupDir, candidate + ".png");
-                    if (File.Exists(exactPath))
-                    {
-                        resolvedPath = exactPath;
-                        return true;
-                    }
-
-                    string[] pngFiles = Directory.GetFiles(groupDir, "*.png", SearchOption.TopDirectoryOnly);
-                    if (pngFiles.Length > 0)
-                    {
-                        resolvedPath = pngFiles[0];
-                        return true;
-                    }
-                }
-
-                string fallbackByName = ResolveImagePath(candidate + ".png");
-                if (!string.IsNullOrWhiteSpace(fallbackByName) &&
-                    IsPathUnderImageGroup(fallbackByName, imageGroup))
-                {
-                    resolvedPath = fallbackByName;
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         private static IEnumerable<string> EnumerateVariantSearchKeys(string variantKey)
@@ -526,18 +251,6 @@ namespace My2DEngine.Game.Rendering
             }
         }
 
-        private static bool IsPathUnderImageGroup(string absolutePath, string imageGroup)
-        {
-            if (string.IsNullOrWhiteSpace(absolutePath) || string.IsNullOrWhiteSpace(imageGroup))
-            {
-                return false;
-            }
-
-            string normalizedPath = absolutePath.Replace('\\', '/').ToLowerInvariant();
-            string marker = "/images/" + imageGroup.ToLowerInvariant() + "/";
-            return normalizedPath.Contains(marker);
-        }
-
         private void RegisterLoadedSpriteVariant(string variantKey, bool bossPool, Color[] sprite, BossSpriteSheet sheet)
         {
             if (string.IsNullOrWhiteSpace(variantKey) || sprite == null)
@@ -556,37 +269,6 @@ namespace My2DEngine.Game.Rendering
             }
 
             RegisterVariantPoolKey(variantKey, bossPool);
-        }
-
-        private static BossSpriteSheet BuildStaticBossSpriteSheet(Color[] sprite)
-        {
-            if (sprite == null || sprite.Length == 0)
-            {
-                return null;
-            }
-
-            Color[][] frames = new[] { sprite };
-            var animations = new Dictionary<BossAnimationKind, Color[][]>
-            {
-                [BossAnimationKind.Idle] = frames,
-                [BossAnimationKind.Move] = frames,
-                [BossAnimationKind.Attack] = frames,
-                [BossAnimationKind.Special] = frames,
-                [BossAnimationKind.Death] = frames,
-                [BossAnimationKind.Spawn] = frames
-            };
-
-            var fpsMap = new Dictionary<BossAnimationKind, float>
-            {
-                [BossAnimationKind.Idle] = 4f,
-                [BossAnimationKind.Move] = 4f,
-                [BossAnimationKind.Attack] = 4f,
-                [BossAnimationKind.Special] = 4f,
-                [BossAnimationKind.Death] = 4f,
-                [BossAnimationKind.Spawn] = 4f
-            };
-
-            return new BossSpriteSheet(animations, fpsMap);
         }
 
         private void EnsureEnemyVariantPoolsLoaded()

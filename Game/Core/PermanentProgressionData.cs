@@ -118,12 +118,6 @@ namespace My2DEngine.Game.Core
             return (int)Math.Ceiling(Math.Max(0.0, (double)needed / PlayerConfig.PermanentLuckPerPoint));
         }
 
-        /// <summary>운 레벨 기반 확률 값 (0.0~1.0). 레벨당 0.1씩 증가.</summary>
-        public float GetLuckValue()
-        {
-            return GetLuckLevel() * 0.1f;
-        }
-
         public bool TrySpendHealthPoint()
         {
             if (UnspentPoints <= 0)

@@ -89,25 +89,5 @@ namespace My2DEngine.Game
                 PulseTimer = 0f;
             }
         }
-
-        /// <summary>
-        /// 희귀도를 사람이 읽기 쉬운 문자열로 반환한다.
-        /// UI 레이블에 표시하기 위해 사용된다.
-        /// </summary>
-        /// <returns>"Common", "Rare", "Epic" 중 하나. None이면 빈 문자열.</returns>
-        public string GetRarityLabel()
-        {
-            switch (Rarity)
-            {
-                case RewardPickupRarity.Common:
-                    return "Common";
-                case RewardPickupRarity.Rare:
-                    return "Rare";
-                case RewardPickupRarity.Epic:
-                    return "Epic";
-                default:
-                    return string.Empty;
-            }
-        }
     }
 }

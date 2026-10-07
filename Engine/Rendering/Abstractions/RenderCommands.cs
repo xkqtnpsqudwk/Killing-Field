@@ -137,8 +137,6 @@ namespace My2DEngine.Engine.Rendering.Abstractions
         public float V1;
         /// <summary>스프라이트에 곱할 색상(ARGB 정수 형태).</summary>
         public int TintArgb;
-        /// <summary>거리에 따른 안개 블렌딩 비율(0=안개 최대, 1=안개 없음).</summary>
-        public float FogFactor;
         /// <summary>true이면 스프라이트 위에 체력 바를 렌더링한다.</summary>
         public bool ShowHealthBar;
         /// <summary>true이면 보스 특수기 예고 시각 효과를 렌더링한다.</summary>

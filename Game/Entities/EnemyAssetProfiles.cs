@@ -397,9 +397,6 @@ namespace My2DEngine.Game
         public string Alias { get; }
 
         public string FallbackAlias { get; }
-
-        public static EnemySoundCue FromAlias(string alias, string fallbackAlias = null)
-            => new EnemySoundCue(alias, fallbackAlias);
     }
 
     /// <summary>
