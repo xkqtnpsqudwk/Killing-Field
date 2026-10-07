@@ -226,7 +226,7 @@ namespace My2DEngine.Game.Rendering
 
                 if (player.Stamina <= 0f)
                 {
-                    r.DrawTextCenteredShadow("Not Enough Stamina", frameW * 0.5f, frameH * 0.5f, Color.White, 18f);
+                    r.DrawTextCenteredShadow("Not Enough Stamina", frameW * 0.5f, frameH * 0.5f, Color.White, 12f);
                 }
             }
 
@@ -334,7 +334,7 @@ namespace My2DEngine.Game.Rendering
                 renderer.DrawRectangle(x, y + height - 1f, width, 1f, color);
                 renderer.DrawRectangle(x, y, 1f, height, color);
                 renderer.DrawRectangle(x + width - 1f, y, 1f, height, color);
-                renderer.DrawText(projection.Kind.ToString() + " #" + projection.AtlasSlot, x, Math.Max(0f, y - 10f), color, 8f);
+                renderer.DrawText(projection.Kind.ToString() + " #" + projection.AtlasSlot, x, Math.Max(0f, y - 10f), color, 6f);
             }
         }
     }

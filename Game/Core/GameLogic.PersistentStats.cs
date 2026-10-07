@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using My2DEngine.Engine.Input;
 using My2DEngine.Engine.Rendering;
 using My2DEngine.Game.Config;
+using My2DEngine.Game.Rendering.Ui;
 
 namespace My2DEngine.Game.Core
 {
@@ -336,10 +337,10 @@ namespace My2DEngine.Game.Core
             float panelY = (fh - panelH) * 0.5f;
             float panelCenterX = panelX + panelW * 0.5f;
             float cardW = 205f;
-            float cardH = 68f;
+            float cardH = 60f;
             float gapX = 18f;
-            float gapY = 14f;
-            float topY = panelY + 92f;
+            float gapY = 10f;
+            float topY = panelY + 84f;
             float leftX = panelCenterX - cardW - gapX * 0.5f;
             float rightX = panelCenterX + gapX * 0.5f;
             float secondRowY = topY + cardH + gapY;
@@ -394,21 +395,20 @@ namespace My2DEngine.Game.Core
             DrawUiOverlayPanel(r, panelX, panelY, panelW, panelH,
                 Color.FromArgb(228, 18, 24, 34), Color.FromArgb(200, 255, 210, 115));
 
-            r.DrawTextCenteredShadow("[ 영구 스탯 ]", panelCenterX, panelY + 18f,
-                Color.FromArgb(255, 255, 235, 150), 14f);
+            DrawOverlayHeader(r, "영구 스탯", panelCenterX, panelY + 18f);
             r.DrawTextCenteredShadow("보스 처치 시 포인트 +1", panelCenterX, panelY + 40f,
-                Color.FromArgb(210, 190, 190, 190), 9f);
-            r.DrawTextCenteredShadow("미사용 포인트: " + data.UnspentPoints, panelCenterX, panelY + 62f,
-                data.UnspentPoints > 0 ? Color.FromArgb(255, 120, 220, 140) : Color.FromArgb(210, 175, 175, 175), 10f);
+                Color.FromArgb(210, 190, 190, 190), 6f);
+            r.DrawTextCenteredShadow("미사용 포인트: " + data.UnspentPoints, panelCenterX, panelY + 54f,
+                data.UnspentPoints > 0 ? Color.FromArgb(255, 120, 220, 140) : Color.FromArgb(210, 175, 175, 175), 6f);
             r.DrawTextCenteredShadow("무한 모드: " + (data.EndlessModeUnlocked ? "해금됨" : "잠김"),
-                panelCenterX, panelY + 77f,
-                data.EndlessModeUnlocked ? Color.FromArgb(230, 145, 220, 160) : Color.FromArgb(180, 160, 160, 160), 8.5f);
+                panelCenterX, panelY + 68f,
+                data.EndlessModeUnlocked ? Color.FromArgb(230, 145, 220, 160) : Color.FromArgb(180, 160, 160, 160), 6f);
 
             float cardW = 205f;
-            float cardH = 68f;
+            float cardH = 60f;
             float gapX = 18f;
-            float gapY = 14f;
-            float topY = panelY + 92f;
+            float gapY = 10f;
+            float topY = panelY + 84f;
             float leftX = panelCenterX - cardW - gapX * 0.5f;
             float rightX = panelCenterX + gapX * 0.5f;
             float thirdRowY = topY + (cardH + gapY) * 2f;
@@ -445,8 +445,8 @@ namespace My2DEngine.Game.Core
             string footer = data.UnspentPoints > 0
                 ? "1~5로 배분, I로 닫기"
                 : "배분 가능한 포인트가 없습니다. I로 닫기";
-            r.DrawTextCenteredShadow(footer, panelCenterX, panelY + panelH - 34f,
-                Color.FromArgb(220, 220, 220, 220), 9f);
+            r.DrawTextCenteredShadow(footer, panelCenterX, panelY + panelH - 18f,
+                Color.FromArgb(220, 220, 220, 220), 6f);
         }
 
         private void DrawPermanentStatCard(Renderer r, float x, float y, float w, float h,
@@ -456,11 +456,11 @@ namespace My2DEngine.Game.Core
 
             DrawUiOverlayPanel(r, x, y, w, h, Color.FromArgb(205, 28, 36, 50), accent);
 
-            r.DrawTextCenteredShadow(title, centerX, y + 13f, accent, 10f);
+            r.DrawTextCenteredShadow(title, centerX, y + 14f, accent, 12f, true);
             r.DrawTextCenteredShadow(levelText, centerX, y + 33f,
-                Color.FromArgb(235, 230, 230, 230), 9f);
-            r.DrawTextCenteredShadow(effectText, centerX, y + 52f,
-                Color.FromArgb(210, 185, 185, 185), 8.5f);
+                Color.FromArgb(235, 230, 230, 230), 6f);
+            r.DrawTextCenteredShadow(effectText, centerX, y + 47f,
+                Color.FromArgb(210, 185, 185, 185), 6f);
         }
 
         private string GetSenseDescription(int senseTier)

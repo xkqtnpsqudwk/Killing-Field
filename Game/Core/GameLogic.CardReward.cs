@@ -6,6 +6,7 @@ using My2DEngine.Engine.Input;
 using My2DEngine.Engine.Rendering;
 using My2DEngine.Game;
 using My2DEngine.Game.Config;
+using My2DEngine.Game.Rendering.Ui;
 
 namespace My2DEngine.Game.Core
 {
@@ -18,68 +19,31 @@ namespace My2DEngine.Game.Core
         /// <summary>룸 클리어 후 카드가 실제로 나타나기까지 대기하는 시간(초).</summary>
         private const float CardRewardRevealDelaySeconds = 2f;
 
-        /// <summary>카드/분기 패널 배경에 사용하는 9-slice 프레임 텍스처. null이면 단색으로 그린다.</summary>
-        private Image uiPanelFrame;
-
-        /// <summary>앱 레이어에서 로드한 패널 프레임 텍스처를 주입한다.</summary>
-        public void SetUiPanelFrame(Image frame)
-        {
-            uiPanelFrame = frame;
-        }
-
         /// <summary>
-        /// 오버레이 UI(영구 스탯, 인게임 정보, 카드 카드 슬롯)의 공통 패널 배경을 그린다.
-        /// 패널 프레임이 있으면 9-slice 금속 틀을, 없으면 단색 배경 + 1px 강조 테두리를 그린다.
-        /// 강조 색 테두리는 두 경로 모두 위에 유지해 화면별 정체성(파랑/금색 등)을 보존한다.
+        /// 오버레이 UI(영구 스탯, 인게임 정보 등)의 공통 패널 배경을 픽셀 상자로 그린다.
+        /// 강조 색은 테두리 고리에 써서 화면별 정체성(파랑/금색 등)을 보존한다.
         /// </summary>
-        /// <param name="fill">프레임이 없을 때 사용할 단색 배경 색.</param>
-        /// <param name="accent">패널 외곽 강조 테두리 색.</param>
+        /// <param name="fill">채움 색. 알파가 낮으면 조금 더 불투명하게 올린다.</param>
+        /// <param name="accent">테두리 강조 색.</param>
         private void DrawUiOverlayPanel(Renderer r, float x, float y, float w, float h, Color fill, Color accent)
         {
-            if (uiPanelFrame != null)
-            {
-                float db = Math.Min(w, h) * 0.16f;
-                r.DrawImageNineSlice(uiPanelFrame, x, y, w, h, uiPanelFrame.Width * 0.16f, db);
-                float t = Math.Max(2f, h * 0.008f);
-                r.DrawRectangle(x, y, w, t, accent);
-                r.DrawRectangle(x, y + h - t, w, t, accent);
-                r.DrawRectangle(x, y, t, h, accent);
-                r.DrawRectangle(x + w - t, y, t, h, accent);
-            }
-            else
-            {
-                r.DrawRectangle(x, y, w, h, fill);
-                r.DrawRectangle(x, y, w, 1f, accent);
-                r.DrawRectangle(x, y + h - 1f, w, 1f, accent);
-                r.DrawRectangle(x, y, 1f, h, accent);
-                r.DrawRectangle(x + w - 1f, y, 1f, h, accent);
-            }
+            Color solidFill = Color.FromArgb(Math.Max((int)fill.A, 250), fill.R, fill.G, fill.B);
+            PixelUi.Frame(r, x, y, w, h, 1f, solidFill, accent);
+        }
+
+        /// <summary>오버레이 제목. 굵은 외곽선 황동색 글자로 화면 위쪽에 쓴다.</summary>
+        private static void DrawOverlayHeader(Renderer r, string text, float cx, float cy)
+        {
+            PixelUi.Title(r, text, cx, cy, PixelPalette.Brass, PixelUi.FontBase, 1f);
         }
 
         /// <summary>
-        /// 카드/분기 패널 배경을 그린다. 패널 프레임이 있으면 9-slice 금속 틀을 쓰되
-        /// 등급 색 테두리는 그 위에 유지해 카드 등급 정보가 사라지지 않게 한다.
+        /// 카드/분기 패널 배경을 그린다. 테두리와 윗줄을 등급(또는 방 유형) 색으로 칠해 정보가 보이게 한다.
         /// </summary>
         private void DrawCardPanelBackground(Renderer r, float x, float y, float w, float h, Color gradeColor)
         {
-            if (uiPanelFrame != null)
-            {
-                float db = Math.Min(w, h) * 0.20f;
-                r.DrawImageNineSlice(uiPanelFrame, x, y, w, h, uiPanelFrame.Width * 0.16f, db);
-                float t = Math.Max(2f, h * 0.012f);
-                r.DrawRectangle(x, y, w, t, gradeColor);
-                r.DrawRectangle(x, y + h - t, w, t, gradeColor);
-                r.DrawRectangle(x, y, t, h, gradeColor);
-                r.DrawRectangle(x + w - t, y, t, h, gradeColor);
-            }
-            else
-            {
-                r.DrawRectangle(x, y, w, h, Color.FromArgb(215, 20, 28, 42));
-                r.DrawRectangle(x, y, w, 1f, gradeColor);
-                r.DrawRectangle(x, y + h - 1, w, 1f, gradeColor);
-                r.DrawRectangle(x, y, 1f, h, gradeColor);
-                r.DrawRectangle(x + w - 1, y, 1f, h, gradeColor);
-            }
+            PixelUi.Frame(r, x, y, w, h, 1f, PixelPalette.Panel, gradeColor);
+            r.DrawRectangle(x + 3f, y + 3f, w - 6f, 2f, PixelUi.Fade(gradeColor, 0.8f));
         }
 
         /// <summary>런 스탯 배열 크기. StatType enum 값과 1:1로 맞춰 인덱싱한다.</summary>
@@ -1116,13 +1080,12 @@ namespace My2DEngine.Game.Core
             // 반투명 어둠 처리
             r.DrawRectangle(0f, 0f, fw, fh, Color.FromArgb(185, 0, 0, 0));
 
-            r.DrawTextCenteredShadow("[ 카드 선택 ]", fw * 0.5f, fh * 0.08f,
-                Color.FromArgb(255, 255, 235, 150), 14f);
+            DrawOverlayHeader(r, "카드 선택", fw * 0.5f, fh * 0.08f);
 
             if (cardRewardWasBossRoom)
             {
                 r.DrawTextCenteredShadow("보스 보상: 영구 스탯 포인트 +1 획득", fw * 0.5f, fh * 0.12f,
-                    Color.FromArgb(255, 140, 220, 155), 9.5f);
+                    Color.FromArgb(255, 140, 220, 155), 6f);
             }
 
             GetCardRewardLayout(out int slotCount, out float cardW, out float cardH, out float gap, out float startX, out float cardY);
@@ -1157,7 +1120,7 @@ namespace My2DEngine.Game.Core
             r.DrawRectangle(x + 6f, y + h - 30f, w - 12f, 1f,
                 Color.FromArgb(100, 200, 200, 200));
             r.DrawTextCenteredShadow("클릭하여 선택", cx, y + h - 15f,
-                Color.FromArgb(255, 255, 225, 100), 10f);
+                Color.FromArgb(255, 255, 225, 100), 6f);
         }
 
         private void DrawStatCardContent(Renderer r, RewardCardOffer offer,
@@ -1171,12 +1134,12 @@ namespace My2DEngine.Game.Core
             float valueFontSize = w < 160f ? 13f : 15f;
 
             r.DrawTextCenteredShadow("스탯 카드", cx, y + 16f,
-                Color.FromArgb(200, 170, 170, 170), 9f);
-            r.DrawTextCenteredShadow(gradeName, cx, y + 40f, gradeColor, 13f);
+                Color.FromArgb(200, 170, 170, 170), 6f);
+            r.DrawTextCenteredShadow(gradeName, cx, y + 40f, gradeColor, 12f);
             r.DrawRectangle(cx - w * 0.35f, y + 57f, w * 0.7f, 1f,
                 Color.FromArgb(80, 200, 200, 200));
             r.DrawTextCenteredShadow(statName, cx, y + 80f,
-                Color.FromArgb(255, 235, 225, 200), nameFontSize);
+                Color.FromArgb(255, 235, 225, 200), nameFontSize, true);
             r.DrawTextCenteredShadow(valueText, cx, y + 108f, gradeColor, valueFontSize);
 
             // 조건부 카드는 발동 조건을 명시해 단순 수치 카드와 구분한다.
@@ -1184,7 +1147,7 @@ namespace My2DEngine.Game.Core
             if (!string.IsNullOrEmpty(conditionText))
             {
                 r.DrawTextCenteredShadow(conditionText, cx, y + 128f,
-                    Color.FromArgb(235, 255, 200, 110), 8.2f);
+                    Color.FromArgb(235, 255, 200, 110), 6f);
             }
 
             // 현재 보유 등급 표시
@@ -1197,7 +1160,7 @@ namespace My2DEngine.Game.Core
             Color ownedColor = cur < 0
                 ? Color.FromArgb(170, 155, 155, 155)
                 : CardGradeHelper.GetGradeColor((CardGrade)cur);
-            r.DrawTextCenteredShadow(owned, cx, y + 148f, ownedColor, 9f);
+            r.DrawTextCenteredShadow(owned, cx, y + 148f, ownedColor, 6f);
         }
 
         private static string GetStatBonusTotalText(StatType stat, float totalBonus)
@@ -1245,15 +1208,15 @@ namespace My2DEngine.Game.Core
             Color headerColor = isNewWeapon
                 ? Color.FromArgb(200, 255, 220, 100)
                 : Color.FromArgb(200, 170, 170, 170);
-            r.DrawTextCenteredShadow(headerText, cx, y + 16f, headerColor, 9f);
-            r.DrawTextCenteredShadow(gradeName, cx, y + 40f, gradeColor, 13f);
+            r.DrawTextCenteredShadow(headerText, cx, y + 16f, headerColor, 6f);
+            r.DrawTextCenteredShadow(gradeName, cx, y + 40f, gradeColor, 12f);
             r.DrawRectangle(cx - w * 0.35f, y + 57f, w * 0.7f, 1f,
                 Color.FromArgb(80, 200, 200, 200));
             r.DrawTextCenteredShadow(weaponName, cx, y + 80f,
                 Color.FromArgb(255, 235, 225, 200), 12f);
             r.DrawTextCenteredShadow(catName, cx, y + 104f, gradeColor, 12f);
             r.DrawTextCenteredShadow(effectDesc, cx, y + 148f,
-                Color.FromArgb(200, 210, 210, 210), 9f);
+                Color.FromArgb(200, 210, 210, 210), 6f);
         }
     }
 }

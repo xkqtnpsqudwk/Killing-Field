@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using My2DEngine.Engine.Rendering;
 using My2DEngine.Game.Config;
+using My2DEngine.Game.Rendering.Ui;
 
 namespace My2DEngine.Game.Core
 {
@@ -22,28 +23,22 @@ namespace My2DEngine.Game.Core
                 ? 1f
                 : controlsTutorialTimer / ControlsTutorialFadeTime;
 
-            int a = (int)(alpha * 200f);
-            int ta = (int)(alpha * 255f);
-
             float sw = RenderConfig.GpuWorldMaxRenderWidth;
-            float sh = RenderConfig.GpuWorldMaxRenderHeight;
             float cx = sw * 0.5f;
-            float panelW = Math.Min(320f, sw - 40f);
-            float panelH = 150f;
+            float panelW = Math.Min(200f, sw - 40f);
+            float panelH = 86f;
             float panelX = cx - panelW * 0.5f;
-            float panelY = sh * 0.62f;
+            float panelY = 70f;
 
-            r.DrawRectangle(panelX, panelY, panelW, panelH, Color.FromArgb(Math.Min(a, 200), 10, 14, 22));
-            r.DrawRectangle(panelX, panelY, panelW, 1f, Color.FromArgb(Math.Min(a, 180), 120, 160, 220));
-            r.DrawRectangle(panelX, panelY + panelH - 1f, panelW, 1f, Color.FromArgb(Math.Min(a, 180), 120, 160, 220));
+            PixelUi.Frame(r, panelX, panelY, panelW, panelH, 1f, PixelPalette.Panel, PixelPalette.Info, raised: true, opacity: alpha);
 
-            float ty = panelY + 12f;
-            float lineH = 22f;
-            Color headerCol = Color.FromArgb(ta, 180, 210, 255);
-            Color keyCol = Color.FromArgb(ta, 255, 220, 100);
-            Color descCol = Color.FromArgb(ta, 210, 210, 210);
+            float ty = panelY + 10f;
+            float lineH = 15f;
+            Color headerCol = PixelUi.Fade(PixelPalette.Info, alpha);
+            Color keyCol = PixelUi.Fade(PixelPalette.Brass, alpha);
+            Color descCol = PixelUi.Fade(PixelPalette.Text, alpha);
 
-            r.DrawTextCenteredShadow("[ 조작 안내 ]", cx, ty, headerCol, 10f);
+            PixelUi.TextCentered(r, "조작 안내", cx, ty, headerCol, PixelUi.FontBase * 0.5f, 1f, bold: true);
             ty += lineH;
 
             DrawHintLine(r, cx, ty, keyCol, descCol, "WASD", "이동");
@@ -59,8 +54,8 @@ namespace My2DEngine.Game.Core
         {
             float keyX = cx - 60f;
             float descX = cx - 20f;
-            r.DrawText(key, keyX, y, keyCol, 9f);
-            r.DrawText(desc, descX, y, descCol, 9f);
+            r.DrawText(key, keyX, y, keyCol, 6f);
+            r.DrawText(desc, descX, y, descCol, 6f);
         }
     }
 }

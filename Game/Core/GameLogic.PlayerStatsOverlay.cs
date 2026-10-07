@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using My2DEngine.Engine.Input;
 using My2DEngine.Engine.Rendering;
 using My2DEngine.Game.Config;
+using My2DEngine.Game.Rendering.Ui;
 
 namespace My2DEngine.Game.Core
 {
@@ -78,18 +79,17 @@ namespace My2DEngine.Game.Core
             DrawUiOverlayPanel(r, panelX, panelY, panelW, panelH,
                 Color.FromArgb(232, 18, 24, 34), Color.FromArgb(210, 140, 205, 255));
 
-            r.DrawTextCenteredShadow("[ 현재 스탯 ]", panelCenterX, panelY + 18f,
-                Color.FromArgb(255, 235, 240, 255), 14f);
+            DrawOverlayHeader(r, "현재 스탯", panelCenterX, panelY + 18f);
             r.DrawTextCenteredShadow("P로 닫기", panelCenterX, panelY + 38f,
-                Color.FromArgb(205, 188, 188, 188), 8.5f);
+                Color.FromArgb(205, 188, 188, 188), 6f);
 
             float leftX = panelX + 16f;
             float rightX = panelX + 258f;
             float headerY = panelY + 58f;
             float lineStep = 13.5f;
 
-            r.DrawText("현재 상태", leftX, headerY, Color.FromArgb(255, 255, 220, 150), 10f);
-            r.DrawText("카드 누적", rightX, headerY, Color.FromArgb(255, 255, 220, 150), 10f);
+            r.DrawText("현재 상태", leftX, headerY, Color.FromArgb(255, 255, 220, 150), 6f);
+            r.DrawText("카드 누적", rightX, headerY, Color.FromArgb(255, 255, 220, 150), 6f);
 
             float currentWeaponDamage = weapon.CurrentDamage;
             string currentWeaponName = GetWeaponName(weapon.CurrentType);
@@ -143,12 +143,12 @@ namespace My2DEngine.Game.Core
             r.DrawTextCenteredShadow(
                 $"영구 스탯: 감각 Lv {data.GetSenseTier()}  행운 Lv {data.GetLuckLevel()}  {WeaponPresentation.GetDisplayName(WeaponType.AMPistol)} +{data.GetPistolDamageBonus() * 100f:0}%",
                 panelCenterX, panelY + panelH - 40f,
-                Color.FromArgb(215, 185, 185, 185), 8.2f);
+                Color.FromArgb(215, 185, 185, 185), 6f);
         }
 
         private static void DrawPlayerStatsLine(Renderer r, float x, float y, string text)
         {
-            r.DrawText(text, x, y, Color.FromArgb(235, 220, 220, 220), 8.1f);
+            r.DrawText(text, x, y, Color.FromArgb(235, 220, 220, 220), 6f);
         }
 
         private static string BuildStatBreakdown(string label, float baseValue, float permanentBonus, float cardBonus, float finalValue, string suffix)

@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using My2DEngine.Engine.Rendering;
 using My2DEngine.Game.Config;
+using My2DEngine.Game.Rendering.Ui;
 
 namespace My2DEngine.Game.Core
 {
@@ -153,12 +154,10 @@ namespace My2DEngine.Game.Core
             if (progress > 1f) progress = 1f;
 
             int backdropAlpha = (int)(160f + progress * 55f);
-            int bandAlpha = (int)(110f + progress * 80f);
             r.DrawRectangle(0f, 0f, fw, fh, Color.FromArgb(backdropAlpha, 0, 0, 0));
-            r.DrawRectangle(0f, fh * 0.24f, fw, fh * 0.30f, Color.FromArgb(bandAlpha, 20, 8, 8));
+            PixelUi.Frame(r, fw * 0.5f - 170f, fh * 0.24f, 340f, fh * 0.34f, 1f, PixelPalette.PanelDeep, PixelPalette.Brass);
 
-            r.DrawTextCenteredShadow("666층 돌파", fw * 0.5f, fh * 0.34f,
-                Color.FromArgb(255, 255, 226, 150), 24f);
+            PixelUi.Title(r, "666층 돌파", fw * 0.5f, fh * 0.33f, PixelPalette.Brass, PixelUi.FontBase * 2f, 1f);
             r.DrawTextCenteredShadow("최종 보스를 격파했습니다", fw * 0.5f, fh * 0.405f,
                 Color.FromArgb(235, 245, 240, 230), 12f);
 
@@ -166,9 +165,9 @@ namespace My2DEngine.Game.Core
             Color unlockColor = endingUnlockedNow
                 ? Color.FromArgb(255, 125, 220, 150)
                 : Color.FromArgb(255, 175, 205, 255);
-            r.DrawTextCenteredShadow(unlockText, fw * 0.5f, fh * 0.47f, unlockColor, 16f);
+            r.DrawTextCenteredShadow(unlockText, fw * 0.5f, fh * 0.47f, unlockColor, 12f);
             r.DrawTextCenteredShadow("잠시 후 끝없는 층으로 진입할 수 있습니다", fw * 0.5f, fh * 0.53f,
-                Color.FromArgb(225, 225, 225, 225), 10f);
+                Color.FromArgb(225, 225, 225, 225), 6f);
         }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using My2DEngine.Engine.Rendering;
+using My2DEngine.Game.Rendering.Ui;
 namespace My2DEngine
 {
     /// <summary>
@@ -51,9 +52,11 @@ namespace My2DEngine
             UpdateSettingsLayout(width, height);
         }
 
+        /// <summary>메뉴 배경 애니메이션 시간(초).</summary>
+        private static float MenuTime => Environment.TickCount64 / 1000f;
+
         /// <summary>
-        /// 메인 메뉴 화면을 그린다. 배경, 로고(또는 텍스트 타이틀), 부제목,
-        /// 게임 시작/설정/종료 버튼을 순서대로 렌더링한다.
+        /// 메인 메뉴 화면을 그린다. 절차적 배경, 픽셀 타이틀, 부제, 네 버튼, 영구 스탯 안내를 그린다.
         /// 마우스 커서 위치를 기반으로 버튼 hover 효과를 적용한다.
         /// </summary>
         /// <param name="r">드로우 명령을 받을 렌더러 인스턴스.</param>
@@ -64,51 +67,34 @@ namespace My2DEngine
             DrawSharedMenuBackground(r, width, height);
 
             float s = GetUiScale(width, height);
+            float u = PixelUi.UnitFor(s);
+            float cx = width * 0.5f;
 
-            // 엠블럼 로고가 있으면 상단에 작게 배치하고, 그 아래에 텍스트 타이틀을 함께 그린다.
-            float titleY;
-            if (menuLogo != null)
-            {
-                float maxLogoW = Math.Min(width * 0.5f, 360f * s);
-                float maxLogoH = Math.Min(height * 0.20f, 190f * s);
-                float scale = Math.Min(maxLogoW / menuLogo.Width, maxLogoH / menuLogo.Height);
-                float logoW = menuLogo.Width * scale;
-                float logoH = menuLogo.Height * scale;
-                float logoX = (width - logoW) * 0.5f;
-                float logoY = height * 0.07f;
-                r.DrawImage(menuLogo, logoX, logoY, logoW, logoH);
-                titleY = logoY + logoH + 30f * s;
-            }
-            else
-            {
-                titleY = height * 0.28f;
-            }
+            // 타이틀: 굵은 외곽선 글자. 아주 약하게 깜박여 불빛 느낌을 준다.
+            float titleY = height * 0.22f;
+            float flicker = (float)(Math.Sin(MenuTime * 7.3) * Math.Sin(MenuTime * 3.1));
+            Color titleColor = flicker > 0.93f ? PixelPalette.AccentHot : PixelPalette.Accent;
+            PixelUi.Title(r, "KILLING FIELD", cx, titleY, titleColor, PixelUi.FontBase * u * 3f, u);
 
-            // 텍스트 타이틀(붉은 글로우)은 로고 유무와 관계없이 항상 표시한다.
-            float titleSize = 44f * s;
-            DrawGlowText(r, "KILLING FIELD", width * 0.5f, titleY, Color.FromArgb(45, 210, 60, 48), titleSize, 3.2f * s);
-            r.DrawTextCenteredShadow("KILLING FIELD", width * 0.5f, titleY, Color.FromArgb(245, 205, 60, 54), titleSize);
-            // 타이틀 아래 짧은 붉은 구분선
-            r.DrawRectangle(width * 0.5f - 150f * s, titleY + 36f * s, 300f * s, 2f * s, Color.FromArgb(190, 175, 42, 38));
+            float subY = titleY + PixelUi.FontBase * u * 3f;
+            float subSize = PixelUi.FontBase * u;
+            PixelUi.TextCentered(r, "ABANDONED SECTOR SURVIVAL", cx, subY, PixelPalette.TextDim, subSize, u);
+            float lineW = 64f * u;
+            float lineGap = r.MeasureText("ABANDONED SECTOR SURVIVAL", subSize).Width * 0.5f + u * 8f;
+            r.DrawRectangle(cx - lineGap - lineW, subY, lineW, u, PixelPalette.Blood);
+            r.DrawRectangle(cx + lineGap, subY, lineW, u, PixelPalette.Blood);
 
-            // 부제는 타이틀 아래에 상대 배치해 로고 유무에 따라 겹치지 않게 한다.
-            float subY = titleY + 64f * s;
-            r.DrawTextCenteredShadow("ABANDONED SECTOR SURVIVAL", width * 0.5f, subY, Color.FromArgb(225, 215, 215, 215), 14f * s);
-            // 부제 좌우의 가는 장식 라인 (텍스트와 충분히 떨어뜨려 겹침 방지)
-            r.DrawRectangle(width * 0.5f - 250f * s, subY + 7f * s, 60f * s, 1f, Color.FromArgb(110, 180, 180, 180));
-            r.DrawRectangle(width * 0.5f + 190f * s, subY + 7f * s, 60f * s, 1f, Color.FromArgb(110, 180, 180, 180));
+            DrawMenuActionButton(r, startButtonRect, "게임 시작", "모드 선택 후 전장 진입", PixelPalette.Accent, startButtonRect.Contains(lastMousePosition));
+            DrawMenuActionButton(r, settingsButtonRect, "설정", "시야각·감도·소리·창 크기", PixelPalette.Brass, settingsButtonRect.Contains(lastMousePosition));
+            DrawMenuActionButton(r, recordsButtonRect, "기록", "역대 도전 기록 보기", PixelPalette.Info, recordsButtonRect.Contains(lastMousePosition));
+            DrawMenuActionButton(r, exitButtonRect, "게임 종료", "세션 종료", PixelPalette.TextDim, exitButtonRect.Contains(lastMousePosition));
 
-            DrawMenuActionButton(r, startButtonRect, "게임 시작", "모드 선택 후 전장 진입", Color.FromArgb(210, 130, 36, 36), startButtonRect.Contains(lastMousePosition));
-            DrawMenuActionButton(r, settingsButtonRect, "설정", "시야각과 마우스 감도 조정", Color.FromArgb(210, 92, 96, 104), settingsButtonRect.Contains(lastMousePosition));
-            DrawMenuActionButton(r, recordsButtonRect, "기록", "역대 도전 기록 보기", Color.FromArgb(210, 60, 90, 130), recordsButtonRect.Contains(lastMousePosition));
-            DrawMenuActionButton(r, exitButtonRect, "게임 종료", "세션 종료", Color.FromArgb(210, 88, 52, 52), exitButtonRect.Contains(lastMousePosition));
-
-            r.DrawText("[I]  영구 스탯 보기", 24f * s, height * 0.93f, Color.FromArgb(180, 190, 190, 190), 11f * s);
+            float hintSize = PixelUi.FontBase * u * 0.5f;
+            PixelUi.Text(r, "[I] 영구 스탯 보기", 12f * u, height - 12f * u - hintSize, PixelPalette.TextDim, hintSize, u);
         }
 
         /// <summary>
-        /// 모드 선택 화면을 그린다. 배경, 패널, 제목, 설명 텍스트,
-        /// 일반 모드/무한 모드/뒤로 버튼을 렌더링한다.
+        /// 모드 선택 화면을 그린다. 패널, 설명, 일반 모드/무한 모드/이어하기/뒤로 버튼.
         /// </summary>
         /// <param name="r">드로우 명령을 받을 렌더러 인스턴스.</param>
         /// <param name="width">클라이언트 영역 너비.</param>
@@ -118,44 +104,36 @@ namespace My2DEngine
             DrawSharedMenuBackground(r, width, height);
 
             float s = GetUiScale(width, height);
+            float u = PixelUi.UnitFor(s);
             int panelW = (int)(600 * s);
             int panelH = GetModePanelHeight(s);
             int panelX = (width - panelW) / 2;
             int panelY = (height - panelH) / 2;
 
-            DrawUiPanel(r, panelX, panelY, panelW, panelH, Color.FromArgb(220, 24, 24, 24), 30f * s);
-            if (uiPanelFrame == null)
-            {
-                r.DrawRectangle(panelX + 10 * s, panelY + 10 * s, panelW - 20 * s, 6 * s, Color.FromArgb(220, 140, 34, 34));
-            }
-            r.DrawTextCenteredShadow("진행 모드 선택", width * 0.5f, panelY + 48 * s, Color.White, 26f * s);
-            r.DrawTextCenteredShadow("전투 밸런스는 기본값으로 고정됩니다", width * 0.5f, panelY + 86 * s, Color.Gainsboro, 14f * s);
+            float contentY = PixelUi.Panel(r, panelX, panelY, panelW, panelH, u, "진행 모드 선택");
+            PixelUi.TextCentered(r, "전투 밸런스는 기본값으로 고정됩니다", width * 0.5f, contentY + 8f * u, PixelPalette.TextDim, PixelUi.FontBase * u * 0.5f, u);
 
-            DrawMenuActionButton(r, modeNormalRect, "일반 모드", "1층부터 로그라이크 런 시작", Color.FromArgb(210, 150, 118, 48), modeNormalRect.Contains(lastMousePosition));
+            DrawMenuActionButton(r, modeNormalRect, "일반 모드", "1층부터 로그라이크 런 시작", PixelPalette.Accent, modeNormalRect.Contains(lastMousePosition));
 
             if (CanStartEndlessRun)
             {
-                DrawMenuActionButton(r, modeEndlessRect, "무한 모드", "667층부터 시작하는 해금 콘텐츠", Color.FromArgb(210, 70, 118, 162), modeEndlessRect.Contains(lastMousePosition));
+                DrawMenuActionButton(r, modeEndlessRect, "무한 모드", "667층부터 시작하는 해금 콘텐츠", PixelPalette.Info, modeEndlessRect.Contains(lastMousePosition));
             }
             else
             {
-                float eh = modeEndlessRect.Height;
-                r.DrawRectangle(modeEndlessRect.X, modeEndlessRect.Y, modeEndlessRect.Width, modeEndlessRect.Height, Color.FromArgb(200, 34, 34, 34));
-                r.DrawRectangle(modeEndlessRect.X + eh * 0.12f, modeEndlessRect.Y + eh * 0.12f, eh * 0.12f, modeEndlessRect.Height - eh * 0.24f, Color.FromArgb(140, 90, 90, 90));
-                r.DrawText("무한 모드", modeEndlessRect.X + eh * 0.53f, modeEndlessRect.Y + eh * 0.18f, Color.FromArgb(170, 205, 205, 205), eh * 0.25f);
-                r.DrawText("666층 클리어 시 해금", modeEndlessRect.X + eh * 0.53f, modeEndlessRect.Y + eh * 0.56f, Color.FromArgb(170, 165, 165, 165), eh * 0.155f);
+                PixelUi.Button(r, modeEndlessRect, u, "무한 모드", "666층 클리어 시 해금", PixelButtonState.Disabled);
             }
 
             if (CanContinueSavedRun)
             {
-                DrawMenuActionButton(r, continueButtonRect, "이어하기", "저장된 런 이어서 진행", Color.FromArgb(210, 46, 110, 62), continueButtonRect.Contains(lastMousePosition));
+                DrawMenuActionButton(r, continueButtonRect, "이어하기", "저장된 런 이어서 진행", PixelPalette.Good, continueButtonRect.Contains(lastMousePosition));
             }
 
-            DrawMenuButton(r, modeBackRect, "뒤로", modeBackRect.Contains(lastMousePosition) ? Color.FromArgb(225, 74, 74, 74) : Color.FromArgb(210, 42, 42, 42));
+            DrawMenuButton(r, modeBackRect, "뒤로");
         }
 
         /// <summary>
-        /// 게임 화면 위에 반투명 배경을 씌운 일시정지 오버레이를 그린다.
+        /// 게임 화면 위에 어두운 막을 씌운 일시정지 오버레이를 그린다.
         /// "게임 계속", "설정", "메인메뉴" 버튼이 포함된다.
         /// </summary>
         /// <param name="r">드로우 명령을 받을 렌더러 인스턴스.</param>
@@ -163,22 +141,17 @@ namespace My2DEngine
         /// <param name="height">클라이언트 영역 높이.</param>
         private void DrawPauseOverlay(Renderer r, int width, int height)
         {
-            r.DrawRectangle(0, 0, width, height, Color.FromArgb(160, 0, 0, 0));
-
             float s = GetUiScale(width, height);
+            float u = PixelUi.UnitFor(s);
+            PixelUi.Dim(r, width, height, u, 150);
+
             // 패널 크기는 UpdatePauseLayout과 같은 상수를 사용해 버튼과 정렬을 맞춘다.
             int panelW = (int)(PausePanelWidth * s);
             int panelH = (int)(PausePanelHeight * s);
             int panelX = (width - panelW) / 2;
             int panelY = (height - panelH) / 2;
 
-            DrawUiPanel(r, panelX, panelY, panelW, panelH, Color.FromArgb(220, 30, 30, 30), 30f * s);
-            if (uiPanelFrame == null)
-            {
-                r.DrawRectangle(panelX + 10 * s, panelY + 10 * s, panelW - 20 * s, 6 * s, Color.FromArgb(220, 140, 34, 34));
-            }
-
-            r.DrawTextCenteredShadow("일시정지", width * 0.5f, panelY + 52 * s, Color.White, 24f * s);
+            PixelUi.Panel(r, panelX, panelY, panelW, panelH, u, "일시정지");
             DrawMenuButton(r, pauseResumeRect, "게임 계속");
             DrawMenuButton(r, pauseSettingsRect, "설정");
             DrawMenuButton(r, pauseMenuRect, "메인메뉴");
@@ -193,21 +166,18 @@ namespace My2DEngine
         /// <param name="height">클라이언트 영역 높이.</param>
         private void DrawDeathOverlay(Renderer r, int width, int height)
         {
-            r.DrawRectangle(0, 0, width, height, Color.FromArgb(185, 0, 0, 0));
-
             float s = GetUiScale(width, height);
+            float u = PixelUi.UnitFor(s);
+            PixelUi.Dim(r, width, height, u, 175);
+
             int panelW = (int)(540 * s);
             int panelH = (int)(DeathPanelHeight * s);
             int panelX = (width - panelW) / 2;
             int panelY = (height - panelH) / 2;
             float cx = width * 0.5f;
 
-            r.DrawRectangle(panelX, panelY, panelW, panelH, Color.FromArgb(236, 24, 20, 20));
-            r.DrawRectangle(panelX, panelY, panelW, 4 * s, Color.FromArgb(230, 160, 38, 38));
-            r.DrawRectangle(panelX + 24 * s, panelY + 86 * s, panelW - 48 * s, 1, Color.FromArgb(100, 255, 255, 255));
-
-            r.DrawTextCenteredShadow("사망", cx, panelY + 34 * s, Color.FromArgb(255, 255, 222, 222), 26f * s);
-            r.DrawTextCenteredShadow("런 요약", cx, panelY + 72 * s, Color.FromArgb(230, 230, 230, 230), 12f * s);
+            float contentY = PixelUi.Panel(r, panelX, panelY, panelW, panelH, u, "사망", PixelPalette.Accent);
+            PixelUi.TextCentered(r, "런 요약", cx, contentY + 6f * u, PixelPalette.TextDim, PixelUi.FontBase * u * 0.5f, u);
 
             WorldRunSummarySnapshot summary = CaptureWorldRunSummarySnapshot();
             int rowX = panelX + (int)(58 * s);
@@ -221,29 +191,22 @@ namespace My2DEngine
 
             DrawDeathCardSummary(r, summary.AcquiredCards, panelX, panelW, rowY + rowGap * 4 + (int)(6 * s), s);
 
-            DrawMenuButton(
-                r,
-                deathRestartRect,
-                "재시작",
-                deathRestartRect.Contains(lastMousePosition)
-                    ? Color.FromArgb(230, 130, 48, 42)
-                    : Color.FromArgb(215, 92, 36, 34));
-            DrawMenuButton(
-                r,
-                deathMenuRect,
-                "메인메뉴",
-                deathMenuRect.Contains(lastMousePosition)
-                    ? Color.FromArgb(230, 70, 84, 108)
-                    : Color.FromArgb(215, 44, 54, 74));
+            PixelUi.Button(r, deathRestartRect, u, "재시작", null,
+                deathRestartRect.Contains(lastMousePosition) ? PixelButtonState.Hover : PixelButtonState.Normal, PixelPalette.Accent);
+            PixelUi.Button(r, deathMenuRect, u, "메인메뉴", null,
+                deathMenuRect.Contains(lastMousePosition) ? PixelButtonState.Hover : PixelButtonState.Normal, PixelPalette.Info);
         }
 
         /// <summary>
-        /// 사망 화면의 요약 라벨/값 한 줄을 같은 열 위치에 맞춰 그린다.
+        /// 사망 화면의 요약 라벨/값 한 줄을 같은 열 위치에 맞춰 그린다. 값은 오른쪽 정렬이다.
         /// </summary>
         private void DrawDeathSummaryRow(Renderer r, string label, string value, int labelX, int valueX, int y, float s)
         {
-            r.DrawText(label, labelX, y, Color.FromArgb(205, 188, 188, 188), 12f * s);
-            r.DrawText(value, valueX - 120 * s, y, Color.FromArgb(245, 245, 245, 245), 12f * s);
+            float u = PixelUi.UnitFor(s);
+            float size = PixelUi.FontBase * u;
+            PixelUi.Text(r, label, labelX, y, PixelPalette.TextDim, size, u);
+            PixelUi.TextRight(r, value, valueX, y, PixelPalette.Text, size, u, bold: true);
+            PixelUi.Divider(r, labelX, y + size + 4f * u, valueX - labelX, u, PixelPalette.WithAlpha(PixelPalette.EdgeDim, 255));
         }
 
         /// <summary>
@@ -252,13 +215,14 @@ namespace My2DEngine
         /// </summary>
         private void DrawDeathCardSummary(Renderer r, string[] cards, int panelX, int panelW, int startY, float s)
         {
+            float u = PixelUi.UnitFor(s);
             float cx = panelX + panelW * 0.5f;
-            r.DrawRectangle(panelX + 24 * s, startY, panelW - 48 * s, 1, Color.FromArgb(80, 255, 255, 255));
-            r.DrawTextCenteredShadow("획득한 카드", cx, startY + 14 * s, Color.FromArgb(220, 255, 220, 160), 11f * s);
+            float small = PixelUi.FontBase * u * 0.5f;
+            PixelUi.TextCentered(r, "획득한 카드", cx, startY + 8 * s, PixelPalette.Brass, small, u, bold: true);
 
             if (cards == null || cards.Length == 0)
             {
-                r.DrawTextCenteredShadow("획득한 카드 없음", cx, startY + 44 * s, Color.FromArgb(170, 180, 180, 180), 10f * s);
+                PixelUi.TextCentered(r, "획득한 카드 없음", cx, startY + 36 * s, PixelPalette.TextMuted, small, u);
                 return;
             }
 
@@ -267,321 +231,119 @@ namespace My2DEngine
             int shown = Math.Min(cards.Length, maxShown);
             float colLeftX = panelX + 44 * s;
             float colRightX = panelX + panelW / 2 + 10 * s;
-            float listY = startY + 34 * s;
+            float listY = startY + 26 * s;
             float lineH = 18 * s;
 
             for (int i = 0; i < shown; i++)
             {
                 float x = (i % 2 == 0) ? colLeftX : colRightX;
                 float y = listY + (i / 2) * lineH;
-                r.DrawText("· " + cards[i], x, y, Color.FromArgb(230, 225, 225, 225), 9f * s);
+                r.DrawRectangle(x, y + small * 0.5f - u, u * 2f, u * 2f, PixelPalette.Accent);
+                PixelUi.Text(r, cards[i], x + u * 5f, y, PixelPalette.Text, small, u);
             }
 
             if (cards.Length > shown)
             {
-                r.DrawTextCenteredShadow($"+{cards.Length - shown}종 더", cx, listY + maxRows * lineH,
-                    Color.FromArgb(180, 200, 200, 200), 9f * s);
+                PixelUi.TextCentered(r, $"+{cards.Length - shown}종 더", cx, listY + maxRows * lineH + small * 0.5f,
+                    PixelPalette.TextDim, small, u);
             }
         }
 
         /// <summary>
-        /// 설정 화면을 그린다. 시야각 슬라이더, 마우스 감도 슬라이더,
-        /// 창 크기 선택 버튼, 뒤로 버튼이 포함된다.
-        /// 일시정지 중 열린 설정이면 게임 화면 위에 반투명 오버레이로 표시된다.
+        /// 설정 화면을 그린다. 시야각·감도·BGM·효과음 슬라이더와 창 크기 선택, 뒤로 버튼.
+        /// 일시정지 중 열린 설정이면 게임 화면 위에 어두운 막을 씌워 표시된다.
         /// </summary>
         /// <param name="r">드로우 명령을 받을 렌더러 인스턴스.</param>
         /// <param name="width">클라이언트 영역 너비.</param>
         /// <param name="height">클라이언트 영역 높이.</param>
-        /// <param name="overlay">
-        /// true이면 반투명 배경 오버레이로 그리고,
-        /// false이면 불투명 단색 배경으로 그린다.
-        /// </param>
+        /// <param name="overlay">true이면 게임 위 오버레이, false이면 메뉴 배경 위에 그린다.</param>
         private void DrawSettings(Renderer r, int width, int height, bool overlay)
         {
             WorldSettingsSnapshot settings = GetDisplayedSettings();
+            float s = GetUiScale(width, height);
+            float u = PixelUi.UnitFor(s);
 
             if (overlay)
             {
-                // 일시정지에서 연 설정은 게임 화면 위 반투명 오버레이로 유지한다.
-                r.DrawRectangle(0, 0, width, height, Color.FromArgb(160, 0, 0, 0));
+                PixelUi.Dim(r, width, height, u, 150);
             }
             else
             {
-                // 메뉴에서 연 독립 설정 화면은 다른 메뉴 화면과 같은 공통 배경을 사용한다.
                 DrawSharedMenuBackground(r, width, height);
             }
 
-            float s = GetUiScale(width, height);
             int panelW = (int)(620 * s);
             // 패널 높이는 UpdateSettingsLayout과 동일하게 590 기준이어야 모든 슬라이더/버튼을 감싼다.
             int panelH = (int)(590 * s);
             int panelX = (width - panelW) / 2;
             int panelY = (height - panelH) / 2;
-            DrawUiPanel(r, panelX, panelY, panelW, panelH, Color.FromArgb(220, 30, 30, 30), 30f * s);
+            PixelUi.Panel(r, panelX, panelY, panelW, panelH, u, "설정");
 
-            r.DrawTextCenteredShadow("설정", width * 0.5f, panelY + 38 * s, Color.White, 24f * s);
+            float labelSize = PixelUi.FontBase * u * 0.5f;
+            float valueSize = PixelUi.FontBase * u;
+            float labelOffY = labelSize + 8f * u;
 
-            float fovValue = settings.FovDegrees;
-            float sensValue = settings.MouseSensitivity;
-            float labelOffY = 32 * s;
-            float valueOffX = 14 * s;
-            float valueOffY = 8 * s;
-            float labelSize = 14f * s;
+            DrawSettingSlider(r, fovSliderRect, "시야각 (60 - 90)", settings.FovDegrees.ToString("0"), GetRatio(settings.FovDegrees, FovMin, FovMax), u, labelSize, valueSize, labelOffY);
+            DrawSettingSlider(r, sensSliderRect, "마우스 감도", settings.MouseSensitivity.ToString("0.000"), GetRatio(settings.MouseSensitivity, SensMin, SensMax), u, labelSize, valueSize, labelOffY);
 
-            // 시야각 슬라이더
-            r.DrawText("시야각 (60 - 90)", fovSliderRect.X, fovSliderRect.Y - labelOffY, Color.White, labelSize);
-            DrawSlider(r, fovSliderRect, GetRatio(fovValue, FovMin, FovMax));
-            r.DrawText(fovValue.ToString("0"), fovSliderRect.Right + valueOffX, fovSliderRect.Y - valueOffY, Color.White, labelSize);
+            // 창 크기: < [값] >
+            PixelUi.Text(r, "창 크기 (16:9 고정)", resolutionPrevRect.X, resolutionPrevRect.Y - labelOffY, PixelPalette.TextDim, labelSize, u);
+            DrawMenuButton(r, resolutionPrevRect, "<");
+            DrawMenuButton(r, resolutionNextRect, ">");
+            float boxX = resolutionPrevRect.Right + 6f * u;
+            float boxW = resolutionNextRect.X - resolutionPrevRect.Right - 12f * u;
+            PixelUi.Frame(r, boxX, resolutionPrevRect.Y, boxW, resolutionPrevRect.Height, u, PixelPalette.PanelDeep, PixelPalette.EdgeDim, raised: false);
+            PixelUi.TextCentered(r, GetCurrentWindowSizeLabel(), width * 0.5f, resolutionPrevRect.Y + resolutionPrevRect.Height * 0.5f, PixelPalette.Text, valueSize, u, bold: true);
 
-            // 감도변경 슬라이더
-            r.DrawText("마우스 감도", sensSliderRect.X, sensSliderRect.Y - labelOffY, Color.White, labelSize);
-            DrawSlider(r, sensSliderRect, GetRatio(sensValue, SensMin, SensMax));
-            r.DrawText(sensValue.ToString("0.000"), sensSliderRect.Right + valueOffX, sensSliderRect.Y - valueOffY, Color.White, labelSize);
-
-            // 창크기 변경 박스: 960, 1270, 1600, 1920
-            r.DrawText("창 크기 (16:9 고정)", resolutionPrevRect.X, resolutionPrevRect.Y - 34 * s, Color.White, labelSize);
-            DrawMenuButton(r, resolutionPrevRect, "<", resolutionPrevRect.Contains(lastMousePosition) ? Color.FromArgb(225, 74, 74, 74) : Color.FromArgb(210, 42, 42, 42));
-            DrawMenuButton(r, resolutionNextRect, ">", resolutionNextRect.Contains(lastMousePosition) ? Color.FromArgb(225, 74, 74, 74) : Color.FromArgb(210, 42, 42, 42));
-            r.DrawRectangle(resolutionPrevRect.Right + 14 * s, resolutionPrevRect.Y, resolutionNextRect.X - resolutionPrevRect.Right - 28 * s, resolutionPrevRect.Height, Color.FromArgb(210, 38, 38, 38));
-            r.DrawTextCentered(GetCurrentWindowSizeLabel(), width * 0.5f, resolutionPrevRect.Y + resolutionPrevRect.Height * 0.5f, Color.White, 18f * s);
-
-            // BGM 볼륨 슬라이더: 0~100 범위를 0.0~1.0 비율로 변환하여 표시한다.
-            int bgmVolume = settings.BgmVolume;
-            r.DrawText("BGM 볼륨", bgmSliderRect.X, bgmSliderRect.Y - labelOffY, Color.White, labelSize);
-            DrawSlider(r, bgmSliderRect, bgmVolume / 100f);
-            r.DrawText(bgmVolume.ToString(), bgmSliderRect.Right + valueOffX, bgmSliderRect.Y - valueOffY, Color.White, labelSize);
-
-            // 효과음 볼륨 슬라이더: 0~100 범위를 0.0~1.0 비율로 변환하여 표시한다.
-            int sfxVolume = settings.SfxVolume;
-            r.DrawText("효과음 볼륨", sfxSliderRect.X, sfxSliderRect.Y - labelOffY, Color.White, labelSize);
-            DrawSlider(r, sfxSliderRect, sfxVolume / 100f);
-            r.DrawText(sfxVolume.ToString(), sfxSliderRect.Right + valueOffX, sfxSliderRect.Y - valueOffY, Color.White, labelSize);
+            DrawSettingSlider(r, bgmSliderRect, "BGM 볼륨", settings.BgmVolume.ToString(), settings.BgmVolume / 100f, u, labelSize, valueSize, labelOffY);
+            DrawSettingSlider(r, sfxSliderRect, "효과음 볼륨", settings.SfxVolume.ToString(), settings.SfxVolume / 100f, u, labelSize, valueSize, labelOffY);
 
             DrawMenuButton(r, backButtonRect, "뒤로");
         }
 
-        /// <summary>
-        /// 메뉴 화면의 배경 장식을 그린다.
-        /// 상단/하단 색띠, 수평/수직 구분선 등 전술적 분위기의 기하학적 요소들로 구성된다.
-        /// </summary>
-        /// <param name="r">드로우 명령을 받을 렌더러 인스턴스.</param>
-        /// <param name="width">클라이언트 영역 너비.</param>
-        /// <param name="height">클라이언트 영역 높이.</param>
-        /// <summary>
-        /// 메인 메뉴 배경 일러스트를 화면 비율에 맞게 cover 방식(비율 유지·넘침 크롭)으로 그린 뒤,
-        /// 텍스트 가독성을 위한 어둠 스크림과 상·하단 그라데이션을 덧씌운다.
-        /// 이미지 영역 밖으로 넘친 부분은 GPU 래스터라이저가 자동으로 클리핑한다.
-        /// </summary>
+        /// <summary>설정 화면의 라벨 + 슬라이더 + 오른쪽 값 한 줄.</summary>
+        private void DrawSettingSlider(Renderer r, Rectangle rect, string label, string value, float ratio, float u, float labelSize, float valueSize, float labelOffY)
+        {
+            PixelUi.Text(r, label, rect.X, rect.Y - labelOffY, PixelPalette.TextDim, labelSize, u);
+            Rectangle hitArea = Rectangle.Inflate(rect, 0, (int)(6 * u));
+            PixelUi.Slider(r, rect, u, Clamp01(ratio), hitArea.Contains(lastMousePosition));
+            PixelUi.Text(r, value, rect.Right + 10f * u, rect.Y + rect.Height * 0.5f - valueSize * 0.5f, PixelPalette.Text, valueSize, u, bold: true);
+        }
+
         /// <summary>
         /// 메뉴 계열 독립 화면(메인 메뉴·모드 선택·기록·설정)의 공통 배경을 그린다.
-        /// 배경 일러스트가 있으면 이미지+스크림을, 없으면 절차적 배경을 사용해 화면 간 톤을 통일한다.
         /// 게임 위에 겹쳐 그리는 일시정지·사망 오버레이에는 사용하지 않는다.
         /// </summary>
         private void DrawSharedMenuBackground(Renderer r, int width, int height)
         {
-            if (menuBackground != null)
-            {
-                DrawMenuBackgroundImage(r, width, height);
-            }
-            else
-            {
-                DrawMenuBackdrop(r, width, height);
-            }
-        }
-
-        private void DrawMenuBackgroundImage(Renderer r, int width, int height)
-        {
-            // 바탕은 일단 검정으로 채워, 이미지 종횡비가 화면과 달라도 빈틈이 비치지 않게 한다.
-            r.DrawRectangle(0, 0, width, height, Color.FromArgb(255, 6, 6, 8));
-
-            float iw = menuBackground.Width;
-            float ih = menuBackground.Height;
-            float scale = Math.Max(width / iw, height / ih);
-            float dw = iw * scale;
-            float dh = ih * scale;
-            float dx = (width - dw) * 0.5f;
-            float dy = (height - dh) * 0.5f;
-            r.DrawImage(menuBackground, dx, dy, dw, dh);
-
-            // 전체 약한 어둠 + 하단(버튼 영역 가독성) 그라데이션 스크림.
-            // 상단 붉은 그라데이션은 제거해 배경 일러스트가 그대로 드러나게 한다.
-            r.DrawRectangle(0, 0, width, height, Color.FromArgb(70, 8, 6, 10));
-
-            int bands = 14;
-            float bandTop = height * 0.42f;
-            float bandH = (height - bandTop) / bands;
-            for (int i = 0; i < bands; i++)
-            {
-                int a = (int)(8 + (i / (float)(bands - 1)) * 165);
-                r.DrawRectangle(0, bandTop + i * bandH, width, bandH + 1f, Color.FromArgb(a, 5, 4, 8));
-            }
+            PixelUi.Backdrop(r, width, height, PixelUi.UnitFor(GetUiScale(width, height)), MenuTime);
         }
 
         /// <summary>
-        /// 패널 배경을 그린다. 9-slice 패널 프레임 텍스처가 있으면 그것을, 없으면 단색 사각형을 사용한다.
-        /// </summary>
-        /// <param name="dstBorder">패널 프레임 모서리가 차지할 두께(내부 렌더 해상도 기준 픽셀).</param>
-        private void DrawUiPanel(Renderer r, float x, float y, float w, float h, Color fallback, float dstBorder)
-        {
-            if (uiPanelFrame != null)
-            {
-                r.DrawImageNineSlice(uiPanelFrame, x, y, w, h, uiPanelFrame.Width * 0.16f, dstBorder);
-            }
-            else
-            {
-                r.DrawRectangle(x, y, w, h, fallback);
-            }
-        }
-
-        /// <summary>
-        /// 같은 텍스트를 반투명 색으로 여러 방향에 겹쳐 그려 글로우(블룸) 느낌을 낸다.
-        /// 본 텍스트를 그리기 직전에 호출한다.
-        /// </summary>
-        private void DrawGlowText(Renderer r, string text, float cx, float cy, Color glow, float size, float spread)
-        {
-            float d = spread;
-            float h = spread * 0.7f;
-            float[] ox = { -d, d, 0f, 0f, -h, h, -h, h };
-            float[] oy = { 0f, 0f, -d, d, -h, -h, h, h };
-            for (int i = 0; i < ox.Length; i++)
-            {
-                r.DrawTextCentered(text, cx + ox[i], cy + oy[i], glow, size);
-            }
-        }
-
-        private void DrawMenuBackdrop(Renderer r, int width, int height)
-        {
-            r.DrawRectangle(0, 0, width, height, Color.FromArgb(18, 18, 18));
-            r.DrawRectangle(0, 0, width, height * 0.22f, Color.FromArgb(255, 32, 18, 18));
-            r.DrawRectangle(0, height * 0.78f, width, height * 0.22f, Color.FromArgb(255, 20, 20, 20));
-            r.DrawRectangle(width * 0.08f, height * 0.12f, width * 0.84f, 3, Color.FromArgb(180, 120, 28, 28));
-            r.DrawRectangle(width * 0.16f, height * 0.84f, width * 0.68f, 2, Color.FromArgb(120, 180, 180, 180));
-            r.DrawRectangle(width * 0.1f, height * 0.16f, 6, height * 0.62f, Color.FromArgb(70, 120, 28, 28));
-            r.DrawRectangle(width * 0.9f, height * 0.16f, 6, height * 0.62f, Color.FromArgb(70, 120, 28, 28));
-        }
-
-        /// <summary>
-        /// 제목과 부제목을 가진 액션 버튼을 그린다.
-        /// hover 상태이면 강조 테두리, 더 밝은 패널 색, 더 큰 텍스트로 표시된다.
-        /// 왼쪽에 accent 색띠가 세로로 그려진다.
+        /// 제목과 설명을 가진 액션 버튼을 그린다. 마우스가 올라가면 강조 상태로 그린다.
         /// </summary>
         /// <param name="r">드로우 명령을 받을 렌더러 인스턴스.</param>
         /// <param name="rect">버튼이 차지할 화면 영역.</param>
         /// <param name="title">버튼의 주 제목 텍스트 (예: "게임 시작").</param>
-        /// <param name="subtitle">버튼의 부제목 텍스트 (예: "모드 선택 후 전장 진입").</param>
-        /// <param name="accentColor">왼쪽 색띠와 hover 테두리에 사용할 강조 색.</param>
+        /// <param name="subtitle">버튼의 설명 텍스트 (예: "모드 선택 후 전장 진입").</param>
+        /// <param name="accentColor">왼쪽 표식과 강조 테두리에 사용할 색.</param>
         /// <param name="highlighted">마우스 커서가 버튼 위에 있을 때 true.</param>
         private void DrawMenuActionButton(Renderer r, Rectangle rect, string title, string subtitle, Color accentColor, bool highlighted)
         {
-            float h = rect.Height;
-
-            // 호버 시 버튼 외곽에 강조 글로우 테두리를 두른다(버튼 높이 비례).
-            if (highlighted)
-            {
-                float border = h * 0.07f;
-                r.DrawRectangle(rect.X - border, rect.Y - border, rect.Width + border * 2f, rect.Height + border * 2f, Color.FromArgb(95, accentColor.R, accentColor.G, accentColor.B));
-            }
-
-            // 배경 일러스트가 살짝 비치도록 반투명 패널을 쓰되, 텍스트 가독성은 유지한다.
-            float pad = h * 0.12f;
-            float accentWidth = highlighted ? h * 0.15f : h * 0.12f;
-            float textX = rect.X + h * 0.53f;
-            float titleSize = (highlighted ? 0.265f : 0.25f) * h;
-            float subtitleSize = (highlighted ? 0.162f : 0.155f) * h;
-
-            // 배경: 9-slice 프레임 텍스처가 있으면 그것을, 없으면 단색 패널을 사용한다.
-            if (uiButtonFrame != null)
-            {
-                Image frame = (highlighted && uiButtonFrameHover != null) ? uiButtonFrameHover : uiButtonFrame;
-                // 테두리 두께는 가로·세로 중 작은 쪽 기준으로 잡아, 얇은 버튼에서 가운데가 사라지지 않게 한다.
-                float dstBorder = Math.Min(rect.Width, rect.Height) * 0.40f;
-                r.DrawImageNineSlice(frame, rect.X, rect.Y, rect.Width, rect.Height, frame.Width * 0.16f, dstBorder);
-            }
-            else
-            {
-                Color panelColor = highlighted ? Color.FromArgb(235, 46, 46, 50) : Color.FromArgb(212, 28, 28, 32);
-                r.DrawRectangle(rect.X, rect.Y, rect.Width, rect.Height, panelColor);
-                // 상단 하이라이트 라인 + 하단 음영 라인으로 입체감을 준다.
-                r.DrawRectangle(rect.X, rect.Y, rect.Width, Math.Max(1f, h * 0.03f), Color.FromArgb(highlighted ? 120 : 70, 255, 255, 255));
-                r.DrawRectangle(rect.X, rect.Y + rect.Height - Math.Max(1f, h * 0.03f), rect.Width, Math.Max(1f, h * 0.03f), Color.FromArgb(120, 0, 0, 0));
-                r.DrawRectangle(rect.X + h * 0.35f, rect.Y + pad, rect.Width - h * 0.47f, 1, Color.FromArgb(highlighted ? 110 : 70, 255, 255, 255));
-            }
-            // 왼쪽 accent 색띠 (프레임/단색 공통, 버튼 종류 구분용)
-            r.DrawRectangle(rect.X + pad, rect.Y + pad, accentWidth, rect.Height - pad * 2f, accentColor);
-            r.DrawText(title, textX, rect.Y + h * 0.18f, Color.White, titleSize);
-            r.DrawText(subtitle, textX, rect.Y + h * 0.56f, Color.FromArgb(220, 210, 210, 210), subtitleSize);
-
-            // 호버 시 우측에 진입 화살표 마커를 표시한다.
-            if (highlighted)
-            {
-                r.DrawText("▶", rect.X + rect.Width - h * 0.62f, rect.Y + h * 0.32f, accentColor, h * 0.3f);
-            }
+            float u = PixelUi.UnitFor(GetUiScale(ClientSize.Width, ClientSize.Height));
+            PixelUi.Button(r, rect, u, title, subtitle, highlighted ? PixelButtonState.Hover : PixelButtonState.Normal, accentColor);
         }
 
         /// <summary>
-        /// 기본 어두운 배경색으로 단순 버튼을 그린다.
+        /// 글자 하나만 있는 버튼을 그린다. hover는 커서 위치로 내부 판정한다.
         /// </summary>
         /// <param name="r">드로우 명령을 받을 렌더러 인스턴스.</param>
         /// <param name="rect">버튼이 차지할 화면 영역.</param>
         /// <param name="text">버튼 중앙에 표시할 텍스트.</param>
         private void DrawMenuButton(Renderer r, Rectangle rect, string text)
         {
-            DrawMenuButton(r, rect, text, Color.FromArgb(200, 40, 40, 40));
-        }
-
-        /// <summary>
-        /// 지정한 배경색으로 단순 버튼을 그린다. 텍스트는 버튼 중앙에 흰색으로 표시된다.
-        /// </summary>
-        /// <param name="r">드로우 명령을 받을 렌더러 인스턴스.</param>
-        /// <param name="rect">버튼이 차지할 화면 영역.</param>
-        /// <param name="text">버튼 중앙에 표시할 텍스트.</param>
-        /// <param name="color">버튼 배경색.</param>
-        private void DrawMenuButton(Renderer r, Rectangle rect, string text, Color color)
-        {
-            // 9-slice 버튼 프레임이 있으면 그것을, 없으면 단색을 사용한다.
-            // hover는 커서가 버튼 위에 있는지로 내부 판정해 호출부 변경 없이 강조 프레임을 쓴다.
-            if (uiButtonFrame != null)
-            {
-                bool hover = rect.Contains(lastMousePosition);
-                Image frame = (hover && uiButtonFrameHover != null) ? uiButtonFrameHover : uiButtonFrame;
-                float dstBorder = Math.Min(rect.Width, rect.Height) * 0.40f;
-                r.DrawImageNineSlice(frame, rect.X, rect.Y, rect.Width, rect.Height, frame.Width * 0.16f, dstBorder);
-            }
-            else
-            {
-                r.DrawRectangle(rect.X, rect.Y, rect.Width, rect.Height, color);
-            }
-            // 폰트를 버튼 높이에 비례시켜 rect만 스케일해도 텍스트가 잘리지 않게 한다.
-            float fontSize = Math.Min(rect.Height * 0.38f, rect.Width * 0.5f);
-            r.DrawTextCentered(text, rect.X + rect.Width * 0.5f, rect.Y + rect.Height * 0.5f, Color.White, fontSize);
-        }
-
-        /// <summary>
-        /// 가로 슬라이더를 그린다. 배경 트랙, 채워진 부분, 드래그 손잡이(knob)로 구성된다.
-        /// ratio가 0이면 완전히 비어있고, 1이면 완전히 채워진다.
-        /// </summary>
-        /// <param name="r">드로우 명령을 받을 렌더러 인스턴스.</param>
-        /// <param name="rect">슬라이더 트랙이 차지할 화면 영역.</param>
-        /// <param name="ratio">현재 값의 비율 (0.0 ~ 1.0). 자동으로 클램핑된다.</param>
-        private void DrawSlider(Renderer r, Rectangle rect, float ratio)
-        {
-            ratio = Clamp01(ratio);
-            r.DrawRectangle(rect.X, rect.Y, rect.Width, rect.Height, Color.FromArgb(120, 60, 60, 60));
-
-            int filledW = (int)(rect.Width * ratio);
-            if (filledW > 0)
-            {
-                r.DrawRectangle(rect.X, rect.Y, filledW, rect.Height, Color.FromArgb(200, 90, 170, 90));
-            }
-
-            // 손잡이 크기를 트랙 높이에 비례시켜 슬라이더 rect 스케일에 자동으로 맞춘다.
-            int knobW = Math.Max(8, (int)(rect.Height * 1.33f));
-            int knobH = Math.Max(16, (int)(rect.Height * 2.33f));
-            int knobX = rect.X + filledW - knobW / 2;
-            if (knobX < rect.X - knobW / 2) knobX = rect.X - knobW / 2;
-            if (knobX > rect.X + rect.Width - knobW / 2) knobX = rect.X + rect.Width - knobW / 2;
-            int knobY = rect.Y - (knobH - rect.Height) / 2;
-            r.DrawRectangle(knobX, knobY, knobW, knobH, Color.FromArgb(220, 220, 220, 220));
+            float u = PixelUi.UnitFor(GetUiScale(ClientSize.Width, ClientSize.Height));
+            PixelUi.Button(r, rect, u, text, null, rect.Contains(lastMousePosition) ? PixelButtonState.Hover : PixelButtonState.Normal);
         }
 
         /// <summary>
@@ -980,22 +742,15 @@ namespace My2DEngine
             DrawSharedMenuBackground(r, width, height);
 
             float s = GetUiScale(width, height);
+            float u = PixelUi.UnitFor(s);
             float cx = width * 0.5f;
             float panelW = 740f * s;
             float panelH = 520f * s;
             float panelX = cx - panelW * 0.5f;
             float panelY = (height - panelH) * 0.5f;
+            float small = PixelUi.FontBase * u * 0.5f;
 
-            DrawUiPanel(r, panelX, panelY, panelW, panelH, Color.FromArgb(228, 14, 18, 28), 30f * s);
-            if (uiPanelFrame == null)
-            {
-                r.DrawRectangle(panelX, panelY, panelW, 1f, Color.FromArgb(200, 100, 140, 200));
-                r.DrawRectangle(panelX, panelY + panelH - 1f, panelW, 1f, Color.FromArgb(200, 100, 140, 200));
-                r.DrawRectangle(panelX, panelY, 1f, panelH, Color.FromArgb(200, 100, 140, 200));
-                r.DrawRectangle(panelX + panelW - 1f, panelY, 1f, panelH, Color.FromArgb(200, 100, 140, 200));
-            }
-
-            r.DrawTextCenteredShadow("[ 기록 ]", cx, panelY + 20f * s, Color.FromArgb(255, 180, 210, 255), 16f * s);
+            float contentY = PixelUi.Panel(r, panelX, panelY, panelW, panelH, u, "기록", PixelPalette.Info);
 
             WorldRunRecordSnapshot[] records = LoadWorldRunRecords(15);
 
@@ -1017,16 +772,14 @@ namespace My2DEngine
             if (records.Length == 0)
             {
                 recordsSortRect = Rectangle.Empty;
-                r.DrawTextCenteredShadow("아직 도전 기록이 없습니다.", cx, panelY + panelH * 0.5f, Color.FromArgb(200, 180, 180, 180), 13f * s);
+                PixelUi.TextCentered(r, "아직 도전 기록이 없습니다.", cx, panelY + panelH * 0.5f, PixelPalette.TextDim, PixelUi.FontBase * u, u);
             }
             else
             {
-                int sortBtnW = (int)(132 * s), sortBtnH = (int)(26 * s);
-                recordsSortRect = new Rectangle((int)(panelX + panelW - sortBtnW - 16f * s), (int)(panelY + 12f * s), sortBtnW, sortBtnH);
-                Color sortColor = recordsSortRect.Contains(lastMousePosition)
-                    ? Color.FromArgb(220, 60, 80, 110)
-                    : Color.FromArgb(200, 36, 50, 72);
-                DrawMenuButton(r, recordsSortRect, "정렬: " + GetRecordsSortLabel(), sortColor);
+                int sortBtnW = (int)(150 * s), sortBtnH = (int)(30 * s);
+                recordsSortRect = new Rectangle((int)(panelX + panelW - sortBtnW - 16f * u), (int)contentY, sortBtnW, sortBtnH);
+                PixelUi.Button(r, recordsSortRect, u, "정렬: " + GetRecordsSortLabel(), null,
+                    recordsSortRect.Contains(lastMousePosition) ? PixelButtonState.Hover : PixelButtonState.Normal, PixelPalette.Info);
 
                 int bestFloor = 0, bestKills = 0, victoryCount = 0;
                 foreach (var rec in records)
@@ -1036,64 +789,52 @@ namespace My2DEngine
                     if (rec.IsVictory) victoryCount++;
                 }
 
-                string summaryText = $"총 {records.Length}회 도전  |  최고 {bestFloor}층  |  최고 처치 {bestKills}명";
+                string summaryText = $"총 {records.Length}회 도전 · 최고 {bestFloor}층 · 최고 처치 {bestKills}명";
                 if (victoryCount > 0)
-                    summaryText += $"  |  클리어 {victoryCount}회";
-                r.DrawTextCenteredShadow(summaryText, cx, panelY + 48f * s,
-                    victoryCount > 0 ? Color.FromArgb(230, 130, 230, 140) : Color.FromArgb(220, 200, 200, 200), 9.5f * s);
+                    summaryText += $" · 클리어 {victoryCount}회";
+                PixelUi.Text(r, summaryText, panelX + 16f * u, contentY + (sortBtnH - small) * 0.5f,
+                    victoryCount > 0 ? PixelPalette.Good : PixelPalette.TextDim, small, u);
 
-                float headerY = panelY + 72f * s;
+                float headerY = contentY + sortBtnH + 10f * u;
                 float colFlag   = panelX + panelW * 0.04f;
-                float colFloor  = panelX + panelW * 0.12f;
-                float colEnemy  = panelX + panelW * 0.30f;
-                float colBoss   = panelX + panelW * 0.48f;
-                float colTime   = panelX + panelW * 0.65f;
-                float colDate   = panelX + panelW * 0.84f;
-                Color headerCol = Color.FromArgb(255, 180, 210, 255);
-                Color dimLine   = Color.FromArgb(80, 180, 210, 255);
-                float headerSize = 9f * s;
-                float rowSize = 9.5f * s;
-                float dateSize = 9f * s;
+                float colFloor  = panelX + panelW * 0.10f;
+                float colEnemy  = panelX + panelW * 0.28f;
+                float colBoss   = panelX + panelW * 0.45f;
+                float colTime   = panelX + panelW * 0.62f;
+                float colDate   = panelX + panelW * 0.80f;
 
-                r.DrawText("도달 층", colFloor, headerY, headerCol, headerSize);
-                r.DrawText("적 처치", colEnemy, headerY, headerCol, headerSize);
-                r.DrawText("보스 처치", colBoss, headerY, headerCol, headerSize);
-                r.DrawText("플레이 시간", colTime, headerY, headerCol, headerSize);
-                r.DrawText("날짜", colDate, headerY, headerCol, headerSize);
+                r.DrawRectangle(panelX + 8f * u, headerY - 3f * u, panelW - 16f * u, small + 6f * u, PixelPalette.Darken(PixelPalette.Info, 0.75f));
+                PixelUi.Text(r, "도달 층", colFloor, headerY, PixelPalette.Brass, small, u, bold: true);
+                PixelUi.Text(r, "적 처치", colEnemy, headerY, PixelPalette.Brass, small, u, bold: true);
+                PixelUi.Text(r, "보스 처치", colBoss, headerY, PixelPalette.Brass, small, u, bold: true);
+                PixelUi.Text(r, "플레이 시간", colTime, headerY, PixelPalette.Brass, small, u, bold: true);
+                PixelUi.Text(r, "날짜", colDate, headerY, PixelPalette.Brass, small, u, bold: true);
 
-                float rowH = 28f * s;
-                float rowStart = headerY + 22f * s;
+                float rowH = small + 10f * u;
+                float rowStart = headerY + small + 10f * u;
                 for (int i = 0; i < records.Length; i++)
                 {
                     var rec = records[i];
                     float rowY = rowStart + i * rowH;
-                    if (rowY + rowH > panelY + panelH - 58f * s) break;
+                    if (rowY + rowH > panelY + panelH - 64f * s) break;
 
                     if (i % 2 == 0)
-                        r.DrawRectangle(panelX + 2f, rowY - 4f * s, panelW - 4f, rowH, Color.FromArgb(40, 0, 0, 0));
+                        r.DrawRectangle(panelX + 8f * u, rowY - 4f * u, panelW - 16f * u, rowH, Color.FromArgb(60, 0, 0, 0));
 
-                    r.DrawRectangle(panelX + 2f, rowY + rowH - 5f * s, panelW - 4f, 1f, dimLine);
-
-                    Color rowCol = i == 0 ? Color.FromArgb(255, 255, 200, 60) : Color.FromArgb(255, 220, 220, 220);
-                    string timeStr = FormatDuration(rec.DurationSeconds);
+                    Color rowCol = i == 0 ? PixelPalette.Brass : PixelPalette.Text;
                     if (rec.IsVictory)
-                        r.DrawText("★", colFlag, rowY, Color.FromArgb(255, 100, 240, 130), rowSize);
-                    r.DrawText($"{rec.FloorReached}층", colFloor, rowY, rowCol, rowSize);
-                    r.DrawText($"{rec.EnemiesKilled}명", colEnemy, rowY, rowCol, rowSize);
-                    r.DrawText($"{rec.BossesKilled}명", colBoss, rowY, rowCol, rowSize);
-                    r.DrawText(timeStr, colTime, rowY, rowCol, rowSize);
-                    r.DrawText(rec.EndedAt, colDate, rowY, rowCol, dateSize);
+                        PixelUi.Text(r, "★", colFlag, rowY, PixelPalette.Good, small, u);
+                    PixelUi.Text(r, $"{rec.FloorReached}층", colFloor, rowY, rowCol, small, u);
+                    PixelUi.Text(r, $"{rec.EnemiesKilled}명", colEnemy, rowY, rowCol, small, u);
+                    PixelUi.Text(r, $"{rec.BossesKilled}명", colBoss, rowY, rowCol, small, u);
+                    PixelUi.Text(r, FormatDuration(rec.DurationSeconds), colTime, rowY, rowCol, small, u);
+                    PixelUi.Text(r, rec.EndedAt, colDate, rowY, PixelPalette.TextDim, small, u);
                 }
             }
 
             int backW = (int)(180 * s), backH = (int)(44 * s);
             recordsBackRect = new Rectangle((int)(cx - backW * 0.5f), (int)(panelY + panelH - 58f * s), backW, backH);
-            Color backColor = recordsBackRect.Contains(lastMousePosition)
-                ? Color.FromArgb(220, 60, 80, 110)
-                : Color.FromArgb(200, 36, 50, 72);
-            DrawMenuButton(r, recordsBackRect, "← 뒤로", backColor);
-
-            r.DrawTextCenteredShadow("ESC 또는 클릭으로 뒤로", cx, panelY + panelH - 10f * s, Color.FromArgb(150, 180, 180, 180), 8f * s);
+            DrawMenuButton(r, recordsBackRect, "뒤로");
         }
 
         private void HandleRecordsClick(Point location)

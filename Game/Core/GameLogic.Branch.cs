@@ -6,6 +6,7 @@ using My2DEngine.Engine.Input;
 using My2DEngine.Engine.Rendering;
 using My2DEngine.Game;
 using My2DEngine.Game.Config;
+using My2DEngine.Game.Rendering.Ui;
 using My2DEngine.Game.Map;
 
 namespace My2DEngine.Game.Core
@@ -248,8 +249,7 @@ namespace My2DEngine.Game.Core
             r.DrawRectangle(0f, 0f, fw, fh, Color.FromArgb(170, 0, 0, 0));
 
             // 제목
-            r.DrawTextCenteredShadow("[ 다음 룸 선택 ]", fw * 0.5f, fh * 0.10f,
-                Color.FromArgb(255, 255, 235, 150), 14f);
+            DrawOverlayHeader(r, "다음 룸 선택", fw * 0.5f, fh * 0.10f);
 
             // 카드 배치: 왼쪽 / 오른쪽
             float cardW = BranchCardWidth;
@@ -307,7 +307,7 @@ namespace My2DEngine.Game.Core
                 headerColor = Color.FromArgb(255, 170, 205, 255);
             }
 
-            r.DrawTextCenteredShadow(header, cx, y + 14f, headerColor, 10f);
+            r.DrawTextCenteredShadow(header, cx, y + 14f, headerColor, 12f, true);
 
             // 구분선
             r.DrawRectangle(x + 8f, y + 25f, w - 16f, 1f, Color.FromArgb(120, 180, 180, 180));
@@ -317,7 +317,7 @@ namespace My2DEngine.Game.Core
             float lineY = y + 38f;
             foreach (BranchInfoLine line in infoLines)
             {
-                r.DrawTextCenteredShadow(line.Text, cx, lineY, line.Color, 8.6f);
+                r.DrawTextCenteredShadow(line.Text, cx, lineY, line.Color, 6f);
                 lineY += 14.5f;
             }
 
@@ -326,7 +326,7 @@ namespace My2DEngine.Game.Core
 
             // 선택 키 힌트
             r.DrawTextCenteredShadow(keyLabel + " 선택", cx, y + h - 14f,
-                Color.FromArgb(255, 255, 225, 100), 10f);
+                Color.FromArgb(255, 255, 225, 100), 6f);
         }
 
         /// <summary>

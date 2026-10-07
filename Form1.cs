@@ -169,16 +169,6 @@ namespace My2DEngine
         private bool suppressMouseMove;
         /// <summary>현재 Invalidate 요청이 대기 중인지 여부. 중복 요청을 방지한다.</summary>
         private bool paintPending;
-        /// <summary>메인 메뉴에 표시할 로고 이미지. 파일이 없으면 null.</summary>
-        private Image menuLogo;
-        /// <summary>메인 메뉴 배경 일러스트. 파일이 없으면 null이며, 이 경우 절차적 배경으로 대체된다.</summary>
-        private Image menuBackground;
-        /// <summary>버튼 9-slice 프레임 텍스처(기본). 없으면 단색 버튼으로 대체된다.</summary>
-        private Image uiButtonFrame;
-        /// <summary>버튼 9-slice 프레임 텍스처(호버). 없으면 기본 프레임/단색으로 대체된다.</summary>
-        private Image uiButtonFrameHover;
-        /// <summary>패널 9-slice 프레임 텍스처. 없으면 단색 패널로 대체된다.</summary>
-        private Image uiPanelFrame;
         /// <summary>마지막으로 기록된 마우스 커서 위치 (클라이언트 좌표). 버튼 hover 판정에 사용.</summary>
         private Point lastMousePosition;
         /// <summary>UI 레이아웃이 마지막으로 계산된 클라이언트 너비. 크기 변화 감지에 사용.</summary>
@@ -221,10 +211,6 @@ namespace My2DEngine
         public Form1()
         {
             InitializeComponent();
-            LoadMenuLogo();
-            LoadMenuBackground();
-            LoadUiFrames();
-            world.SetUiPanelFrame(uiPanelFrame);
             LoadAndApplySettings();
             LoadAppIcon();
             InitializeStateMachine();
@@ -271,16 +257,6 @@ namespace My2DEngine
                 ReleaseMouse();
                 gameHost.Dispose();
                 DisposeWorld();
-                menuLogo?.Dispose();
-                menuLogo = null;
-                menuBackground?.Dispose();
-                menuBackground = null;
-                uiButtonFrame?.Dispose();
-                uiButtonFrame = null;
-                uiButtonFrameHover?.Dispose();
-                uiButtonFrameHover = null;
-                uiPanelFrame?.Dispose();
-                uiPanelFrame = null;
             };
         }
 
@@ -471,54 +447,6 @@ namespace My2DEngine
         /// <param name="e">페인트 이벤트 인수.</param>
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-        }
-
-        /// <summary>
-        /// 메인 메뉴에 표시할 로고 이미지를 Game/Images/Logo.png 경로에서 로드한다.
-        /// 파일이 존재하지 않으면 menuLogo는 null로 유지되고, 대신 텍스트 타이틀이 표시된다.
-        /// </summary>
-        private void LoadMenuLogo()
-        {
-            string logoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Game", "Images", "Logo.png");
-            if (!File.Exists(logoPath))
-            {
-                return;
-            }
-
-            menuLogo = Image.FromFile(logoPath);
-        }
-
-        /// <summary>
-        /// 메인 메뉴 배경 일러스트를 Game/Images/MenuBackground.png 경로에서 로드한다.
-        /// 파일이 없으면 menuBackground는 null로 유지되고, 메뉴는 절차적 배경으로 그려진다.
-        /// 16:9 가로 이미지를 권장하며, 화면을 비율 유지(cover)로 채운 뒤 가독성 스크림이 덧씌워진다.
-        /// </summary>
-        private void LoadMenuBackground()
-        {
-            string bgPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Game", "Images", "MenuBackground.png");
-            if (!File.Exists(bgPath))
-            {
-                return;
-            }
-
-            menuBackground = Image.FromFile(bgPath);
-        }
-
-        /// <summary>
-        /// UI 9-slice 프레임 텍스처(버튼/패널)를 Game/Images/ui 폴더에서 로드한다.
-        /// 각 파일이 없으면 해당 필드는 null로 유지되고, 그리기 시 단색으로 대체된다.
-        /// </summary>
-        private void LoadUiFrames()
-        {
-            string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Game", "Images", "ui");
-            uiButtonFrame = LoadOptionalImage(Path.Combine(dir, "ButtonFrame.png"));
-            uiButtonFrameHover = LoadOptionalImage(Path.Combine(dir, "ButtonFrameHover.png"));
-            uiPanelFrame = LoadOptionalImage(Path.Combine(dir, "PanelFrame.png"));
-        }
-
-        private static Image LoadOptionalImage(string path)
-        {
-            return File.Exists(path) ? Image.FromFile(path) : null;
         }
 
         private void LoadAppIcon()

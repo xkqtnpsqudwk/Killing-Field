@@ -407,7 +407,7 @@ namespace My2DEngine.Game.Rendering
 
                 int groundY = frameH / 2 + (int)((frameH * 0.34f) / transformY) - (int)(bob * frameH * 0.2f);
                 float labelY = Math.Max(18f, groundY - spriteHeight - 10f);
-                r.DrawTextCenteredShadow(GetRestPickupLabel(pickup), spriteScreenX, labelY, GetRestPickupLabelColor(pickup), 8.5f);
+                r.DrawTextCenteredShadow(GetRestPickupLabel(pickup), spriteScreenX, labelY, GetRestPickupLabelColor(pickup), 6f);
             }
         }
 
