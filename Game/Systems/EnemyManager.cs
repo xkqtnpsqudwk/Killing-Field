@@ -62,7 +62,7 @@ namespace My2DEngine.Game.Systems
         private readonly List<PlayerSoundStimulus> playerSoundStimuli;
         private readonly TextureManager textureManager;
         private readonly EffectSoundManager sfxChannel;
-        private readonly Random rng;
+        private Random rng;
         private readonly Dictionary<string, IEnemyBossPattern> bossPatterns;
         private float enemyHealthMultiplier;
         private float enemyDamageMultiplier;
@@ -74,6 +74,12 @@ namespace My2DEngine.Game.Systems
         public IList<EnemyProjectile> EnemyProjectiles => enemyProjectiles;
 
         public Action<Enemy> EnemyDeathCallback { get; set; }
+
+        /// <summary>적 스폰·AI 난수를 런 시드에서 파생한 값으로 다시 만든다.</summary>
+        internal void Reseed(int seed)
+        {
+            rng = new Random(seed);
+        }
 
         internal EnemyManager(TextureManager textureManager, EffectSoundManager sfxChannel = null)
         {

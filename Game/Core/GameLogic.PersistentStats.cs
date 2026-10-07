@@ -544,6 +544,8 @@ namespace My2DEngine.Game.Core
             var save = progressionRepository.LoadRunSave();
             if (save == null) return;
 
+            BeginRunRandom();
+
             bgmChannel.StopBackgroundMusic();
             deathMusicStopped = false;
 

@@ -61,6 +61,7 @@ namespace My2DEngine.SmokeTests
                 RunLuckCoinBonusSmokeCheck();
                 RunMoveSpeedDashSynergySmokeCheck();
                 RunLayoutBehaviorChecks();
+                RunSeedDeterminismSmokeCheck();
                 Console.WriteLine("Smoke checks passed.");
                 return 0;
             }
@@ -69,6 +70,73 @@ namespace My2DEngine.SmokeTests
                 Console.Error.WriteLine(ex);
                 return 1;
             }
+        }
+
+        /// <summary>
+        /// 같은 런 시드면 상점 카드와 첫 층 맵이 똑같이 나오는지 검증한다.
+        /// 밸런스 스냅샷 비교와 버그 재현이 이 성질에 기대므로 깨지면 바로 알려야 한다.
+        /// </summary>
+        private static void RunSeedDeterminismSmokeCheck()
+        {
+            const int seed = 4242;
+            var first = new GameLogic(seed);
+            var second = new GameLogic(seed);
+            if (first.RunSeed != seed || second.RunSeed != seed)
+            {
+                throw new InvalidOperationException("Smoke check failed for run seed: fixed seed was not applied.");
+            }
+
+            string firstOffers = DescribeOffers(first.CreateRestShopCardOfferSmokeSnapshot(5f));
+            string secondOffers = DescribeOffers(second.CreateRestShopCardOfferSmokeSnapshot(5f));
+            if (firstOffers != secondOffers)
+            {
+                throw new InvalidOperationException(
+                    "Smoke check failed for run seed: shop offers differ (" + firstOffers + " vs " + secondOffers + ").");
+            }
+
+            first.StartRoguelikeRun();
+            second.StartRoguelikeRun();
+            if (first.RunSeed != seed || !MapsEqual(first.CreateSmokeSnapshot().Map, second.CreateSmokeSnapshot().Map))
+            {
+                throw new InvalidOperationException("Smoke check failed for run seed: first floor maps differ for the same seed.");
+            }
+        }
+
+        private static string DescribeOffers(RewardCardOffer[] offers)
+        {
+            if (offers == null)
+            {
+                return "none";
+            }
+
+            var parts = new List<string>();
+            for (int i = 0; i < offers.Length; i++)
+            {
+                parts.Add(offers[i] == null ? "null" : offers[i].Grade + " " + offers[i].StatType);
+            }
+
+            return string.Join(", ", parts);
+        }
+
+        private static bool MapsEqual(int[,] a, int[,] b)
+        {
+            if (a == null || b == null || a.GetLength(0) != b.GetLength(0) || a.GetLength(1) != b.GetLength(1))
+            {
+                return false;
+            }
+
+            for (int x = 0; x < a.GetLength(0); x++)
+            {
+                for (int y = 0; y < a.GetLength(1); y++)
+                {
+                    if (a[x, y] != b[x, y])
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
 
         /// <summary>

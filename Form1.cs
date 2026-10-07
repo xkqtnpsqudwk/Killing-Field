@@ -205,6 +205,15 @@ namespace My2DEngine
         private bool settingsDirty;
 
         /// <summary>
+        /// 모든 런을 같은 시드로 시작하는 Form1을 만든다(`--seed N` 실행 인자).
+        /// </summary>
+        /// <param name=\"fixedRunSeed\">고정 런 시드. null이면 런마다 새 시드를 쓴다.</param>
+        public Form1(int? fixedRunSeed) : this()
+        {
+            world.FixedRunSeed = fixedRunSeed;
+        }
+
+        /// <summary>
         /// Form1을 초기화한다.
         /// 디자이너 컴포넌트 초기화, 메뉴 로고 로드, 창 설정, 페인트 모드 구성,
         /// 게임 루프 타이머 시작, 입력 이벤트 핸들러 등록을 순서대로 수행한다.

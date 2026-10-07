@@ -75,7 +75,7 @@ namespace My2DEngine.Game.Core
         private readonly List<EnemyProjectile> playerProjectiles;
 
         /// <summary>보상 희귀도 랜덤 결정에 사용되는 난수 생성기.</summary>
-        private readonly System.Random rewardRandom;
+        private System.Random rewardRandom;
 
         /// <summary>방 ID → StageRoom 빠른 조회를 위한 딕셔너리. RebuildStageRoomLookup()으로 갱신된다.</summary>
         private readonly Dictionary<int, StageRoom> stageRoomLookup;
@@ -186,7 +186,7 @@ namespace My2DEngine.Game.Core
         private int currentFloor;
 
         /// <summary>로그라이크 룸 템플릿 무작위 선택에 사용하는 전용 난수 생성기.</summary>
-        private readonly System.Random templateRandom;
+        private System.Random templateRandom;
 
         /// <summary>현재 런에서 누적된 보스 클리어 수. 이후 층 적 성장 배율 계산에 사용된다.</summary>
         private int bossClearGrowthCount;
@@ -195,9 +195,17 @@ namespace My2DEngine.Game.Core
         private int clearedCombatFloorCount;
 
         /// <summary>
-        /// 기본 생성자. 모든 하위 시스템을 만들고 DX11 기준선 렌더 경로를 초기화한다.
+        /// 기본 생성자. 런마다 새 시드를 쓴다.
         /// </summary>
-        public GameLogic()
+        public GameLogic() : this(null)
+        {
+        }
+
+        /// <summary>
+        /// 모든 하위 시스템을 만들고 DX11 기준선 렌더 경로를 초기화한다.
+        /// </summary>
+        /// <param name="fixedRunSeed">모든 런에 쓸 고정 시드. null이면 런마다 새 시드를 뽑는다.</param>
+        public GameLogic(int? fixedRunSeed)
         {
             mapManager = new MapManager();
 
@@ -217,8 +225,8 @@ namespace My2DEngine.Game.Core
             weapon = new Weapon();
             rewardPickups = new List<RewardPickup>();
             playerProjectiles = new List<EnemyProjectile>();
-            rewardRandom = new System.Random();
-            templateRandom = new System.Random();
+            FixedRunSeed = fixedRunSeed;
+            BeginRunRandom();
             stageRoomLookup = new Dictionary<int, StageRoom>();
             ResetCardRunState();
             ResetRunEndlessState();
@@ -250,6 +258,7 @@ namespace My2DEngine.Game.Core
         /// </summary>
         public void StartRoguelikeRun()
         {
+            BeginRunRandom();
             bgmChannel.StopBackgroundMusic();
             deathMusicStopped = false;
             currentFloor = 0;

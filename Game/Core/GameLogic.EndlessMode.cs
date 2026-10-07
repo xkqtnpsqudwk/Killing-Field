@@ -119,6 +119,7 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
+            BeginRunRandom();
             bgmChannel.StopBackgroundMusic();
             deathMusicStopped = false;
             runEnemiesKilled = 0;

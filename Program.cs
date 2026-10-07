@@ -16,11 +16,31 @@ namespace My2DEngine
         /// 시작 실패 지점을 추적하기 쉽도록 구성했다.
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+            Application.Run(new Form1(ParseSeedArgument(args)));
+        }
+
+        /// <summary>`--seed N` 인자가 있으면 그 값을, 없거나 잘못됐으면 null을 돌려준다.</summary>
+        private static int? ParseSeedArgument(string[] args)
+        {
+            if (args == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (string.Equals(args[i], "--seed", StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(args[i + 1], out int seed))
+                {
+                    return seed;
+                }
+            }
+
+            return null;
         }
     }
 }

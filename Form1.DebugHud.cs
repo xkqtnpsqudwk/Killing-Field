@@ -102,7 +102,8 @@ namespace My2DEngine
             return new DebugHudSnapshot(
                 "Backend: Direct3D11",
                 pathText,
-                "World: " + (worldDebug.UsesGpuWorldRendering ? "GPU" : "Unavailable"),
+                "World: " + (worldDebug.UsesGpuWorldRendering ? "GPU" : "Unavailable") +
+                    "  Seed: " + world.RunSeed + (world.FixedRunSeed.HasValue ? " (fixed)" : string.Empty),
                 "World Status: " + worldDebug.WorldStatus,
                 "Laser Path: " + worldDebug.LaserStatus,
                 "Window: " + ClientSize.Width + "x" + ClientSize.Height,
