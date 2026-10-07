@@ -1,4 +1,5 @@
 using System.Drawing;
+using My2DEngine.Game.Config;
 
 namespace My2DEngine.Game.Map
 {
@@ -166,7 +167,7 @@ namespace My2DEngine.Game.Map
         }
 
         /// <summary>
-        /// 지정한 위치에 직사각형 기둥을 솔리드 타일(타입 1, 텍스처 1)로 채워서 생성합니다.
+        /// 지정한 위치에 직사각형 기둥을 솔리드 타일(타입 1, 골조 텍스처)로 채워서 생성합니다.
         /// </summary>
         /// <param name="startX">기둥 좌측 상단의 X 타일 좌표입니다.</param>
         /// <param name="startY">기둥 좌측 상단의 Y 타일 좌표입니다.</param>
@@ -178,7 +179,7 @@ namespace My2DEngine.Game.Map
             {
                 for (int x = startX; x < startX + width; x++)
                 {
-                    SetTile(x, y, 1, 1);
+                    SetTile(x, y, 1, WorldConfig.WallTextureSupport);
                 }
             }
         }
@@ -201,7 +202,7 @@ namespace My2DEngine.Game.Map
                     continue;
                 }
 
-                SetTile(x, y, 1, 1);
+                SetTile(x, y, 1, WorldConfig.WallTextureCover);
             }
         }
 
@@ -223,7 +224,7 @@ namespace My2DEngine.Game.Map
                     continue;
                 }
 
-                SetTile(x, y, 1, 1);
+                SetTile(x, y, 1, WorldConfig.WallTextureCover);
             }
         }
 

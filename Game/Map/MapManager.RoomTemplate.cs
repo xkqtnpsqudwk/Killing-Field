@@ -108,6 +108,9 @@ namespace My2DEngine.Game.Map
             room.HasExitDoor = true;
             room.ExitDoor = new Point(exitDoorX, exitDoorY);
 
+            // 5-1. 벽 종류 칠하기 (문 위치가 정해진 뒤)
+            ApplyWallThemes(startRoom, room);
+
             // 6. 출구 문 연결 (TargetRoomId = -1 → 층 이동 신호)
             room.Connections = new[]
             {

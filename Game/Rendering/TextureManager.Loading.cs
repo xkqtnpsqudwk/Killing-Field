@@ -85,7 +85,7 @@ namespace My2DEngine.Game.Rendering
         ///
         /// 슬롯 배분:
         ///   wallTextures[0] = ceiling.png (CeilingTextureIndex=0)
-        ///   wallTextures[1..7] = wall.png
+        ///   wallTextures[1..7] = wall.png (그다음 2·4·6·7 슬롯을 벽 종류 텍스처로 덮어씀)
         ///   wallTextures[3] = floor.png (FloorTextureIndex=3, wall 이후 덮어씀)
         ///   wallTextures[DoorTextureId] = Door.png (wall 이후 덮어씀)
         ///   doorOpenTexture = Door.png (별도 열린 문 텍스처; DoorOpen.png 우선)
@@ -139,10 +139,26 @@ namespace My2DEngine.Game.Rendering
                 Array.Copy(doorTexture, wallTextures[WorldConfig.DoorTextureId], doorTexture.Length);
             }
 
+            // 벽 종류별 텍스처 → 각 슬롯 (없으면 wall.png 그대로)
+            LoadWallVariant(worldDir, "wall_support.png", WorldConfig.WallTextureSupport);
+            LoadWallVariant(worldDir, "wall_hell.png", WorldConfig.WallTextureHell);
+            LoadWallVariant(worldDir, "wall_lab.png", WorldConfig.WallTextureLab);
+            LoadWallVariant(worldDir, "wall_cover.png", WorldConfig.WallTextureCover);
+
             // 열린 문 텍스처 갱신
             if (doorOpenData != null)
             {
                 Array.Copy(doorOpenData, doorOpenTexture, doorOpenData.Length);
+            }
+        }
+
+        /// <summary>벽 종류 텍스처 한 장을 지정 슬롯에 덮어쓴다. 파일이 없으면 슬롯을 그대로 둔다.</summary>
+        private void LoadWallVariant(string worldDir, string fileName, int slot)
+        {
+            Color[] texture = LoadWorldTexture(worldDir, fileName);
+            if (texture != null && slot >= 0 && slot < wallTextures.Length)
+            {
+                Array.Copy(texture, wallTextures[slot], texture.Length);
             }
         }
 

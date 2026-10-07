@@ -133,7 +133,14 @@ def hazard(t, x0, y0, x1, y1, phase=0):
     t.rect(x0, y1 - 1, x1, y1, add=-0.25)
 
 
+# ── 벽 규칙 ──
+# 벽은 모두 같은 높이(BAND)에 가로 띠가 있다. 종류가 달라도 띠가 이어져 방이 한 덩어리로 보인다.
+# 종류별 역할: 기지(일반 전투), 연구소(시작실·상점), 지옥(보스), 골조(방 경계·문틀·기둥), 엄폐물.
+BAND = (46, 58)
+
+
 def wall():
+    """기지 벽: 녹슨 갈색 금속 판(일반 전투방)."""
     t = Tex(base_mat="brown", base=0.46)
     t.grime(0.22, seed=1)
     # 이음새: 가로 2단, 세로 2열, 위아래 벽이 어긋나게
@@ -142,8 +149,8 @@ def wall():
         t.rect(x0, y0, x1, y0 + 1, L=0.08)
         t.rect(x0, y0, x0 + 1, y1, L=0.08)
     # 가로 띠: 강철 + 경고 줄무늬
-    t.rect(0, 46, 128, 58, L=0.5, mat="steel", bevel=2, light=0.2)
-    hazard(t, 0, 49, 128, 55)
+    t.rect(0, BAND[0], 128, BAND[1], L=0.5, mat="steel", bevel=2, light=0.2)
+    hazard(t, 0, BAND[0] + 3, 128, BAND[1] - 3)
     # 세로 배관
     for px in (20, 23):
         m = t.rect(px, 58, px + 3, 128, mat="steel")
@@ -169,6 +176,115 @@ def wall():
         ln = int(rng.integers(8, 30))
         t.rect(x, y0, x + 1 + (i % 2), y0 + ln, add=-0.12)
         t.M[(t.X >= x) & (t.X < x + 2) & (t.Y >= y0) & (t.Y < y0 + ln)] = t.mat("rust")
+    return t.render()
+
+
+def wall_lab():
+    """연구소 벽: 밝은 타일과 청록 띠(시작실·카드 상점)."""
+    t = Tex(base_mat="coat", base=0.62)
+    t.grime(0.12, seed=41)
+    # 16px 타일 줄눈
+    for k in range(0, 128, 16):
+        t.rect(0, k, 128, k + 1, L=0.3)
+        t.rect(k, 0, k + 1, 128, L=0.3)
+    for x0 in range(0, 128, 16):
+        for y0 in range(0, 128, 16):
+            t.rect(x0 + 1, y0 + 1, x0 + 16, y0 + 16, bevel=1, light=0.08)
+    t.rect(0, BAND[0], 128, BAND[1], L=0.5, mat="teal", bevel=2, light=0.18)
+    t.rect(0, BAND[0] + 5, 128, BAND[0] + 7, L=0.8, mat="teal")
+    # 벽걸이 조명과 깨진 타일 몇 장
+    t.rect(52, 14, 76, 24, L=0.4, mat="steel", bevel=1)
+    t.glow_rect(54, 16, 74, 22, (226, 240, 230))
+    for (x0, y0) in ((16, 80), (96, 96), (32, 112)):
+        t.rect(x0 + 2, y0 + 2, x0 + 14, y0 + 14, L=0.28, mat="gray")
+    t.rect(70, 70, 71, 100, L=0.2)
+    t.rect(71, 99, 80, 100, L=0.2)
+    # 바닥 걸레받이
+    t.rect(0, 120, 128, 128, L=0.35, mat="steel", bevel=1)
+    rng = np.random.default_rng(42)
+    for i in range(4):
+        x = int(rng.integers(4, 124))
+        t.rect(x, 60, x + 1, 60 + int(rng.integers(8, 40)), add=-0.12)
+    return t.render()
+
+
+def wall_hell():
+    """지옥 벽: 붉은 바위와 살덩이, 용암 틈(보스방)."""
+    t = Tex(base_mat="stone", base=0.42)
+    n = fbm(N, 51)
+    t.L = 0.16 + n * 0.36
+    # 살덩이 맥: 잡음의 등고선을 붉은 재질로
+    vein = np.abs(fbm(N, 53) - 0.5) < 0.022
+    t.M[vein] = t.mat("red")
+    t.L[vein] = 0.4
+    flesh = fbm(N, 57) > 0.68
+    t.M[flesh & ~vein] = t.mat("flesh")
+    t.L[flesh & ~vein] -= 0.05
+    # 띠: 검은 쇠 띠에 해골 장식
+    t.rect(0, BAND[0], 128, BAND[1], L=0.35, mat="dark", bevel=2, light=0.2)
+    for cx in (32, 96):
+        t.circle(cx, BAND[0] + 6, 5, L=0.7, mat="bone")
+        t.rect(cx - 3, BAND[0] + 4, cx - 1, BAND[0] + 7, L=0.05, mat="dark")
+        t.rect(cx + 1, BAND[0] + 4, cx + 3, BAND[0] + 7, L=0.05, mat="dark")
+        t.rect(cx - 2, BAND[0] + 9, cx + 2, BAND[0] + 10, L=0.1, mat="dark")
+    # 용암 틈
+    lava = (np.abs(fbm(N, 59) - 0.5) < 0.008) & (t.Y > BAND[1] + 4)
+    t.glow[lava] = (255, 110, 20)
+    t.gmask[lava] = True
+    return t.render()
+
+
+def wall_support():
+    """골조 벽: 강철 I빔 기둥과 X자 보강재. 방 경계·문틀·기둥에 쓴다."""
+    t = Tex(base_mat="steel", base=0.32)
+    t.grime(0.14, seed=61)
+    # 뒷판
+    t.rect(0, 0, 128, 128, L=0.24, mat="gray")
+    t.grime(0.12, seed=62)
+    # X 보강재(위·아래 칸)
+    for (y0, y1) in ((4, BAND[0] - 2), (BAND[1] + 2, 124)):
+        h = y1 - y0
+        for k in range(-1, 2):
+            d1 = np.abs((t.X - 16) * h / 96 - (t.Y - y0) + k) < 1.0
+            d2 = np.abs((112 - t.X) * h / 96 - (t.Y - y0) + k) < 1.0
+            m = (d1 | d2) & (t.Y >= y0) & (t.Y < y1) & (t.X >= 16) & (t.X < 112)
+            t.M[m] = t.mat("steel")
+            t.L[m] = 0.5 + 0.1 * k
+    # 양쪽 I빔 기둥(타일 경계에 걸쳐 이어지게 0과 128 근처)
+    for x0 in (0, 112):
+        t.rect(x0, 0, x0 + 16, 128, L=0.45, mat="steel", bevel=2, light=0.2)
+        t.rect(x0 + 6, 0, x0 + 10, 128, L=0.32, mat="steel")
+        for y in range(8, 128, 24):
+            t.circle(x0 + 3, y, 1.3, L=0.7, mat="gray")
+            t.circle(x0 + 13, y, 1.3, L=0.7, mat="gray")
+    # 띠: 경고 줄무늬 (다른 벽의 띠와 같은 높이)
+    t.rect(0, BAND[0], 128, BAND[1], L=0.5, mat="steel", bevel=2, light=0.2)
+    hazard(t, 0, BAND[0] + 3, 128, BAND[1] - 3, phase=2)
+    # 아래쪽 받침
+    t.rect(0, 118, 128, 128, L=0.3, mat="dark", bevel=1)
+    return t.render()
+
+
+def wall_cover():
+    """엄폐물: 쌓아 올린 군용 상자. 방 안 엄폐 벽에만 쓴다."""
+    t = Tex(base_mat="olive", base=0.36)
+    t.grime(0.14, seed=71)
+    for (x0, y0, x1, y1) in ((0, 0, 64, BAND[0]), (64, 0, 128, BAND[0]), (0, BAND[1], 128, 128)):
+        t.rect(x0 + 1, y0 + 1, x1 - 1, y1 - 1, bevel=3, light=0.18)
+        t.rect(x0 + 6, y0 + 6, x1 - 6, y1 - 6, add=-0.06, bevel=1, light=0.1)
+        t.rect(x0, y0, x1, y0 + 1, L=0.06, mat="dark")
+        t.rect(x0, y0, x0 + 1, y1, L=0.06, mat="dark")
+        # 모서리 쇠붙이
+        for cx, cy in ((x0 + 4, y0 + 4), (x1 - 5, y0 + 4), (x0 + 4, y1 - 5), (x1 - 5, y1 - 5)):
+            t.rect(cx - 2, cy - 2, cx + 3, cy + 3, L=0.55, mat="gray", bevel=1)
+    # 스텐실 표시(흰 줄 세 개와 사각)
+    for x0 in (20, 84):
+        for k in range(3):
+            t.rect(x0, 16 + k * 5, x0 + 24, 18 + k * 5, L=0.85, mat="tan")
+    t.rect(48, 78, 80, 100, L=0.8, mat="tan")
+    t.rect(52, 82, 76, 96, L=0.4, mat="olive")
+    # 띠 높이: 상자 사이 금속 받침대
+    t.rect(0, BAND[0], 128, BAND[1], L=0.4, mat="steel", bevel=2, light=0.2)
     return t.render()
 
 
@@ -268,5 +384,7 @@ def door(open_=False):
 
 
 def all_textures():
-    return {"wall.png": wall(), "floor.png": floor(), "ceiling.png": ceiling(),
+    return {"wall.png": wall(), "wall_lab.png": wall_lab(), "wall_hell.png": wall_hell(),
+            "wall_support.png": wall_support(), "wall_cover.png": wall_cover(),
+            "floor.png": floor(), "ceiling.png": ceiling(),
             "Door.png": door(False), "DoorOpen.png": door(True)}

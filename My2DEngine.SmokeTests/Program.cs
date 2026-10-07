@@ -79,6 +79,7 @@ namespace My2DEngine.SmokeTests
                 RunSeedDeterminismSmokeCheck();
                 RunStatCardCatalogSmokeCheck();
                 RunEnemyCatalogDataSmokeCheck();
+                RunWallThemeSmokeCheck();
                 Console.WriteLine("Smoke checks passed.");
                 return 0;
             }
@@ -86,6 +87,48 @@ namespace My2DEngine.SmokeTests
             {
                 Console.Error.WriteLine(ex);
                 return 1;
+            }
+        }
+
+        /// <summary>
+        /// 벽 종류 규칙(MapManager.WallThemes.cs)을 검증한다: 방 종류별 바탕 벽,
+        /// 두 방이 맞닿은 벽과 문 양옆의 골조, 시작실의 연구소 벽.
+        /// </summary>
+        private static void RunWallThemeSmokeCheck()
+        {
+            const int center = 100;   // MapManager의 생성 맵 중심
+            CheckRoomWalls(new RoomTemplate { RoomWidth = 16, RoomHeight = 16 }, WorldConfig.WallTextureBase, "combat");
+            CheckRoomWalls(new RoomTemplate { RoomWidth = 16, RoomHeight = 16, IsBossRoom = true }, WorldConfig.WallTextureHell, "boss");
+            CheckRoomWalls(new RoomTemplate { RoomWidth = 16, RoomHeight = 16, IsRestRoom = true }, WorldConfig.WallTextureLab, "shop");
+
+            void CheckRoomWalls(RoomTemplate template, int expectedBase, string label)
+            {
+                var map = new MapManager();
+                map.LoadRoomFromTemplate(template, out _, out _);
+                int[,] ids = map.TextureIds;
+                int top = center - template.RoomHeight / 2;
+                int bottom = top + template.RoomHeight - 1;
+                int left = center - template.RoomWidth / 2;
+
+                Expect(ids[left, center - 2], expectedBase, label + " side wall");
+                if (ids[left, center] == 0)
+                {
+                    // 중앙 통로가 뚫은 한 칸 홈(보스방은 통로를 만들지 않는다)
+                    Expect(ids[left - 1, center], expectedBase, label + " side niche back wall");
+                }
+                Expect(ids[center - 1, top], WorldConfig.WallTextureSupport, label + " exit door frame");
+                Expect(ids[center + 1, top], WorldConfig.WallTextureSupport, label + " exit door frame");
+                Expect(ids[center - 2, bottom], WorldConfig.WallTextureSupport, label + " shared wall");
+                Expect(ids[center - 5, bottom + 2], WorldConfig.WallTextureLab, label + " start room wall");
+            }
+
+            void Expect(int actual, int expected, string what)
+            {
+                if (actual != expected)
+                {
+                    throw new InvalidOperationException(
+                        "Smoke check failed for wall themes: " + what + " uses texture " + actual + ", expected " + expected + ".");
+                }
             }
         }
 
