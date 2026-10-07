@@ -1,29 +1,16 @@
 using System;
 using System.Drawing;
 using My2DEngine.Engine.Rendering;
-using My2DEngine.Game.Config;
-using My2DEngine.Game.Rendering.Ui;
 
-namespace My2DEngine.Game.Core
+namespace My2DEngine.Game.Rendering.Ui.Screens
 {
-    /// <summary>
-    /// 첫 런 진입 시 짧게 표시하는 조작 안내 오버레이.
-    /// HasSeenControls 플래그가 false인 상태에서 첫 방이 활성화될 때 한 번만 표시된다.
-    /// </summary>
-    public partial class GameLogic
+    /// <summary>첫 런에서 잠깐 보이는 조작 안내 상자.</summary>
+    public static class ControlsTutorialScreen
     {
-        private const float ControlsTutorialFadeTime = 1.0f;
-
-        private void DrawControlsTutorialOverlay(Renderer r)
+        /// <param name="alpha">0~1 불투명도(사라질 때 줄어든다).</param>
+        public static void Draw(Renderer r, float alpha)
         {
-            if (controlsTutorialTimer <= 0f || player == null || player.IsDead)
-                return;
-
-            float alpha = controlsTutorialTimer > ControlsTutorialFadeTime
-                ? 1f
-                : controlsTutorialTimer / ControlsTutorialFadeTime;
-
-            float sw = RenderConfig.GpuWorldMaxRenderWidth;
+            float sw = OverlayPanels.ScreenWidth;
             float cx = sw * 0.5f;
             float panelW = Math.Min(200f, sw - 40f);
             float panelH = 86f;
@@ -52,10 +39,8 @@ namespace My2DEngine.Game.Core
 
         private static void DrawHintLine(Renderer r, float cx, float y, Color keyCol, Color descCol, string key, string desc)
         {
-            float keyX = cx - 60f;
-            float descX = cx - 20f;
-            r.DrawText(key, keyX, y, keyCol, 6f);
-            r.DrawText(desc, descX, y, descCol, 6f);
+            r.DrawText(key, cx - 60f, y, keyCol, 6f);
+            r.DrawText(desc, cx - 20f, y, descCol, 6f);
         }
     }
 }

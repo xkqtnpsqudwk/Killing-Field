@@ -835,13 +835,7 @@ namespace My2DEngine.Game.Core
                 weaponStatusText, GetWeaponStatusAlpha(),
                 pickupToastText, GetPickupToastAlpha());
 
-            DrawPendingCardRewardReveal(r);
-            DrawCardRewardUI(r);
-            DrawBranchSelectionUI(r);
-            DrawPermanentStatsUI(r);
-            DrawPlayerStatsOverlay(r);
-            DrawEndingSequenceUI(r);
-            DrawControlsTutorialOverlay(r);
+            DrawOverlayScreens(r);
         }
 
         /// <summary>

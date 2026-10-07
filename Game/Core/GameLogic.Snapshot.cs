@@ -493,7 +493,7 @@ namespace My2DEngine.Game.Core
         /// <summary>카드 UI에 표시되는 조건부 카드 발동 조건 설명 텍스트를 반환한다.</summary>
         internal string GetStatConditionTextSmokeSnapshot(StatType stat)
         {
-            return GetStatConditionText(stat);
+            return CardText.StatCondition(stat);
         }
 
         /// <summary>MoveSpeed 포인트 3 이상일 때 대시 쿨다운 추가 감소가 적용되는지 반환한다.</summary>

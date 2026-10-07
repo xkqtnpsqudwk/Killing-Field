@@ -1,12 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Windows.Forms;
 using My2DEngine.Engine.Input;
-using My2DEngine.Engine.Rendering;
-using My2DEngine.Game;
-using My2DEngine.Game.Config;
-using My2DEngine.Game.Rendering.Ui;
+using My2DEngine.Game.Rendering.Ui.Screens;
 
 namespace My2DEngine.Game.Core
 {
@@ -18,33 +14,6 @@ namespace My2DEngine.Game.Core
     {
         /// <summary>룸 클리어 후 카드가 실제로 나타나기까지 대기하는 시간(초).</summary>
         private const float CardRewardRevealDelaySeconds = 2f;
-
-        /// <summary>
-        /// 오버레이 UI(영구 스탯, 인게임 정보 등)의 공통 패널 배경을 픽셀 상자로 그린다.
-        /// 강조 색은 테두리 고리에 써서 화면별 정체성(파랑/금색 등)을 보존한다.
-        /// </summary>
-        /// <param name="fill">채움 색. 알파가 낮으면 조금 더 불투명하게 올린다.</param>
-        /// <param name="accent">테두리 강조 색.</param>
-        private void DrawUiOverlayPanel(Renderer r, float x, float y, float w, float h, Color fill, Color accent)
-        {
-            Color solidFill = Color.FromArgb(Math.Max((int)fill.A, 250), fill.R, fill.G, fill.B);
-            PixelUi.Frame(r, x, y, w, h, 1f, solidFill, accent);
-        }
-
-        /// <summary>오버레이 제목. 굵은 외곽선 황동색 글자로 화면 위쪽에 쓴다.</summary>
-        private static void DrawOverlayHeader(Renderer r, string text, float cx, float cy)
-        {
-            PixelUi.Title(r, text, cx, cy, PixelPalette.Brass, PixelUi.FontBase, 1f);
-        }
-
-        /// <summary>
-        /// 카드/분기 패널 배경을 그린다. 테두리와 윗줄을 등급(또는 방 유형) 색으로 칠해 정보가 보이게 한다.
-        /// </summary>
-        private void DrawCardPanelBackground(Renderer r, float x, float y, float w, float h, Color gradeColor)
-        {
-            PixelUi.Frame(r, x, y, w, h, 1f, PixelPalette.Panel, gradeColor);
-            r.DrawRectangle(x + 3f, y + 3f, w - 6f, 2f, PixelUi.Fade(gradeColor, 0.8f));
-        }
 
         /// <summary>런 스탯 배열 크기. StatType enum 값과 1:1로 맞춰 인덱싱한다.</summary>
         private static readonly int RunStatCount = Enum.GetValues(typeof(StatType)).Length;
@@ -789,18 +758,10 @@ namespace My2DEngine.Game.Core
             pendingCardClickX = -1f;
             pendingCardClickY = -1f;
 
-            GetCardRewardLayout(out int slotCount, out float cardW, out float cardH, out float gap, out float startX, out float cardY);
-
-            for (int i = 0; i < slotCount; i++)
+            int index = CardRewardScreen.HitTest(BuildCardRewardView(), clickX, clickY);
+            if (index >= 0)
             {
-                if (currentCardOffers[i] == null) continue;
-                float cx = startX + i * (cardW + gap);
-                if (clickX >= cx && clickX < cx + cardW &&
-                    clickY >= cardY && clickY < cardY + cardH)
-                {
-                    ConfirmCardSelection(i);
-                    return;
-                }
+                ConfirmCardSelection(index);
             }
         }
 
@@ -822,12 +783,6 @@ namespace My2DEngine.Game.Core
 
         /// <summary>마우스 자유 입력이 필요한 오버레이 UI가 열려 있는지 여부.</summary>
         public bool MouseSelectableOverlayActive => IsSelectionUiActive || permanentStatsUiActive;
-
-        /// <summary>카드 선택 대기 중 별도 상단 클리어 배너는 표시하지 않는다.</summary>
-        private void DrawPendingCardRewardReveal(Renderer r)
-        {
-            return;
-        }
 
         private void ConfirmCardSelection(int index)
         {
@@ -920,20 +875,6 @@ namespace My2DEngine.Game.Core
             return StatCardCatalog.Get(stat).Clamp(value);
         }
 
-        private void GetCardRewardLayout(out int slotCount, out float cardW, out float cardH, out float gap, out float startX, out float cardY)
-        {
-            slotCount = GetCardRewardOfferSlotCount();
-            cardW = slotCount > BaseCardRewardOfferCount ? 145f : 170f;
-            cardH = 210f;
-            gap = slotCount > BaseCardRewardOfferCount ? 12f : 15f;
-
-            float fw = RenderConfig.GpuWorldMaxRenderWidth;
-            float fh = RenderConfig.GpuWorldMaxRenderHeight;
-            float totalW = slotCount * cardW + Math.Max(0, slotCount - 1) * gap;
-            startX = (fw - totalW) * 0.5f;
-            cardY = cardRewardWasBossRoom ? fh * 0.20f : fh * 0.16f;
-        }
-
         private void ClampRunStatBonusTotals()
         {
             for (int i = 0; i < runStatBonusTotals.Length; i++)
@@ -982,190 +923,21 @@ namespace My2DEngine.Game.Core
         private string BuildStatCardMessage(StatType stat, CardGrade grade, float actualBonus)
         {
             string gradeName = CardGradeHelper.GetGradeName(grade);
-            string statName = GetStatName(stat);
-            return $"[{gradeName}] {statName} {GetStatCardValueText(stat, actualBonus)} 획득";
+            string statName = CardText.StatName(stat);
+            return $"[{gradeName}] {statName} {CardText.StatValue(stat, actualBonus)} 획득";
         }
 
         private string BuildWeaponCardMessage(RewardCardOffer offer)
         {
             string gradeName = CardGradeHelper.GetGradeName(offer.WeaponGrade);
-            string weaponName = GetWeaponName(offer.WeaponType);
-            string catName = GetCategoryName(offer.WeaponCategory);
+            string weaponName = CardText.WeaponName(offer.WeaponType);
+            string catName = CardText.CategoryName(offer.WeaponCategory);
             if (offer.WeaponCategory == WeaponUpgradeCategory.Special)
             {
                 return $"[{gradeName}] {weaponName} 특수기 해금";
             }
 
             return $"[{gradeName}] {weaponName} {catName} 업그레이드";
-        }
-
-        private static string GetStatName(StatType stat)
-        {
-            return StatCardCatalog.Get(stat).Name;
-        }
-
-        private static string GetWeaponName(WeaponType type)
-        {
-            return WeaponPresentation.GetDisplayName(type);
-        }
-
-        private static string GetCategoryName(WeaponUpgradeCategory cat)
-        {
-            switch (cat)
-            {
-                case WeaponUpgradeCategory.Damage:      return "피해";
-                case WeaponUpgradeCategory.Range:       return "사거리";
-                case WeaponUpgradeCategory.Pellets:     return "탄환 수";
-                case WeaponUpgradeCategory.FireRate:    return "발사 속도";
-                case WeaponUpgradeCategory.Spread:      return "탄 퍼짐";
-                case WeaponUpgradeCategory.Splash:      return "폭발 범위";
-                case WeaponUpgradeCategory.AmmoDropBonus: return "탄 드랍";
-                case WeaponUpgradeCategory.Special:     return "특수기";
-                default:                                return "???";
-            }
-        }
-
-        private static string GetWeaponUpgradeDesc(WeaponType type, WeaponUpgradeCategory cat, CardGrade grade)
-        {
-            if (cat == WeaponUpgradeCategory.Special)
-            {
-                switch (type)
-                {
-                    case WeaponType.BearKiller:        return "갈고리 - 적 끌어당기기 + 기절";
-                    case WeaponType.HChainGun:            return "버스트 - 전탄 무재장전 연사";
-                    case WeaponType.AutoCannon: return "집속 포격 - 넓은 범위 고폭탄";
-                    case WeaponType.DuelBerettas:      return "피버 모드 - 전방 자동 제압";
-                    default:                        return "특수기";
-                }
-            }
-
-            bool isBlue = grade == CardGrade.Blue;
-            switch (cat)
-            {
-                case WeaponUpgradeCategory.Damage:      return isBlue ? "+30% 피해" : "+60% 피해";
-                case WeaponUpgradeCategory.Range:       return isBlue ? "+30% 사거리" : "+60% 사거리";
-                case WeaponUpgradeCategory.Pellets:     return isBlue ? "+2 탄환" : "+4 탄환";
-                case WeaponUpgradeCategory.FireRate:    return isBlue ? "-20% 쿨타임" : "-35% 쿨타임";
-                case WeaponUpgradeCategory.Spread:      return isBlue ? "-30% 퍼짐" : "-55% 퍼짐";
-                case WeaponUpgradeCategory.Splash:      return isBlue ? "+30% 폭발" : "+55% 폭발";
-                case WeaponUpgradeCategory.AmmoDropBonus: return isBlue ? "+25% 드랍확률" : "+45% 드랍확률";
-                default:                                return "???";
-            }
-        }
-
-        private static string GetStatCardValueText(StatType stat, float bonusValue)
-        {
-            return StatCardCatalog.Get(stat).FormatOfferValue(bonusValue);
-        }
-
-        /// <summary>
-        /// 조건부 발동 스탯 카드의 발동 조건 설명을 반환한다.
-        /// 발동 조건이 없는 상시 스탯은 null을 반환한다.
-        /// </summary>
-        private static string GetStatConditionText(StatType stat)
-        {
-            return StatCardCatalog.Get(stat).Condition;
-        }
-
-        // ── 카드 UI 렌더링 ──────────────────────────────────────────────
-
-        /// <summary>카드 보상 선택 UI를 화면에 그린다.</summary>
-        private void DrawCardRewardUI(Renderer r)
-        {
-            if (!cardRewardActive) return;
-
-            float fw = RenderConfig.GpuWorldMaxRenderWidth;
-            float fh = RenderConfig.GpuWorldMaxRenderHeight;
-
-            // 반투명 어둠 처리
-            r.DrawRectangle(0f, 0f, fw, fh, Color.FromArgb(185, 0, 0, 0));
-
-            DrawOverlayHeader(r, "카드 선택", fw * 0.5f, fh * 0.08f);
-
-            if (cardRewardWasBossRoom)
-            {
-                r.DrawTextCenteredShadow("보스 보상: 영구 스탯 포인트 +1 획득", fw * 0.5f, fh * 0.12f,
-                    Color.FromArgb(255, 140, 220, 155), 6f);
-            }
-
-            GetCardRewardLayout(out int slotCount, out float cardW, out float cardH, out float gap, out float startX, out float cardY);
-
-            for (int i = 0; i < slotCount; i++)
-            {
-                RewardCardOffer offer = currentCardOffers[i];
-                if (offer == null) continue;
-                float cx = startX + i * (cardW + gap);
-                DrawRewardCard(r, offer, cx, cardY, cardW, cardH);
-            }
-        }
-
-        private void DrawRewardCard(Renderer r, RewardCardOffer offer,
-            float x, float y, float w, float h)
-        {
-            Color gradeColor = offer.IsWeaponCard
-                ? CardGradeHelper.GetGradeColor(offer.WeaponGrade)
-                : CardGradeHelper.GetGradeColor(offer.Grade);
-
-            // 배경 + 등급 색 테두리 (패널 프레임이 있으면 9-slice 금속 틀 사용)
-            DrawCardPanelBackground(r, x, y, w, h, gradeColor);
-
-            float cx = x + w * 0.5f;
-
-            if (offer.IsWeaponCard)
-                DrawWeaponCardContent(r, offer, cx, y, w, h);
-            else
-                DrawStatCardContent(r, offer, cx, y, w, h);
-
-            // 하단 구분선 + 클릭 힌트
-            r.DrawRectangle(x + 6f, y + h - 30f, w - 12f, 1f,
-                Color.FromArgb(100, 200, 200, 200));
-            r.DrawTextCenteredShadow("클릭하여 선택", cx, y + h - 15f,
-                Color.FromArgb(255, 255, 225, 100), 6f);
-        }
-
-        private void DrawStatCardContent(Renderer r, RewardCardOffer offer,
-            float cx, float y, float w, float h)
-        {
-            Color gradeColor = CardGradeHelper.GetGradeColor(offer.Grade);
-            string gradeName = CardGradeHelper.GetGradeName(offer.Grade);
-            string statName = GetStatName(offer.StatType);
-            string valueText = GetStatCardValueText(offer.StatType, offer.StatBonusValue);
-            float nameFontSize = w < 160f ? 10f : 12f;
-            float valueFontSize = w < 160f ? 13f : 15f;
-
-            r.DrawTextCenteredShadow("스탯 카드", cx, y + 16f,
-                Color.FromArgb(200, 170, 170, 170), 6f);
-            r.DrawTextCenteredShadow(gradeName, cx, y + 40f, gradeColor, 12f);
-            r.DrawRectangle(cx - w * 0.35f, y + 57f, w * 0.7f, 1f,
-                Color.FromArgb(80, 200, 200, 200));
-            r.DrawTextCenteredShadow(statName, cx, y + 80f,
-                Color.FromArgb(255, 235, 225, 200), nameFontSize, true);
-            r.DrawTextCenteredShadow(valueText, cx, y + 108f, gradeColor, valueFontSize);
-
-            // 조건부 카드는 발동 조건을 명시해 단순 수치 카드와 구분한다.
-            string conditionText = GetStatConditionText(offer.StatType);
-            if (!string.IsNullOrEmpty(conditionText))
-            {
-                r.DrawTextCenteredShadow(conditionText, cx, y + 128f,
-                    Color.FromArgb(235, 255, 200, 110), 6f);
-            }
-
-            // 현재 보유 등급 표시
-            int statIndex = (int)offer.StatType;
-            int cur = runStatGrade[statIndex];
-            int pickupCount = runStatPickupCount[statIndex];
-            string owned = pickupCount <= 0
-                ? "누적: 없음"
-                : $"누적 {GetStatBonusTotalText(offer.StatType, runStatBonusTotals[statIndex])} / {pickupCount}회";
-            Color ownedColor = cur < 0
-                ? Color.FromArgb(170, 155, 155, 155)
-                : CardGradeHelper.GetGradeColor((CardGrade)cur);
-            r.DrawTextCenteredShadow(owned, cx, y + 148f, ownedColor, 6f);
-        }
-
-        private static string GetStatBonusTotalText(StatType stat, float totalBonus)
-        {
-            return StatCardCatalog.Get(stat).FormatTotalValue(totalBonus);
         }
 
         /// <summary>
@@ -1185,38 +957,13 @@ namespace My2DEngine.Game.Core
                     continue;
                 }
 
-                string totalText = GetStatBonusTotalText(stat, runStatBonusTotals[(int)stat]);
+                string totalText = CardText.StatTotal(stat, runStatBonusTotals[(int)stat]);
                 list.Add(count > 1
-                    ? $"{GetStatName(stat)} {totalText} (x{count})"
-                    : $"{GetStatName(stat)} {totalText}");
+                    ? $"{CardText.StatName(stat)} {totalText} (x{count})"
+                    : $"{CardText.StatName(stat)} {totalText}");
             }
 
             return list.ToArray();
-        }
-
-        private void DrawWeaponCardContent(Renderer r, RewardCardOffer offer,
-            float cx, float y, float w, float h)
-        {
-            Color gradeColor = CardGradeHelper.GetGradeColor(offer.WeaponGrade);
-            string gradeName = CardGradeHelper.GetGradeName(offer.WeaponGrade);
-            string weaponName = GetWeaponName(offer.WeaponType);
-            string catName = GetCategoryName(offer.WeaponCategory);
-            string effectDesc = GetWeaponUpgradeDesc(offer.WeaponType, offer.WeaponCategory, offer.WeaponGrade);
-
-            bool isNewWeapon = !ownedWeapons[(int)offer.WeaponType];
-            string headerText = isNewWeapon ? "신규 무기 해금" : "무기 업그레이드";
-            Color headerColor = isNewWeapon
-                ? Color.FromArgb(200, 255, 220, 100)
-                : Color.FromArgb(200, 170, 170, 170);
-            r.DrawTextCenteredShadow(headerText, cx, y + 16f, headerColor, 6f);
-            r.DrawTextCenteredShadow(gradeName, cx, y + 40f, gradeColor, 12f);
-            r.DrawRectangle(cx - w * 0.35f, y + 57f, w * 0.7f, 1f,
-                Color.FromArgb(80, 200, 200, 200));
-            r.DrawTextCenteredShadow(weaponName, cx, y + 80f,
-                Color.FromArgb(255, 235, 225, 200), 12f);
-            r.DrawTextCenteredShadow(catName, cx, y + 104f, gradeColor, 12f);
-            r.DrawTextCenteredShadow(effectDesc, cx, y + 148f,
-                Color.FromArgb(200, 210, 210, 210), 6f);
         }
     }
 }

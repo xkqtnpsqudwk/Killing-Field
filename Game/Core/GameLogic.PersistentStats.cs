@@ -1,10 +1,9 @@
 using System;
-using System.Drawing;
 using System.Windows.Forms;
 using My2DEngine.Engine.Input;
 using My2DEngine.Engine.Rendering;
 using My2DEngine.Game.Config;
-using My2DEngine.Game.Rendering.Ui;
+using My2DEngine.Game.Rendering.Ui.Screens;
 
 namespace My2DEngine.Game.Core
 {
@@ -329,150 +328,11 @@ namespace My2DEngine.Game.Core
             pendingPermanentStatClickX = -1f;
             pendingPermanentStatClickY = -1f;
 
-            float fw = RenderConfig.GpuWorldMaxRenderWidth;
-            float fh = RenderConfig.GpuWorldMaxRenderHeight;
-            float panelW = 470f;
-            float panelH = 338f;
-            float panelX = (fw - panelW) * 0.5f;
-            float panelY = (fh - panelH) * 0.5f;
-            float panelCenterX = panelX + panelW * 0.5f;
-            float cardW = 205f;
-            float cardH = 60f;
-            float gapX = 18f;
-            float gapY = 10f;
-            float topY = panelY + 84f;
-            float leftX = panelCenterX - cardW - gapX * 0.5f;
-            float rightX = panelCenterX + gapX * 0.5f;
-            float secondRowY = topY + cardH + gapY;
-            float thirdRowY = topY + (cardH + gapY) * 2f;
-
-            if (IsPointInsideRect(clickX, clickY, leftX, topY, cardW, cardH))
+            // 칸 번호 0~4는 PermanentStatSlot 순서와 같다
+            int slot = PermanentStatsScreen.HitTest(clickX, clickY);
+            if (slot >= 0)
             {
-                AllocatePermanentStat(PermanentStatSlot.Health);
-            }
-            else if (IsPointInsideRect(clickX, clickY, rightX, topY, cardW, cardH))
-            {
-                AllocatePermanentStat(PermanentStatSlot.MoveSpeed);
-            }
-            else if (IsPointInsideRect(clickX, clickY, leftX, secondRowY, cardW, cardH))
-            {
-                AllocatePermanentStat(PermanentStatSlot.Sense);
-            }
-            else if (IsPointInsideRect(clickX, clickY, rightX, secondRowY, cardW, cardH))
-            {
-                AllocatePermanentStat(PermanentStatSlot.PistolDamage);
-            }
-            else if (IsPointInsideRect(clickX, clickY, panelCenterX - cardW * 0.5f, thirdRowY, cardW, cardH))
-            {
-                AllocatePermanentStat(PermanentStatSlot.Luck);
-            }
-        }
-
-        private static bool IsPointInsideRect(float x, float y, float left, float top, float width, float height)
-        {
-            return x >= left && x < left + width && y >= top && y < top + height;
-        }
-
-        private void DrawPermanentStatsUI(Renderer r)
-        {
-            if (!permanentStatsUiActive)
-            {
-                return;
-            }
-
-            PermanentProgressionData data = permanentProgression ?? PermanentProgressionData.CreateDefault();
-            float fw = RenderConfig.GpuWorldMaxRenderWidth;
-            float fh = RenderConfig.GpuWorldMaxRenderHeight;
-
-            r.DrawRectangle(0f, 0f, fw, fh, Color.FromArgb(190, 0, 0, 0));
-
-            float panelW = 470f;
-            float panelH = 338f;
-            float panelX = (fw - panelW) * 0.5f;
-            float panelY = (fh - panelH) * 0.5f;
-            float panelCenterX = panelX + panelW * 0.5f;
-
-            DrawUiOverlayPanel(r, panelX, panelY, panelW, panelH,
-                Color.FromArgb(228, 18, 24, 34), Color.FromArgb(200, 255, 210, 115));
-
-            DrawOverlayHeader(r, "영구 스탯", panelCenterX, panelY + 18f);
-            r.DrawTextCenteredShadow("보스 처치 시 포인트 +1", panelCenterX, panelY + 40f,
-                Color.FromArgb(210, 190, 190, 190), 6f);
-            r.DrawTextCenteredShadow("미사용 포인트: " + data.UnspentPoints, panelCenterX, panelY + 54f,
-                data.UnspentPoints > 0 ? Color.FromArgb(255, 120, 220, 140) : Color.FromArgb(210, 175, 175, 175), 6f);
-            r.DrawTextCenteredShadow("무한 모드: " + (data.EndlessModeUnlocked ? "해금됨" : "잠김"),
-                panelCenterX, panelY + 68f,
-                data.EndlessModeUnlocked ? Color.FromArgb(230, 145, 220, 160) : Color.FromArgb(180, 160, 160, 160), 6f);
-
-            float cardW = 205f;
-            float cardH = 60f;
-            float gapX = 18f;
-            float gapY = 10f;
-            float topY = panelY + 84f;
-            float leftX = panelCenterX - cardW - gapX * 0.5f;
-            float rightX = panelCenterX + gapX * 0.5f;
-            float thirdRowY = topY + (cardH + gapY) * 2f;
-
-            DrawPermanentStatCard(r, leftX, topY, cardW, cardH, "[1] 체력",
-                "Lv " + data.HealthPoints,
-                $"+{data.GetHealthBonus() * 100f:0}% 최대 체력",
-                Color.FromArgb(255, 210, 90, 90));
-
-            DrawPermanentStatCard(r, rightX, topY, cardW, cardH, "[2] 속도",
-                "Lv " + data.MoveSpeedPoints,
-                $"+{data.GetMoveSpeedBonus() * 100f:0}% 이동 속도",
-                Color.FromArgb(255, 90, 190, 240));
-
-            int senseNext = data.GetSensePointsToNextLevel();
-            string senseProgress = senseNext > 0 ? $"다음 Lv까지 -{senseNext}pt" : "최대 레벨";
-            DrawPermanentStatCard(r, leftX, topY + cardH + gapY, cardW, cardH, "[3] 감각",
-                $"Lv {data.GetSenseTier()} / 5  ({data.SenseValue:0.0} / {PlayerConfig.PermanentSenseMax:0.0})",
-                $"{GetSenseDescription(data.GetSenseTier())}  {senseProgress}",
-                Color.FromArgb(255, 195, 150, 255));
-
-            DrawPermanentStatCard(r, rightX, topY + cardH + gapY, cardW, cardH, "[4] " + WeaponPresentation.GetDisplayName(WeaponType.AMPistol),
-                "Lv " + data.PistolDamagePoints,
-                $"+{data.GetPistolDamageBonus() * 100f:0}% 피해",
-                Color.FromArgb(255, 255, 170, 95));
-
-            int luckNext = data.GetLuckPointsToNextLevel();
-            string luckProgress = luckNext > 0 ? $"다음 Lv까지 -{luckNext}pt" : "최대 레벨";
-            DrawPermanentStatCard(r, panelCenterX - cardW * 0.5f, thirdRowY, cardW, cardH, "[5] 행운",
-                $"Lv {data.GetLuckLevel()} / 10  ({data.LuckValue:0.0} / {PlayerConfig.PermanentLuckMax:0.0})",
-                $"고급 카드 확률 +{data.GetLuckLevel() * 10}%  {luckProgress}",
-                Color.FromArgb(255, 245, 210, 110));
-
-            string footer = data.UnspentPoints > 0
-                ? "1~5로 배분, I로 닫기"
-                : "배분 가능한 포인트가 없습니다. I로 닫기";
-            r.DrawTextCenteredShadow(footer, panelCenterX, panelY + panelH - 18f,
-                Color.FromArgb(220, 220, 220, 220), 6f);
-        }
-
-        private void DrawPermanentStatCard(Renderer r, float x, float y, float w, float h,
-            string title, string levelText, string effectText, Color accent)
-        {
-            float centerX = x + w * 0.5f;
-
-            DrawUiOverlayPanel(r, x, y, w, h, Color.FromArgb(205, 28, 36, 50), accent);
-
-            r.DrawTextCenteredShadow(title, centerX, y + 14f, accent, 12f, true);
-            r.DrawTextCenteredShadow(levelText, centerX, y + 33f,
-                Color.FromArgb(235, 230, 230, 230), 6f);
-            r.DrawTextCenteredShadow(effectText, centerX, y + 47f,
-                Color.FromArgb(210, 185, 185, 185), 6f);
-        }
-
-        private string GetSenseDescription(int senseTier)
-        {
-            switch (senseTier)
-            {
-                case 0: return "분기 정보 비공개";
-                case 1: return "적 종류 공개";
-                case 2: return "적 수 공개";
-                case 3: return "보상 종류 공개";
-                case 4: return "보상 힌트 강화";
-                default: return "모든 분기 정보 공개";
+                AllocatePermanentStat((PermanentStatSlot)slot);
             }
         }
 
@@ -633,9 +493,10 @@ namespace My2DEngine.Game.Core
         /// <summary>영구 스탯 UI를 직접 그린다 (메뉴 오버레이용).</summary>
         public void RenderPermanentStatsOverlay(Renderer r)
         {
-            DrawPermanentStatsUI(r);
+            DrawPermanentStatsScreen(r);
         }
 
+        /// <summary>영구 스탯 칸. 순서는 PermanentStatsScreen의 칸 번호([1]~[5] 키)와 같다.</summary>
         private enum PermanentStatSlot
         {
             Health,

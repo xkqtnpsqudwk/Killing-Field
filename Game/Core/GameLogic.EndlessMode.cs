@@ -1,8 +1,4 @@
 using System;
-using System.Drawing;
-using My2DEngine.Engine.Rendering;
-using My2DEngine.Game.Config;
-using My2DEngine.Game.Rendering.Ui;
 
 namespace My2DEngine.Game.Core
 {
@@ -138,36 +134,6 @@ namespace My2DEngine.Game.Core
             SetBossClearEnemyGrowthCount(GetEndlessStartingBossClearCount());
             ApplyCombinedProgressionStats(refillHealth: true, healMaxHealthDelta: false);
             TransitionToNextFloor(commitCurrentFloorGrowth: false);
-        }
-
-        private void DrawEndingSequenceUI(Renderer r)
-        {
-            if (!endingSequenceActive)
-            {
-                return;
-            }
-
-            float fw = RenderConfig.GpuWorldMaxRenderWidth;
-            float fh = RenderConfig.GpuWorldMaxRenderHeight;
-            float progress = 1f - (endingSequenceTimer / EndingSequenceDuration);
-            if (progress < 0f) progress = 0f;
-            if (progress > 1f) progress = 1f;
-
-            int backdropAlpha = (int)(160f + progress * 55f);
-            r.DrawRectangle(0f, 0f, fw, fh, Color.FromArgb(backdropAlpha, 0, 0, 0));
-            PixelUi.Frame(r, fw * 0.5f - 170f, fh * 0.24f, 340f, fh * 0.34f, 1f, PixelPalette.PanelDeep, PixelPalette.Brass);
-
-            PixelUi.Title(r, "666층 돌파", fw * 0.5f, fh * 0.33f, PixelPalette.Brass, PixelUi.FontBase * 2f, 1f);
-            r.DrawTextCenteredShadow("최종 보스를 격파했습니다", fw * 0.5f, fh * 0.405f,
-                Color.FromArgb(235, 245, 240, 230), 12f);
-
-            string unlockText = endingUnlockedNow ? "무한 모드 해금" : "무한 모드 유지";
-            Color unlockColor = endingUnlockedNow
-                ? Color.FromArgb(255, 125, 220, 150)
-                : Color.FromArgb(255, 175, 205, 255);
-            r.DrawTextCenteredShadow(unlockText, fw * 0.5f, fh * 0.47f, unlockColor, 12f);
-            r.DrawTextCenteredShadow("잠시 후 끝없는 층으로 진입할 수 있습니다", fw * 0.5f, fh * 0.53f,
-                Color.FromArgb(225, 225, 225, 225), 6f);
         }
     }
 }
