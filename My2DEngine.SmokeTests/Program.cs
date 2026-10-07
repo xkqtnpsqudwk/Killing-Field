@@ -35,8 +35,23 @@ namespace My2DEngine.SmokeTests
                     args.Length > 0 &&
                     string.Equals(args[0], "--balance-snapshot", StringComparison.OrdinalIgnoreCase))
                 {
-                    BalanceSnapshotReporter.Write(Console.Out);
+                    // --balance-snapshot [--csv <경로>]
+                    var rows = BalanceSnapshotReporter.Write(Console.Out);
+                    if (args.Length >= 3 && string.Equals(args[1], "--csv", StringComparison.OrdinalIgnoreCase))
+                    {
+                        BalanceSnapshotReporter.SaveCsv(args[2], rows);
+                        Console.WriteLine("CSV saved: " + Path.GetFullPath(args[2]) + " (" + rows.Count + " rows)");
+                    }
+
                     return 0;
+                }
+
+                if (args != null &&
+                    args.Length >= 3 &&
+                    string.Equals(args[0], "--balance-compare", StringComparison.OrdinalIgnoreCase))
+                {
+                    // --balance-compare <이전.csv> <이후.csv>. 차이가 없으면 0, 있으면 2를 돌려준다.
+                    return BalanceSnapshotReporter.Compare(Console.Out, args[1], args[2]) ? 2 : 0;
                 }
 
                 RunBootSmokeCheck();
