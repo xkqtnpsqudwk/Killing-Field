@@ -41,11 +41,8 @@ namespace My2DEngine.Game.Core
         /// <summary>벽·스프라이트 텍스처 로딩 및 접근을 담당하는 텍스처 매니저.</summary>
         private readonly TextureManager textureManager;
 
-        /// <summary>총성·문 소리 등 짧은 효과음을 재생하는 SFX 채널.</summary>
-        private readonly EffectSoundManager sfxChannel;
-
-        /// <summary>배경 음악(BGM) 재생·전환을 담당하는 BGM 채널.</summary>
-        private readonly BackgroundSoundManager bgmChannel;
+        /// <summary>효과음과 배경 음악. 장치 관리와 사망 시 음악 정지 규칙은 GameAudio가 맡는다.</summary>
+        private readonly GameAudio audio;
 
         /// <summary>적 생성·업데이트·조회를 담당하는 적 매니저.</summary>
         private readonly EnemyManager enemyManager;
@@ -158,9 +155,6 @@ namespace My2DEngine.Game.Core
         /// <summary>현재 프레임에서 플레이어가 머물고 있는 스테이지 방의 캐시. 방이 바뀌면 갱신된다.</summary>
         private StageRoom currentStageRoomCache;
 
-        /// <summary>사망 후 BGM 정지 처리를 한 번만 수행하기 위한 플래그.</summary>
-        private bool deathMusicStopped;
-
         /// <summary>첫 런 조작 안내 오버레이가 표시되는 남은 시간(초). 0이면 표시 안 함.</summary>
         private float controlsTutorialTimer;
 
@@ -212,12 +206,9 @@ namespace My2DEngine.Game.Core
             textureManager = new TextureManager();
             textureManager.LoadAllTextures();
 
-            sfxChannel = new EffectSoundManager();
-            bgmChannel = new BackgroundSoundManager();
-            sfxChannel.LoadAllSounds();
-            bgmChannel.LoadAllSounds();
+            audio = new GameAudio();
 
-            enemyManager = new EnemyManager(textureManager, sfxChannel);
+            enemyManager = new EnemyManager(textureManager, audio.Effects);
             enemyManager.EnemyDeathCallback = OnEnemyKilled;
             renderer = new RaycastRenderer(mapManager, textureManager, enemyManager);
 
@@ -259,8 +250,7 @@ namespace My2DEngine.Game.Core
         public void StartRoguelikeRun()
         {
             BeginRunRandom();
-            bgmChannel.StopBackgroundMusic();
-            deathMusicStopped = false;
+            audio.StopMusic();
             currentFloor = 0;
             restRoomOpportunityCooldownActive = false;
             runEnemiesKilled = 0;
@@ -558,7 +548,7 @@ namespace My2DEngine.Game.Core
         /// <returns>BGM 볼륨 (0~100).</returns>
         public int GetBgmVolume()
         {
-            return bgmChannel.GetBgmVolume();
+            return audio.BgmVolume;
         }
 
         /// <summary>
@@ -567,7 +557,7 @@ namespace My2DEngine.Game.Core
         /// <param name="volume">설정할 볼륨 비율 (0~100).</param>
         public void SetBgmVolume(int volume)
         {
-            bgmChannel.SetBgmVolume(volume);
+            audio.BgmVolume = volume;
         }
 
         /// <summary>
@@ -576,7 +566,7 @@ namespace My2DEngine.Game.Core
         /// <returns>효과음 볼륨 (0~100).</returns>
         public int GetSfxVolume()
         {
-            return sfxChannel.GetSfxVolume();
+            return audio.SfxVolume;
         }
 
         /// <summary>
@@ -585,7 +575,7 @@ namespace My2DEngine.Game.Core
         /// <param name="volume">설정할 볼륨 값 (0~100).</param>
         public void SetSfxVolume(int volume)
         {
-            sfxChannel.SetSfxVolume(volume);
+            audio.SfxVolume = volume;
         }
 
         /// <summary>
@@ -594,53 +584,7 @@ namespace My2DEngine.Game.Core
         /// </summary>
         public void StopBackgroundMusic()
         {
-            bgmChannel.StopBackgroundMusic();
-            deathMusicStopped = false;
-        }
-
-        /// <summary>
-        /// 지정한 별칭의 효과음을 재생한다.
-        /// </summary>
-        /// <param name="alias">재생할 효과음의 별칭(예: "fire", "reload", "door").</param>
-        /// <param name="stopFirst">true이면 현재 재생 중인 효과음을 먼저 중단하고 재생한다.</param>
-        private void PlayEffectSound(string alias, bool stopFirst, bool loop = false)
-        {
-            sfxChannel.PlaySound(alias, stopFirst, loop);
-        }
-
-        /// <summary>
-        /// 지정한 별칭의 효과음 재생을 중단한다.
-        /// </summary>
-        /// <param name="alias">중단할 사운드 별칭.</param>
-        private void StopEffectSound(string alias)
-        {
-            if (!string.IsNullOrWhiteSpace(alias))
-            {
-                sfxChannel.StopSound(alias);
-            }
-        }
-
-        /// <summary>
-        /// null이나 빈 별칭은 무시하고 무기 효과음을 재생한다.
-        /// </summary>
-        /// <param name="alias">재생할 사운드 별칭.</param>
-        /// <param name="stopFirst">기존 동일 별칭 재생을 먼저 중단할지 여부.</param>
-        /// <param name="loop">true이면 효과음을 반복 재생한다.</param>
-        private void PlayWeaponEffectSound(string alias, bool stopFirst, bool loop = false)
-        {
-            if (!string.IsNullOrWhiteSpace(alias))
-            {
-                PlayEffectSound(alias, stopFirst, loop);
-            }
-        }
-
-        /// <summary>
-        /// null이나 빈 별칭은 무시하고 무기 효과음 재생을 중단한다.
-        /// </summary>
-        /// <param name="alias">중단할 사운드 별칭.</param>
-        private void StopWeaponEffectSound(string alias)
-        {
-            StopEffectSound(alias);
+            audio.StopMusic();
         }
 
         /// <summary>
@@ -657,7 +601,7 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            StopWeaponEffectSound(AudioConfig.LMGWindDownSoundAlias);
+            audio.StopEffect(AudioConfig.LMGWindDownSoundAlias);
             lmgSpinUpTimer = WeaponConfig.LMGWindUpDelay;
             lmgSpinActive = true;
         }
@@ -676,9 +620,9 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
-            StopWeaponEffectSound(AudioConfig.LMGWindDownSoundAlias);
-            StopWeaponEffectSound(AudioConfig.LMGWindUpSoundAlias);
-            PlayWeaponEffectSound(AudioConfig.LMGFireSoundAlias, true, true);
+            audio.StopEffect(AudioConfig.LMGWindDownSoundAlias);
+            audio.StopEffect(AudioConfig.LMGWindUpSoundAlias);
+            audio.PlayEffect(AudioConfig.LMGFireSoundAlias, true, true);
             lmgSpinUpTimer = 0f;
             lmgSpinActive = true;
             lmgFireLoopActive = true;
@@ -691,13 +635,13 @@ namespace My2DEngine.Game.Core
         {
             if (lmgFireLoopActive)
             {
-                StopWeaponEffectSound(AudioConfig.LMGFireSoundAlias);
+                audio.StopEffect(AudioConfig.LMGFireSoundAlias);
                 lmgFireLoopActive = false;
             }
 
             if (lmgSpinActive)
             {
-                StopWeaponEffectSound(AudioConfig.LMGWindUpSoundAlias);
+                audio.StopEffect(AudioConfig.LMGWindUpSoundAlias);
                 lmgSpinActive = false;
             }
 
@@ -710,10 +654,10 @@ namespace My2DEngine.Game.Core
         /// </summary>
         private void StopLoopingWeaponEffects()
         {
-            StopWeaponEffectSound(AudioConfig.LMGFireSoundAlias);
-            StopWeaponEffectSound(AudioConfig.LMGWindUpSoundAlias);
-            StopWeaponEffectSound(AudioConfig.LMGWindDownSoundAlias);
-            StopWeaponEffectSound(AudioConfig.RocketFlySoundAlias);
+            audio.StopEffect(AudioConfig.LMGFireSoundAlias);
+            audio.StopEffect(AudioConfig.LMGWindUpSoundAlias);
+            audio.StopEffect(AudioConfig.LMGWindDownSoundAlias);
+            audio.StopEffect(AudioConfig.RocketFlySoundAlias);
             lmgSpinActive = false;
             lmgSpinUpTimer = 0f;
             lmgFireLoopActive = false;
@@ -799,7 +743,7 @@ namespace My2DEngine.Game.Core
             deathPresentationProgress = 0f;
             deathRollDirection = 1f;
             dashKeyHeld = false;
-            deathMusicStopped = false;
+            audio.ResetDeathMusic();
         }
 
         /// <summary>
@@ -850,8 +794,7 @@ namespace My2DEngine.Game.Core
             }
 
             renderer.Dispose();
-            bgmChannel.Dispose();
-            sfxChannel.Dispose();
+            audio.Dispose();
             textureManager.Dispose();
             disposed = true;
         }

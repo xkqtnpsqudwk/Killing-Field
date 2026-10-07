@@ -78,7 +78,7 @@ namespace My2DEngine.Game.Core
             }
             if (weapon.CurrentType != WeaponType.HChainGun)
             {
-                PlayWeaponEffectSound(weapon.GetFireSoundAlias(), false);
+                audio.PlayEffect(weapon.GetFireSoundAlias(), false);
             }
             if (weapon.CurrentAmmo == 0 && weapon.CurrentType == WeaponType.HChainGun)
             {

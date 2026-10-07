@@ -328,7 +328,7 @@ namespace My2DEngine.Game.Core
                 }
             }
 
-            PlayWeaponEffectSound(AudioConfig.RocketBoomSoundAlias, false);
+            audio.PlayEffect(AudioConfig.RocketBoomSoundAlias, false);
             EmitEnemyAlertSound(projectile.X, projectile.Y, 15.5f);
 
             projectile.Kind = EnemyProjectileKind.PlayerRocketExplosion;
@@ -362,13 +362,13 @@ namespace My2DEngine.Game.Core
             {
                 if (!rocketFlyLoopActive)
                 {
-                    PlayWeaponEffectSound(AudioConfig.RocketFlySoundAlias, true, true);
+                    audio.PlayEffect(AudioConfig.RocketFlySoundAlias, true, true);
                     rocketFlyLoopActive = true;
                 }
             }
             else if (rocketFlyLoopActive)
             {
-                StopWeaponEffectSound(AudioConfig.RocketFlySoundAlias);
+                audio.StopEffect(AudioConfig.RocketFlySoundAlias);
                 rocketFlyLoopActive = false;
             }
         }

@@ -85,11 +85,7 @@ namespace My2DEngine.Game.Core
                 weapon.FireButtonHeld = false;
                 StopLoopingWeaponEffects();
                 playerProjectiles.Clear();
-                if (!deathMusicStopped)
-                {
-                    bgmChannel.StopBackgroundMusic();
-                    deathMusicStopped = true;
-                }
+                audio.StopMusicForDeath();
                 interactPromptText = null;
                 return;
             }

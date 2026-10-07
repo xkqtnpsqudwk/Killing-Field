@@ -117,8 +117,7 @@ namespace My2DEngine.Game.Core
             }
 
             BeginRunRandom();
-            bgmChannel.StopBackgroundMusic();
-            deathMusicStopped = false;
+            audio.StopMusic();
             runEnemiesKilled = 0;
             runBossesKilled = 0;
             runStartTime = DateTime.UtcNow;

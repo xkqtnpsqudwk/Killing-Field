@@ -26,7 +26,7 @@ namespace My2DEngine.Game.Core
 
             if (mapManager.BeginDoorOpening(door))
             {
-                PlayEffectSound(AudioConfig.DoorSoundAlias, true);
+                audio.PlayEffect(AudioConfig.DoorSoundAlias, true);
                 EmitEnemyAlertSound(door.X + 0.5f, door.Y + 0.5f, 7.5f);
                 SetStageStatus("연결 문 개방", 1.8f);
             }

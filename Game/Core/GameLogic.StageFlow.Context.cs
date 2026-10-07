@@ -20,11 +20,11 @@ namespace My2DEngine.Game.Core
         {
             if (victory || endingSequenceActive)
             {
-                bgmChannel.StopBackgroundMusic();
+                audio.SilenceMusic();
                 return;
             }
 
-            bgmChannel.UpdateBackgroundMusic(GetBackgroundMusicCategory(), dt);
+            audio.UpdateMusic(GetBackgroundMusicCategory(), dt);
         }
 
         /// <summary>
