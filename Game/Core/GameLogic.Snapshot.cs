@@ -224,6 +224,41 @@ namespace My2DEngine.Game.Core
             ApplyCardOffer(CreatePerkOffer(perk, CardGrade.Red));
         }
 
+        /// <summary>스탯 카드 획득 횟수를 직접 정하고 스탯을 다시 적용한다(계열 시너지 확인용).</summary>
+        internal void SetStatPickupsSmokeSnapshot(StatType stat, int count)
+        {
+            runStatPickupCount[(int)stat] = count;
+            ApplyCombinedProgressionStats(refillHealth: true, healMaxHealthDelta: false);
+        }
+
+        internal int GetSynergyTierSmokeSnapshot(StatFamily family) => GetSynergyTier(family);
+
+        internal float GetWeaponFireRateBonusSmokeSnapshot() => weapon.StatFireRateBonus;
+
+        internal float GetWeaponDamageMultSmokeSnapshot() => weapon.StatDamageMult;
+
+        /// <summary>일반 방 카드 보상을 바로 연다(다시 뽑기·건너뛰기 확인용).</summary>
+        internal void OpenCardRewardSmokeSnapshot(bool bossRoom)
+        {
+            cardRewardWasBossRoom = bossRoom;
+            cardRewardNextFloorIsBoss = true;
+            cardRerollCount = 0;
+            GenerateCardOffers();
+            cardRewardActive = true;
+        }
+
+        internal bool CardRewardActiveSmokeSnapshot => cardRewardActive;
+
+        internal int GetCoinsSmokeSnapshot() => player.CoinCount;
+
+        internal void SetCoinsSmokeSnapshot(int coins) => player.SetCoinCount(coins);
+
+        internal int GetCardRerollCostSmokeSnapshot() => GetCardRerollCost();
+
+        internal bool TryRerollCardsSmokeSnapshot() => TryRerollCards();
+
+        internal bool TrySkipCardsSmokeSnapshot() => TrySkipCards();
+
         internal float GetPlayerMaxHealthSmokeSnapshot() => player.MaxHealth;
 
         internal float GetPlayerMaxShieldSmokeSnapshot() => player.MaxShield;

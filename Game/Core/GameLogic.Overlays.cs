@@ -1,4 +1,5 @@
 using My2DEngine.Engine.Rendering;
+using My2DEngine.Game.Config;
 using My2DEngine.Game.Rendering.Ui.Screens;
 
 namespace My2DEngine.Game.Core
@@ -60,7 +61,7 @@ namespace My2DEngine.Game.Core
             }
 
             // 고르지 않은 카드는 타서 사라지고, 고른 카드는 그 위에서 번쩍이며 사라진다. 화면이 닫힌 뒤에도 그린다.
-            CardRewardScreen.DrawBurning(r, BuildCardRewardView(), drawDim: !branchSelectionActive);
+            CardRewardScreen.DrawBurning(r, BuildCardRewardView(), drawDim: !branchSelectionActive && !cardRewardActive);
             BranchSelectionScreen.DrawBurning(r, branchMotion, senseLevel);
             cardMotion.DrawPick(r);
             branchMotion.DrawPick(r);
@@ -112,6 +113,13 @@ namespace My2DEngine.Game.Core
 
             cardRewardView.SlotCount = GetCardRewardOfferSlotCount();
             cardRewardView.WasBossRoom = cardRewardWasBossRoom;
+            cardRewardView.FamilyCounts = BuildFamilyCounts();
+            cardRewardView.ShowButtons = CardRewardAllowsRerollAndSkip;
+            cardRewardView.Coins = player.CoinCount;
+            cardRewardView.RerollCost = GetCardRerollCost();
+            cardRewardView.SkipReward = SynergyConfig.SkipCoinReward;
+            cardRewardView.PointerX = uiPointerX;
+            cardRewardView.PointerY = uiPointerY;
             return cardRewardView;
         }
 
@@ -138,6 +146,7 @@ namespace My2DEngine.Game.Core
             playerStatsView.ShieldRegenRate = GetEffectiveShieldRegenRate();
             playerStatsView.ShieldRegenDelay = GetEffectiveShieldRegenDelayDuration();
             playerStatsView.Perks = GetOwnedPerks();
+            playerStatsView.FamilyCounts = BuildFamilyCounts();
             playerStatsView.SlaughterStacks = modifiers.SlaughterStacks;
             return playerStatsView;
         }

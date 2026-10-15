@@ -91,7 +91,7 @@ namespace My2DEngine.Game.Core
             float previousMaxHealth = player.MaxHealth;
             float previousHealth = player.Health;
             float newMaxHealth = PlayerConfig.PlayerHealthMax * (1f + data.GetHealthBonus() + GetRunStatBonus(StatType.MaxHealth))
-                * PerkMaxHealthMult();
+                * PerkMaxHealthMult() * SynergyMaxHealthMult();
 
             player.MaxHealth = newMaxHealth;
             if (refillHealth)
@@ -113,17 +113,19 @@ namespace My2DEngine.Game.Core
             if (data.MoveSpeedPoints >= PlayerConfig.MoveSpeedDashSynergyThreshold)
                 dashCooldownReduction = Math.Min(1f - (PlayerConfig.DashCooldownMinDuration / PlayerConfig.DashCooldownDuration),
                     dashCooldownReduction + PlayerConfig.MoveSpeedDashSynergyBonus);
+            dashCooldownReduction = Math.Min(1f - (PlayerConfig.DashCooldownMinDuration / PlayerConfig.DashCooldownDuration),
+                dashCooldownReduction + SynergyDashCooldownBonus());
             player.SetDashCooldownMult(1f - dashCooldownReduction);
             bool noShield = PerkRemovesShield();
             player.ConfigureShield(
-                noShield ? 0f : PlayerConfig.PlayerShieldMax * (1f + GetRunStatBonus(StatType.MaxShield)),
+                noShield ? 0f : PlayerConfig.PlayerShieldMax * (1f + GetRunStatBonus(StatType.MaxShield)) * SynergyMaxShieldMult(),
                 noShield ? 0f : GetEffectiveShieldRegenRate(),
                 GetEffectiveShieldRegenDelayDuration());
             player.SetExtraDashCharges(HasPerk(RunPerk.DoubleDash) ? PerkConfig.ExtraDashCharges : 0);
 
-            weapon.SetStatDamageMult(1f + GetRunStatBonus(StatType.Damage));
+            weapon.SetStatDamageMult((1f + GetRunStatBonus(StatType.Damage)) * SynergyDamageMult());
             weapon.SetStatAmmoCapacityMult(1f + GetRunStatBonus(StatType.AmmoCapacity));
-            weapon.SetStatFireRateBonus(PerkFireRateBonus(GetRunStatBonus(StatType.FireRate)));
+            weapon.SetStatFireRateBonus(SynergyFireRateBonus(PerkFireRateBonus(GetRunStatBonus(StatType.FireRate))));
             weapon.SetPermanentPistolDamageMult(1f + data.GetPistolDamageBonus());
 
             senseLevel = data.GetSenseTier();
@@ -142,7 +144,8 @@ namespace My2DEngine.Game.Core
             float reduction = Math.Max(0f, Math.Min(
                 1f - (PlayerConfig.PlayerShieldMinRegenDelay / PlayerConfig.PlayerShieldBaseRegenDelay),
                 GetRunStatBonus(StatType.ShieldRegenDelayReduction)));
-            return Math.Max(PlayerConfig.PlayerShieldMinRegenDelay, PlayerConfig.PlayerShieldBaseRegenDelay * (1f - reduction));
+            return Math.Max(PlayerConfig.PlayerShieldMinRegenDelay,
+                PlayerConfig.PlayerShieldBaseRegenDelay * (1f - reduction) * SynergyShieldDelayMult());
         }
 
         private void HandlePermanentStatsInput()

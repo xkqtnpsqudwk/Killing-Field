@@ -774,6 +774,7 @@ namespace My2DEngine.Game.Core
             StopLoopingWeaponEffects();
             interactPromptText = null;
 
+            cardRerollCount = 0;
             GenerateCardOffers();
             cardRewardActive = true;
         }
@@ -789,7 +790,18 @@ namespace My2DEngine.Game.Core
             pendingCardClickX = -1f;
             pendingCardClickY = -1f;
 
-            int index = CardRewardScreen.HitTest(BuildCardRewardView(), clickX, clickY);
+            CardRewardView view = BuildCardRewardView();
+            switch (CardRewardScreen.HitTestButton(view, clickX, clickY))
+            {
+                case CardRewardButton.Reroll:
+                    TryRerollCards();
+                    return;
+                case CardRewardButton.Skip:
+                    TrySkipCards();
+                    return;
+            }
+
+            int index = CardRewardScreen.HitTest(view, clickX, clickY);
             if (index >= 0)
             {
                 ConfirmCardSelection(index);
@@ -824,7 +836,12 @@ namespace My2DEngine.Game.Core
             CardRewardScreen.BeginPick(BuildCardRewardView(), index);
 
             ApplyCardOffer(offer);
+            FinishCardReward();
+        }
 
+        /// <summary>카드를 고르거나 건너뛴 뒤 보상 화면을 닫고 다음 단계(분기 선택, 다음 층 안내)로 넘어간다.</summary>
+        private void FinishCardReward()
+        {
             cardRewardActive = false;
             ClearCurrentCardOffers();
             pendingCardClickX = -1f;
@@ -906,6 +923,8 @@ namespace My2DEngine.Game.Core
             ApplyLinkedStatBonus(stat, grade);
 
             float previousMaxShield = player.MaxShield;
+            StatFamily family = StatCardCatalog.FamilyOf(stat);
+            int familyTierBefore = StatSynergyCatalog.TierFor(GetFamilyCardCount(family) - 1);
             ApplyCombinedProgressionStats(refillHealth: false, healMaxHealthDelta: stat == StatType.MaxHealth);
             if (stat == StatType.MaxShield)
             {
@@ -914,6 +933,7 @@ namespace My2DEngine.Game.Core
             }
 
             stageStatus.Show(BuildStatCardMessage(stat, grade, actualBonus), 3f);
+            AnnounceSynergyTierUp(family, familyTierBefore);
         }
 
         /// <summary>합친 카드(약탈, 보호막 재생)를 고르면 함께 오르는 스탯에도 값을 더한다.</summary>

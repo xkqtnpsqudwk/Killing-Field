@@ -34,6 +34,9 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
         /// <summary>학살의 계약 누적 수.</summary>
         public int SlaughterStacks;
 
+        /// <summary>계열별로 모은 스탯 카드 수(StatFamily 순서).</summary>
+        public int[] FamilyCounts;
+
         /// <summary>카드로 모은 스탯 누적량(상한 적용).</summary>
         public float Bonus(StatType stat) => StatCardCatalog.Get(stat).Clamp(CardTotals[(int)stat]);
 
@@ -81,7 +84,7 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             OverlayPanels.Header(r, "현재 스탯", panelCenterX, panelY + 13f);
 
             float colTop = panelY + 34f;
-            float colH = PanelH - 34f - 48f;
+            float colH = PanelH - 34f - 62f;
             float colW = (float)Math.Floor((PanelW - 28f - ColumnGap * 2f) / 3f);
             float colX0 = panelX + 14f;
 
@@ -89,6 +92,7 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             DrawOffense(r, v, weapon, colX0 + colW + ColumnGap, colTop, colW, colH);
             DrawMobility(r, v, player, colX0 + (colW + ColumnGap) * 2f, colTop, colW, colH);
 
+            DrawSynergyLine(r, v, colX0 + 4f, panelY + PanelH - 55f);
             DrawPerkLine(r, v, colX0 + 4f, panelY + PanelH - 41f);
 
             // 아래 줄: 영구 스탯과 닫기 안내
@@ -98,6 +102,28 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
                 $"체력 +{data.GetHealthBonus() * 100f:0}%   속도 +{data.GetMoveSpeedBonus() * 100f:0}%";
             PixelUi.Text(r, permanent, colX0 + 4f, footY, PixelPalette.Brass, TextSize, 1f);
             PixelUi.TextRight(r, "P 닫기", panelX + PanelW - 18f, footY, PixelPalette.TextDim, TextSize, 1f);
+        }
+
+        /// <summary>
+        /// 계열 시너지 진행. "화력 4/6 I"처럼 모은 수/다음 단계와 지금 단계를 쓴다.
+        /// 단계가 있는 계열은 계열 색, 없는 계열은 흐리게.
+        /// </summary>
+        private static void DrawSynergyLine(Renderer r, PlayerStatsView v, float x, float y)
+        {
+            PixelUi.Text(r, "시너지", x, y, PixelPalette.TextDim, TextSize, 1f);
+            float cursor = x + r.MeasureText("시너지", TextSize).Width + 10f;
+            foreach (StatFamily family in StatSynergyCatalog.All)
+            {
+                StatFamilyDefinition definition = StatSynergyCatalog.Get(family);
+                int have = v.FamilyCounts == null ? 0 : v.FamilyCounts[(int)family];
+                int tier = StatSynergyCatalog.TierFor(have);
+                string label = tier >= 2
+                    ? $"{definition.Name} {have} II"
+                    : $"{definition.Name} {have}/{StatSynergyCatalog.NextThreshold(have)}" + (tier == 1 ? " I" : "");
+                Color color = tier > 0 ? definition.Color : Zero;
+                PixelUi.Text(r, label, cursor, y, color, TextSize, 1f, bold: tier > 0);
+                cursor += r.MeasureText(label, TextSize, tier > 0).Width + 12f;
+            }
         }
 
         /// <summary>얻은 규칙 카드(금색)와 악마의 계약(빨강)을 한 줄로 늘어놓는다.</summary>

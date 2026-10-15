@@ -292,6 +292,8 @@ namespace My2DEngine.Game.Core
                 // 남은 쿨다운을 비율로 줄여 방금 대시한 직후일수록 환급량이 크다.
                 player.DashCooldownTimer = Math.Max(0f, player.DashCooldownTimer * (1f - dashRefundRatio));
             }
+
+            ApplySynergyOnKill();
         }
 
         private void TrySpawnAmmoDrop(Enemy enemy)

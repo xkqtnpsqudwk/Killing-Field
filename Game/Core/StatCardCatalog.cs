@@ -261,6 +261,42 @@ namespace My2DEngine.Game.Core
             return list;
         }
 
+        /// <summary>
+        /// 스탯 카드의 계열. 같은 계열을 3장·6장 모으면 시너지가 붙는다(<see cref="StatSynergyCatalog"/>).
+        /// 경제 카드(약탈·선택지)와 풀에서 뺀 카드는 계열이 없다.
+        /// </summary>
+        internal static StatFamily FamilyOf(StatType stat)
+        {
+            switch (stat)
+            {
+                case StatType.Damage:
+                case StatType.FireRate:
+                case StatType.AmmoCapacity:
+                case StatType.AmmoDropChance:
+                case StatType.CriticalChance:
+                    return StatFamily.Firepower;
+                case StatType.MoveSpeed:
+                case StatType.DashCooldown:
+                case StatType.KillDashCooldownRefund:
+                case StatType.DashStrikeDamage:
+                    return StatFamily.Dash;
+                case StatType.MaxShield:
+                case StatType.ShieldRegenRate:
+                case StatType.ShieldedDamage:
+                    return StatFamily.Shield;
+                case StatType.KillHeal:
+                case StatType.KillChain:
+                case StatType.LifeSteal:
+                    return StatFamily.Slayer;
+                case StatType.MaxHealth:
+                case StatType.DamageReduction:
+                case StatType.LowHealthRage:
+                    return StatFamily.Survival;
+                default:
+                    return StatFamily.None;
+            }
+        }
+
         /// <summary>등급(White~Red) 순서의 값 다섯 개 중 하나를 고른다.</summary>
         private static float Pick(CardGrade grade, float white, float green, float blue, float purple, float red)
         {

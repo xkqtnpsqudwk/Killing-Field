@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using My2DEngine.Engine.Rendering;
+using My2DEngine.Game.Config;
 using My2DEngine.Game.Core;
 
 namespace My2DEngine.Game.Rendering.Ui.Screens
@@ -31,6 +32,28 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
 
         /// <summary>카드 움직임(떨어짐·떠오름). null이면 가만히 그린다.</summary>
         public CardDeckMotion Motion;
+
+        /// <summary>계열별로 모은 스탯 카드 수(StatFamily 순서).</summary>
+        public int[] FamilyCounts;
+
+        /// <summary>다시 뽑기·건너뛰기 버튼을 보일지(보스 보상은 숨긴다).</summary>
+        public bool ShowButtons;
+
+        public int Coins;
+        public int RerollCost;
+        public int SkipReward;
+
+        /// <summary>마우스 위치(게임 좌표). 버튼 올림 표시에 쓴다.</summary>
+        public float PointerX;
+        public float PointerY;
+    }
+
+    /// <summary>카드 보상 화면 아래 버튼.</summary>
+    public enum CardRewardButton
+    {
+        None,
+        Reroll,
+        Skip
     }
 
     /// <summary>방 클리어 뒤 스탯·무기 카드 중 하나를 고르는 화면. 그리기와 클릭 판정이 같은 배치를 쓴다.</summary>
@@ -61,6 +84,80 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             }
 
             if (top >= 0) DrawSlot(r, v, top);
+
+            if (v.ShowButtons)
+            {
+                DrawButtons(r, v);
+            }
+        }
+
+        // ── 다시 뽑기·건너뛰기 버튼 ──
+
+        private const float ButtonW = 128f;
+        private const float ButtonH = 20f;
+        private const float ButtonGap = 14f;
+
+        private static RectangleF GetButtonRect(CardRewardView v, CardRewardButton button)
+        {
+            GetLayout(v.SlotCount, v.WasBossRoom, out _, out float cardH, out _, out _, out float cardY);
+            float y = (float)Math.Round(cardY + cardH + 12f);
+            float cx = OverlayPanels.ScreenWidth * 0.5f;
+            float x = button == CardRewardButton.Reroll ? cx - ButtonGap * 0.5f - ButtonW : cx + ButtonGap * 0.5f;
+            return new RectangleF((float)Math.Round(x), y, ButtonW, ButtonH);
+        }
+
+        /// <summary>게임 좌표가 닿은 버튼. 버튼을 보이지 않을 때는 None.</summary>
+        public static CardRewardButton HitTestButton(CardRewardView v, float x, float y)
+        {
+            if (!v.ShowButtons)
+            {
+                return CardRewardButton.None;
+            }
+
+            foreach (CardRewardButton button in new[] { CardRewardButton.Reroll, CardRewardButton.Skip })
+            {
+                RectangleF rect = GetButtonRect(v, button);
+                if (OverlayPanels.Contains(x, y, rect.X, rect.Y, rect.Width, rect.Height))
+                {
+                    return button;
+                }
+            }
+
+            return CardRewardButton.None;
+        }
+
+        private static void DrawButtons(Renderer r, CardRewardView v)
+        {
+            RectangleF reroll = GetButtonRect(v, CardRewardButton.Reroll);
+            RectangleF skip = GetButtonRect(v, CardRewardButton.Skip);
+            bool canReroll = v.Coins >= v.RerollCost;
+
+            PixelButtonState rerollState = !canReroll
+                ? PixelButtonState.Disabled
+                : (reroll.Contains(v.PointerX, v.PointerY) ? PixelButtonState.Hover : PixelButtonState.Normal);
+            PixelButtonState skipState = skip.Contains(v.PointerX, v.PointerY) ? PixelButtonState.Hover : PixelButtonState.Normal;
+
+            PixelUi.Button(r, reroll, 1f, $"다시 뽑기  -{v.RerollCost} 코인", null, rerollState, PixelPalette.Brass);
+            PixelUi.Button(r, skip, 1f, $"건너뛰기  +{v.SkipReward} 코인", null, skipState, PixelPalette.AccentHot);
+            r.DrawTextCenteredShadow($"보유 코인 {v.Coins}", OverlayPanels.ScreenWidth * 0.5f, reroll.Bottom + 9f,
+                canReroll ? PixelPalette.Brass : PixelPalette.TextDim, 6f);
+        }
+
+        /// <summary>지금 보이는 카드를 모두 태운다(다시 뽑기·건너뛰기). 카드 칸이 바뀌기 전에 부른다.</summary>
+        public static void BeginBurnAll(CardRewardView v)
+        {
+            CardDeckMotion motion = v.Motion;
+            if (motion == null) return;
+
+            motion.BeginBurn();
+            for (int i = 0; i < v.SlotCount; i++)
+            {
+                RewardCardOffer offer = v.Offers[i];
+                if (offer == null || !motion.Visible(i)) continue;
+                RectangleF rect = GetCardRect(v, i);
+                rect.Offset(0f, (float)Math.Round(motion.OffsetY(i)));
+                motion.Burn(rect, GetAccent(offer), GetTier(offer), offer);
+            }
         }
 
         /// <summary>
@@ -294,6 +391,36 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
                 ? Color.FromArgb(170, 155, 155, 155)
                 : CardGradeHelper.GetGradeColor((CardGrade)cur);
             OverlayPanels.TextClipped(r, owned, cx, y + 148f, ownedColor, 6f, clip);
+            DrawFamilyLine(r, v, offer.StatType, cx, y + 164f, clip);
+        }
+
+        /// <summary>
+        /// 카드의 계열과 모은 수. 이 카드로 시너지 단계가 오르면 "시너지 발동!"으로 바꿔 깜박인다.
+        /// </summary>
+        private static void DrawFamilyLine(Renderer r, CardRewardView v, StatType stat, float cx, float y, float clip)
+        {
+            StatFamily family = StatCardCatalog.FamilyOf(stat);
+            if (family == StatFamily.None || v.FamilyCounts == null)
+            {
+                return;
+            }
+
+            StatFamilyDefinition definition = StatSynergyCatalog.Get(family);
+            int have = v.FamilyCounts[(int)family];
+            bool tierUp = StatSynergyCatalog.TierFor(have + 1) > StatSynergyCatalog.TierFor(have);
+            if (tierUp)
+            {
+                float pulse = 0.6f + 0.4f * (float)Math.Sin(PixelUi.Clock * 8.0);
+                OverlayPanels.TextClipped(r, $"{definition.Name} 시너지 발동!", cx, y,
+                    PixelUi.Fade(PixelPalette.Lighten(definition.Color, 0.3f), pulse), 6f, clip, true);
+                return;
+            }
+
+            int next = StatSynergyCatalog.NextThreshold(have);
+            string text = have >= SynergyConfig.Tier2Cards
+                ? $"{definition.Name} 계열 {have}장 (완성)"
+                : $"{definition.Name} 계열 {have}/{next}";
+            OverlayPanels.TextClipped(r, text, cx, y, PixelUi.Fade(definition.Color, 0.85f), 6f, clip);
         }
 
         /// <summary>

@@ -117,6 +117,13 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             burnTime = 0f;
         }
 
+        /// <summary>고른 카드 없이 카드를 태우기 시작한다(다시 뽑기·건너뛰기). 뒤이어 Burn으로 카드를 넣는다.</summary>
+        public void BeginBurn()
+        {
+            burnCount = 0;
+            burnTime = 0f;
+        }
+
         /// <summary>고르지 않은 카드 한 장을 태운다. Pick 뒤에 부른다. item은 화면이 내용을 다시 그릴 때 쓴다.</summary>
         public void Burn(RectangleF rect, Color accent, int tier, object item)
         {

@@ -75,6 +75,7 @@ namespace My2DEngine.SmokeTests
                 RunNewSynergyCardsSmokeCheck();
                 RunCardReworkSmokeCheck();
                 RunPerkSmokeCheck();
+                RunSynergyAndRerollSmokeCheck();
                 RunLuckCoinBonusSmokeCheck();
                 RunMoveSpeedDashSynergySmokeCheck();
                 RunLayoutBehaviorChecks();
@@ -1444,6 +1445,86 @@ namespace My2DEngine.SmokeTests
             if (picker.GetAcquiredStatCardSummary().Length != 5)
             {
                 throw new InvalidOperationException("Smoke check failed for perks: death summary should list all 5 contracts.");
+            }
+        }
+
+        /// <summary>
+        /// 카드 계열 시너지(3장·6장)와 카드 보상의 다시 뽑기·건너뛰기를 검증한다.
+        /// </summary>
+        private static void RunSynergyAndRerollSmokeCheck()
+        {
+            // 모든 보상 풀 스탯 카드는 경제 카드(약탈·선택지)를 빼고 계열이 있다.
+            foreach (StatType stat in StatCardCatalog.RewardPool)
+            {
+                bool economy = stat == StatType.CoinDropChance || stat == StatType.CardChoiceBonus;
+                if (economy != (StatCardCatalog.FamilyOf(stat) == StatFamily.None))
+                {
+                    throw new InvalidOperationException("Smoke check failed for synergy: unexpected family for " + stat + ".");
+                }
+            }
+
+            var world = new GameLogic();
+            float baseDamageMult = world.GetWeaponDamageMultSmokeSnapshot();
+            world.SetStatPickupsSmokeSnapshot(StatType.Damage, 2);
+            if (world.GetSynergyTierSmokeSnapshot(StatFamily.Firepower) != 0)
+            {
+                throw new InvalidOperationException("Smoke check failed for synergy: 2 cards must not reach tier 1.");
+            }
+
+            world.SetStatPickupsSmokeSnapshot(StatType.FireRate, 1);
+            if (world.GetSynergyTierSmokeSnapshot(StatFamily.Firepower) != 1)
+            {
+                throw new InvalidOperationException("Smoke check failed for synergy: 3 firepower cards must reach tier 1.");
+            }
+
+            AssertNearlyEqual(SynergyConfig.FirepowerFireRateBonus, world.GetWeaponFireRateBonusSmokeSnapshot(), "firepower tier 1 fire rate");
+            AssertNearlyEqual(baseDamageMult, world.GetWeaponDamageMultSmokeSnapshot(), "firepower tier 1 has no damage bonus yet");
+
+            world.SetStatPickupsSmokeSnapshot(StatType.AmmoCapacity, 3);
+            if (world.GetSynergyTierSmokeSnapshot(StatFamily.Firepower) != 2)
+            {
+                throw new InvalidOperationException("Smoke check failed for synergy: 6 firepower cards must reach tier 2.");
+            }
+
+            AssertNearlyEqual(baseDamageMult * SynergyConfig.FirepowerDamageMult, world.GetWeaponDamageMultSmokeSnapshot(), "firepower tier 2 damage");
+
+            var survival = new GameLogic();
+            float baseHealth = survival.GetPlayerMaxHealthSmokeSnapshot();
+            survival.SetStatPickupsSmokeSnapshot(StatType.DamageReduction, 3);
+            AssertNearlyEqual(baseHealth * SynergyConfig.SurvivalMaxHealthMult, survival.GetPlayerMaxHealthSmokeSnapshot(), "survival tier 1 max health");
+
+            // 다시 뽑기: 코인이 모자라면 안 되고, 되면 비용만큼 빠지고 다음 비용이 오른다.
+            var shop = new GameLogic();
+            shop.OpenCardRewardSmokeSnapshot(bossRoom: false);
+            shop.SetCoinsSmokeSnapshot(SynergyConfig.RerollBaseCost - 1);
+            if (shop.TryRerollCardsSmokeSnapshot())
+            {
+                throw new InvalidOperationException("Smoke check failed for reroll: rerolled without enough coins.");
+            }
+
+            shop.SetCoinsSmokeSnapshot(20);
+            if (!shop.TryRerollCardsSmokeSnapshot() || shop.GetCoinsSmokeSnapshot() != 20 - SynergyConfig.RerollBaseCost ||
+                shop.GetCardRerollCostSmokeSnapshot() != SynergyConfig.RerollBaseCost + SynergyConfig.RerollCostStep ||
+                !shop.CardRewardActiveSmokeSnapshot)
+            {
+                throw new InvalidOperationException("Smoke check failed for reroll: cost or state is wrong after rerolling.");
+            }
+
+            // 건너뛰기: 코인을 받고 보상 화면이 닫힌다.
+            int before = shop.GetCoinsSmokeSnapshot();
+            if (!shop.TrySkipCardsSmokeSnapshot() || shop.GetCoinsSmokeSnapshot() != before + SynergyConfig.SkipCoinReward ||
+                shop.CardRewardActiveSmokeSnapshot)
+            {
+                throw new InvalidOperationException("Smoke check failed for skip: coins or state is wrong after skipping.");
+            }
+
+            // 보스 보상은 다시 뽑거나 건너뛸 수 없다.
+            var boss = new GameLogic();
+            boss.OpenCardRewardSmokeSnapshot(bossRoom: true);
+            boss.SetCoinsSmokeSnapshot(50);
+            if (boss.TryRerollCardsSmokeSnapshot() || boss.TrySkipCardsSmokeSnapshot())
+            {
+                throw new InvalidOperationException("Smoke check failed for reroll: boss rewards must not be rerolled or skipped.");
             }
         }
 

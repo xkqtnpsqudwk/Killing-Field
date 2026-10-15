@@ -292,14 +292,15 @@ namespace My2DEngine.Game.Core
         /// </summary>
         private void OnPlayerDamaged(float damage, float sourceX, float sourceY)
         {
-            if (player.IsDashing)
+            // 대시 중과 대시 계열 시너지의 대시 뒤 무적 시간에는 피해를 받지 않는다.
+            if (player.IsDashing || dashGraceTimer > 0f)
             {
                 return;
             }
 
             // 피해 감소를 먼저 적용하고, 남은 피해를 보호막이 흡수한 뒤 체력에 전달한다.
             // 피격 연출 강도는 실제 체력 피해가 아니라 감소 후 총 피해를 기준으로 잡아 보호막 피격도 읽히게 한다.
-            float reducedDamage = modifiers.ApplyIncoming(damage);
+            float reducedDamage = ApplySynergyIncoming(modifiers.ApplyIncoming(damage));
             if (reducedDamage <= 0f)
             {
                 return;
