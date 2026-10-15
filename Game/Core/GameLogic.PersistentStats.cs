@@ -90,7 +90,8 @@ namespace My2DEngine.Game.Core
             // 카드 선택, 런 시작, 저장 데이터 로드 후 모두 이 경로를 거쳐 파생 스탯을 동기화한다.
             float previousMaxHealth = player.MaxHealth;
             float previousHealth = player.Health;
-            float newMaxHealth = PlayerConfig.PlayerHealthMax * (1f + data.GetHealthBonus() + GetRunStatBonus(StatType.MaxHealth));
+            float newMaxHealth = PlayerConfig.PlayerHealthMax * (1f + data.GetHealthBonus() + GetRunStatBonus(StatType.MaxHealth))
+                * PerkMaxHealthMult();
 
             player.MaxHealth = newMaxHealth;
             if (refillHealth)
@@ -106,20 +107,23 @@ namespace My2DEngine.Game.Core
                 player.Health = Math.Min(previousHealth, newMaxHealth);
             }
 
-            player.MoveSpeed = PlayerConfig.MoveSpeed * (1f + data.GetMoveSpeedBonus() + GetRunStatBonus(StatType.MoveSpeed));
+            player.MoveSpeed = PlayerConfig.MoveSpeed * (1f + data.GetMoveSpeedBonus() + GetRunStatBonus(StatType.MoveSpeed))
+                * PerkMoveSpeedMult();
             float dashCooldownReduction = GetRunStatBonus(StatType.DashCooldown);
             if (data.MoveSpeedPoints >= PlayerConfig.MoveSpeedDashSynergyThreshold)
                 dashCooldownReduction = Math.Min(1f - (PlayerConfig.DashCooldownMinDuration / PlayerConfig.DashCooldownDuration),
                     dashCooldownReduction + PlayerConfig.MoveSpeedDashSynergyBonus);
             player.SetDashCooldownMult(1f - dashCooldownReduction);
+            bool noShield = PerkRemovesShield();
             player.ConfigureShield(
-                PlayerConfig.PlayerShieldMax * (1f + GetRunStatBonus(StatType.MaxShield)),
-                GetEffectiveShieldRegenRate(),
+                noShield ? 0f : PlayerConfig.PlayerShieldMax * (1f + GetRunStatBonus(StatType.MaxShield)),
+                noShield ? 0f : GetEffectiveShieldRegenRate(),
                 GetEffectiveShieldRegenDelayDuration());
+            player.SetExtraDashCharges(HasPerk(RunPerk.DoubleDash) ? PerkConfig.ExtraDashCharges : 0);
 
             weapon.SetStatDamageMult(1f + GetRunStatBonus(StatType.Damage));
             weapon.SetStatAmmoCapacityMult(1f + GetRunStatBonus(StatType.AmmoCapacity));
-            weapon.SetStatFireRateBonus(GetRunStatBonus(StatType.FireRate));
+            weapon.SetStatFireRateBonus(PerkFireRateBonus(GetRunStatBonus(StatType.FireRate)));
             weapon.SetPermanentPistolDamageMult(1f + data.GetPistolDamageBonus());
 
             senseLevel = data.GetSenseTier();
@@ -382,6 +386,7 @@ namespace My2DEngine.Game.Core
                 BonusMaxShield = GetRunStatBonus(StatType.MaxShield),
                 BonusAmmoCapacity = GetRunStatBonus(StatType.AmmoCapacity),
                 BonusFireRate = GetRunStatBonus(StatType.FireRate),
+                RunPerkMask = runPerkMask,
                 PlayerShield = player.Shield,
                 ShieldRegenDelayTimer = player.ShieldRegenDelayTimer,
                 CardChoiceBonusOffered = cardChoiceBonusOffered,
@@ -455,6 +460,7 @@ namespace My2DEngine.Game.Core
             runStatBonusTotals[(int)StatType.MaxShield] = save.BonusMaxShield;
             runStatBonusTotals[(int)StatType.AmmoCapacity] = save.BonusAmmoCapacity;
             runStatBonusTotals[(int)StatType.FireRate] = save.BonusFireRate;
+            runPerkMask = save.RunPerkMask & ((1 << RunPerkCatalog.Count) - 1);
             cardChoiceBonusOffered = save.CardChoiceBonusOffered || save.BonusCardChoiceBonus >= 1f;
             RestoreIntArray(save.RunStatGradeState, runStatGrade, -1);
             RestoreIntArray(save.RunStatPickupState, runStatPickupCount, 0);

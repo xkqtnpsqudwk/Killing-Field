@@ -218,6 +218,25 @@ namespace My2DEngine.Game.Core
             }
         }
 
+        /// <summary>특성 카드를 고른 것처럼 적용한다(되돌리지 않는다. 새 GameLogic에서만 쓴다).</summary>
+        internal void GrantPerkSmokeSnapshot(RunPerk perk)
+        {
+            ApplyCardOffer(CreatePerkOffer(perk, CardGrade.Red));
+        }
+
+        internal float GetPlayerMaxHealthSmokeSnapshot() => player.MaxHealth;
+
+        internal float GetPlayerMaxShieldSmokeSnapshot() => player.MaxShield;
+
+        internal float GetPlayerMoveSpeedSmokeSnapshot() => player.MoveSpeed;
+
+        internal int GetPlayerExtraDashChargesSmokeSnapshot() => player.MaxExtraDashCharges;
+
+        internal int GetRestShopCardCostWithPerksSmokeSnapshot(CardGrade grade) => GetRestShopCardCost(grade);
+
+        /// <summary>남은 특성 중 하나를 확률 없이 고른다(없으면 null).</summary>
+        internal RunPerk? PickAvailablePerkSmokeSnapshot(RunPerkKind kind) => PickAvailablePerk(kind, null);
+
         internal WeaponUpgradeCategory[] GetUpgradeCategoriesForWeaponSmokeSnapshot(WeaponType type)
         {
             return GetUpgradeCategoriesForWeapon(type);

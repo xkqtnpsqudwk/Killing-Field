@@ -168,6 +168,17 @@ namespace My2DEngine.Game.Core
                 currentCardOffers[slot] = offer;
                 TrackStatOfferKey(offer, usedStatOfferKeys);
             }
+
+            // 8층부터 가끔 마지막 스탯 칸에 악마의 계약이 끼어든다.
+            if (statSlots > 0)
+            {
+                RewardCardOffer contract = TryCreateContractOffer(usedStatOfferKeys);
+                if (contract != null)
+                {
+                    currentCardOffers[statSlots - 1] = contract;
+                    TrackStatOfferKey(contract, usedStatOfferKeys);
+                }
+            }
         }
 
         private void GenerateBossWeaponOffers(int offerSlotCount)
@@ -227,6 +238,12 @@ namespace My2DEngine.Game.Core
             offerGrade = ApplyCardRewardGradeBoost(offerGrade, cardRewardGradeBoost, availableGrades);
             offerGrade = ApplyCardRewardMinimumGrade(offerGrade, cardRewardMinimumStatGrade, availableGrades);
 
+            RewardCardOffer rule = TryCreateRuleOffer(offerGrade, usedStatOfferKeys);
+            if (rule != null)
+            {
+                return rule;
+            }
+
             List<StatType> gradeCandidates = BuildAvailableStatOfferPoolForGrade(candidates, offerGrade, usedStatOfferKeys);
             if (gradeCandidates.Count <= 0)
             {
@@ -274,6 +291,13 @@ namespace My2DEngine.Game.Core
                 return null;
             }
 
+            // 상점도 Purple 이상이면 규칙 카드를 진열할 수 있다.
+            RewardCardOffer rule = TryCreateRuleOffer(offerGrade, usedStatOfferKeys);
+            if (rule != null)
+            {
+                return rule;
+            }
+
             List<StatType> gradeCandidates = BuildAvailableStatOfferPoolForGrade(candidates, offerGrade, usedStatOfferKeys);
             if (gradeCandidates.Count <= 0)
             {
@@ -301,7 +325,7 @@ namespace My2DEngine.Game.Core
 
         private void RegisterStatOfferGenerated(RewardCardOffer offer)
         {
-            if (offer != null && !offer.IsWeaponCard && offer.StatType == StatType.CardChoiceBonus)
+            if (offer != null && !offer.IsWeaponCard && !offer.IsPerkCard && offer.StatType == StatType.CardChoiceBonus)
             {
                 cardChoiceBonusOffered = true;
             }
@@ -385,6 +409,12 @@ namespace My2DEngine.Game.Core
         {
             if (offer == null || offer.IsWeaponCard || usedStatOfferKeys == null)
             {
+                return;
+            }
+
+            if (offer.IsPerkCard)
+            {
+                usedStatOfferKeys.Add(PerkOfferKeyBase + (int)offer.Perk);
                 return;
             }
 
@@ -827,6 +857,10 @@ namespace My2DEngine.Game.Core
                 // 처음 카드를 받은 무기는 즉시 해금
                 ownedWeapons[(int)offer.WeaponType] = true;
             }
+            else if (offer.IsPerkCard)
+            {
+                ApplyPerkCard(offer);
+            }
             else
             {
                 ApplyStatCard(offer);
@@ -937,7 +971,8 @@ namespace My2DEngine.Game.Core
             ResetCardDisplayState();
             weaponCardPoolCount = 0;
             cardChoiceBonusOffered = false;
-            modifiers.DashStrikeTimer = 0f;
+            runPerkMask = 0;
+            modifiers.Reset();
             for (int i = 0; i < runStatGrade.Length; i++)
             {
                 runStatGrade[i] = -1;
@@ -993,6 +1028,12 @@ namespace My2DEngine.Game.Core
                 list.Add(count > 1
                     ? $"{CardText.StatName(stat)} {totalText} (x{count})"
                     : $"{CardText.StatName(stat)} {totalText}");
+            }
+
+            foreach (RunPerk perk in GetOwnedPerks())
+            {
+                RunPerkDefinition definition = RunPerkCatalog.Get(perk);
+                list.Add((definition.Kind == RunPerkKind.Contract ? "계약 " : "규칙 ") + definition.Name);
             }
 
             return list.ToArray();

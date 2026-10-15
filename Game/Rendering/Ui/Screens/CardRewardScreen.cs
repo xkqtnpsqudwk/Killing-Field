@@ -151,16 +151,29 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             return new RectangleF(startX + slot * (cardW + gap), cardY, cardW, cardH);
         }
 
-        /// <summary>카드의 등급 색(테두리 홈·해골 눈·빛 번짐에 쓴다).</summary>
+        /// <summary>악마의 계약 카드 색(검붉은 피).</summary>
+        public static readonly Color ContractColor = Color.FromArgb(255, 205, 22, 34);
+
+        /// <summary>카드의 등급 색(테두리 홈·해골 눈·빛 번짐에 쓴다). 악마의 계약은 검붉은 색.</summary>
         public static Color GetAccent(RewardCardOffer offer)
         {
+            if (IsContract(offer))
+            {
+                return ContractColor;
+            }
+
             return CardGradeHelper.GetGradeColor(GetGrade(offer));
         }
 
-        /// <summary>카드 장식 단계: 등급 그대로(White 0 ~ Red 4).</summary>
+        /// <summary>카드 장식 단계: 등급 그대로(White 0 ~ Red 4). 악마의 계약은 늘 4(불꽃 왕관).</summary>
         public static int GetTier(RewardCardOffer offer)
         {
-            return (int)GetGrade(offer);
+            return IsContract(offer) ? 4 : (int)GetGrade(offer);
+        }
+
+        private static bool IsContract(RewardCardOffer offer)
+        {
+            return offer.IsPerkCard && RunPerkCatalog.Get(offer.Perk).Kind == RunPerkKind.Contract;
         }
 
         /// <summary>고른 카드는 번쩍이고 나머지는 불태우도록 움직임에 알린다. 카드 칸이 비기 전에 부른다.</summary>
@@ -214,6 +227,8 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             float cx = x + w * 0.5f;
             if (offer.IsWeaponCard)
                 DrawWeaponContent(r, v, offer, cx, y, w, clip);
+            else if (offer.IsPerkCard)
+                DrawPerkContent(r, offer, cx, y, w, clip);
             else
                 DrawStatContent(r, v, offer, cx, y, w, clip);
 
@@ -279,6 +294,52 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
                 ? Color.FromArgb(170, 155, 155, 155)
                 : CardGradeHelper.GetGradeColor((CardGrade)cur);
             OverlayPanels.TextClipped(r, owned, cx, y + 148f, ownedColor, 6f, clip);
+        }
+
+        /// <summary>
+        /// 규칙 카드·악마의 계약. 이름 아래에 얻는 것을 초록으로, 계약이면 대가를 빨강으로 쓴다.
+        /// </summary>
+        private static void DrawPerkContent(Renderer r, RewardCardOffer offer, float cx, float y, float w, float clip)
+        {
+            RunPerkDefinition definition = RunPerkCatalog.Get(offer.Perk);
+            bool contract = definition.Kind == RunPerkKind.Contract;
+            Color accent = GetAccent(offer);
+
+            if (contract)
+            {
+                OverlayPanels.TextClipped(r, "악마의 계약", cx, y + 28f, Color.FromArgb(255, 255, 96, 80), 6f, clip, true);
+                OverlayPanels.TextClipped(r, "되돌릴 수 없다", cx, y + 46f, Color.FromArgb(220, 190, 70, 64), 6f, clip);
+            }
+            else
+            {
+                OverlayPanels.TextClipped(r, "규칙 카드", cx, y + 28f, Color.FromArgb(255, 255, 220, 100), 6f, clip, true);
+                OverlayPanels.TextClipped(r, CardGradeHelper.GetGradeName(offer.Grade), cx, y + 46f, accent, 12f, clip);
+            }
+
+            DrawOrnamentDivider(r, cx, y + 60f, w * 0.7f, PixelUi.Fade(accent, 0.6f), clip);
+            Color nameColor = contract ? Color.FromArgb(255, 255, 196, 180) : Color.FromArgb(255, 235, 225, 200);
+            OverlayPanels.TextClipped(r, definition.Name, cx, y + 80f, nameColor, w < 160f ? 10f : 12f, clip, true);
+
+            float lineY = y + 100f;
+            foreach (string gain in definition.Gains)
+            {
+                OverlayPanels.TextClipped(r, gain, cx, lineY, Color.FromArgb(255, 140, 230, 125), 6f, clip);
+                lineY += 12f;
+            }
+
+            if (definition.Costs.Length == 0)
+            {
+                return;
+            }
+
+            lineY += 6f;
+            OverlayPanels.TextClipped(r, "- 대가 -", cx, lineY, Color.FromArgb(255, 170, 40, 40), 6f, clip, true);
+            lineY += 12f;
+            foreach (string cost in definition.Costs)
+            {
+                OverlayPanels.TextClipped(r, cost, cx, lineY, Color.FromArgb(255, 255, 90, 80), 6f, clip);
+                lineY += 12f;
+            }
         }
 
         private static void DrawWeaponContent(Renderer r, CardRewardView v, RewardCardOffer offer, float cx, float y, float w, float clip)

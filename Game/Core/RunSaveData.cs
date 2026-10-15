@@ -29,6 +29,9 @@ namespace My2DEngine.Game.Core
         public float BonusMaxShield { get; set; }
         public float BonusAmmoCapacity { get; set; }
         public float BonusFireRate { get; set; }
+
+        /// <summary>얻은 규칙 카드·악마의 계약 비트 묶음(RunPerk 값 = 비트 위치).</summary>
+        public int RunPerkMask { get; set; }
         public float PlayerShield { get; set; }
         public float ShieldRegenDelayTimer { get; set; }
         public bool CardChoiceBonusOffered { get; set; }

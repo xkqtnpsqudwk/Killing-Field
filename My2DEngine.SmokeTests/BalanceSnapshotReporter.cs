@@ -273,7 +273,7 @@ namespace My2DEngine.SmokeTests
             for (int i = 0; i < count; i++)
             {
                 RewardCardOffer offer = offers[i];
-                string value = offer == null ? "none" : offer.Grade + " " + offer.StatType;
+                string value = offer == null ? "none" : offer.Grade + " " + (offer.IsPerkCard ? "Perk:" + offer.Perk : offer.StatType.ToString());
                 rows.Add(new BalanceSnapshotRow(section, metric, "Slot" + (i + 1), value));
             }
         }
@@ -449,7 +449,7 @@ namespace My2DEngine.SmokeTests
                     result += ", ";
                 }
 
-                result += offer.Grade + " " + offer.StatType;
+                result += offer.Grade + " " + (offer.IsPerkCard ? "Perk:" + offer.Perk : offer.StatType.ToString());
             }
 
             return result.Length == 0 ? "none" : result;

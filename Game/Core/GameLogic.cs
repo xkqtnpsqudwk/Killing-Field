@@ -159,7 +159,7 @@ namespace My2DEngine.Game.Core
         /// <param name="fixedRunSeed">모든 런에 쓸 고정 시드. null이면 런마다 새 시드를 뽑는다.</param>
         public GameLogic(int? fixedRunSeed)
         {
-            modifiers = new CombatModifiers(GetRunStatBonus);
+            modifiers = new CombatModifiers(GetRunStatBonus, HasPerk);
             mapManager = new MapManager();
             roomLookup = new StageRoomIndex(mapManager);
 

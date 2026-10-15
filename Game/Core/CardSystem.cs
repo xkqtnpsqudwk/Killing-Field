@@ -89,12 +89,18 @@ namespace My2DEngine.Game
 
     /// <summary>
     /// 플레이어에게 제시되는 단일 보상 카드 데이터.
-    /// IsWeaponCard에 따라 스탯 카드 or 무기 업그레이드 카드로 해석한다.
+    /// IsWeaponCard / IsPerkCard에 따라 무기 업그레이드, 특성(규칙·계약), 스탯 카드로 해석한다.
     /// </summary>
     public sealed class RewardCardOffer
     {
         /// <summary>무기 업그레이드 카드이면 true, 스탯 카드이면 false.</summary>
         public bool IsWeaponCard { get; set; }
+
+        /// <summary>규칙 카드·악마의 계약이면 true. 이때 Grade는 표시·가격용 등급이다.</summary>
+        public bool IsPerkCard { get; set; }
+
+        /// <summary>특성 카드가 주는 특성.</summary>
+        public RunPerk Perk { get; set; }
 
         // ── 스탯 카드 전용 ─────────────────────────────────
         /// <summary>업그레이드할 스탯 종류.</summary>

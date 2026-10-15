@@ -78,6 +78,7 @@ namespace My2DEngine.Game.Core
             }
 
             UpdatePlayerProjectiles(dt);
+            UpdatePerks(dt);
 
             if (player.IsDead)
             {
@@ -214,6 +215,7 @@ namespace My2DEngine.Game.Core
             float invLen = 1f / (float)Math.Sqrt(dashLenSq);
             player.StartDash(dashX * invLen, dashY * invLen);
             modifiers.OnDash();
+            TryDashShock();
             EmitEnemyAlertSound(player.Position.X, player.Position.Y, 6.5f, dashX * invLen, dashY * invLen);
             feedback.OnDash();
         }

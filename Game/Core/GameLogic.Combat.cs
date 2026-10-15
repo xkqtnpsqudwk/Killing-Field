@@ -93,6 +93,7 @@ namespace My2DEngine.Game.Core
         {
             Enemy target = FindBestTarget(weapon.SpreadRadius, weapon.Range);
             DamageEnemy(target, damage);
+            ApplyPierce(target, weapon.SpreadRadius, damage);
         }
 
         /// <summary>
@@ -120,6 +121,7 @@ namespace My2DEngine.Game.Core
                 {
                     float pelletDamage = weapon.CurrentDamage * GetShotGunDamageMultiplier(hitDistance);
                     DamageEnemy(target, pelletDamage);
+                    ApplyPierce(target, pelletSpread, pelletDamage);
                     pelletsLeft--;
                 }
             }
@@ -303,11 +305,14 @@ namespace My2DEngine.Game.Core
                 return;
             }
 
+            float shieldBefore = player.Shield;
             float healthDamage = player.AbsorbShieldDamage(reducedDamage);
             if (healthDamage > 0f)
             {
                 player.TakeDamage(healthDamage);
             }
+
+            TryShieldBurst(shieldBefore);
 
             feedback.OnPlayerHit(reducedDamage, sourceX - player.Position.X, sourceY - player.Position.Y,
                 player.Direction.X, player.Direction.Y);

@@ -74,6 +74,7 @@ namespace My2DEngine.SmokeTests
                 RunAutoCannonProjectileSmokeCheck();
                 RunNewSynergyCardsSmokeCheck();
                 RunCardReworkSmokeCheck();
+                RunPerkSmokeCheck();
                 RunLuckCoinBonusSmokeCheck();
                 RunMoveSpeedDashSynergySmokeCheck();
                 RunLayoutBehaviorChecks();
@@ -851,6 +852,7 @@ namespace My2DEngine.SmokeTests
             }
 
             var seenStats = new HashSet<StatType>();
+            var seenPerks = new HashSet<RunPerk>();
             for (int i = 0; i < offers.Length; i++)
             {
                 RewardCardOffer offer = offers[i];
@@ -859,6 +861,20 @@ namespace My2DEngine.SmokeTests
                     throw new InvalidOperationException(
                         "Smoke check failed for rest shop card offers (" + scenarioName +
                         "): shop offer " + i + " is not a stat card.");
+                }
+
+                // Purple 이상 상점에는 규칙 카드가 섞일 수 있다. 규칙 카드만 나오고 서로 겹치지 않아야 한다.
+                if (offer.IsPerkCard)
+                {
+                    if (RunPerkCatalog.Get(offer.Perk).Kind != RunPerkKind.Rule || (int)offer.Grade < PerkConfig.RuleMinGrade ||
+                        !seenPerks.Add(offer.Perk))
+                    {
+                        throw new InvalidOperationException(
+                            "Smoke check failed for rest shop card offers (" + scenarioName +
+                            "): invalid or duplicate perk card " + offer.Perk + ".");
+                    }
+
+                    continue;
                 }
 
                 if (offer.Grade != expectedGrade)
@@ -1290,6 +1306,144 @@ namespace My2DEngine.SmokeTests
             if (restored.GetAmmo(WeaponType.AutoCannon) != grownMax)
             {
                 throw new InvalidOperationException("Smoke check failed for card rework: restored ammo was clamped to the base maximum.");
+            }
+        }
+
+        /// <summary>
+        /// 규칙 카드·악마의 계약: 전투 보정 배율, 플레이어 스탯 변화, 이중 대시 충전, 탐욕 상점 가격, 중복 방지를 검증한다.
+        /// </summary>
+        private static void RunPerkSmokeCheck()
+        {
+            // 전투 보정(스탯 카드 없음 기준)
+            var owned = new HashSet<RunPerk>();
+            var mods = new CombatModifiers(_ => 0f, perk => owned.Contains(perk));
+            AssertNearlyEqual(100f, mods.ApplyOutgoing(100f, null, null), "no perk outgoing");
+
+            owned.Add(RunPerk.BloodPact);
+            AssertNearlyEqual(180f, mods.ApplyOutgoing(100f, null, null), "blood pact outgoing");
+            owned.Clear();
+
+            owned.Add(RunPerk.Greed);
+            AssertNearlyEqual(70f, mods.ApplyOutgoing(100f, null, null), "greed outgoing");
+            owned.Clear();
+
+            owned.Add(RunPerk.Frenzy);
+            AssertNearlyEqual(160f, mods.ApplyIncoming(100f), "frenzy incoming");
+            owned.Clear();
+
+            owned.Add(RunPerk.Slaughter);
+            mods.Reset();
+            for (int i = 0; i < 30; i++)
+            {
+                mods.OnEnemyHit(killed: true);
+            }
+
+            AssertNearlyEqual(1f + PerkConfig.SlaughterDamagePerStack * PerkConfig.SlaughterMaxStacks,
+                mods.ApplyOutgoing(100f, null, null) / 100f, "slaughter max stacks");
+            mods.Update(PerkConfig.SlaughterWindow + 0.1f);
+            AssertNearlyEqual(100f, mods.ApplyOutgoing(100f, null, null), "slaughter stacks reset after window");
+            owned.Clear();
+
+            // 유리 대포: 치명타 확률 25%, 치명 시 3.5배
+            owned.Add(RunPerk.GlassCannon);
+            var random = new Random(7);
+            int crits = 0;
+            for (int i = 0; i < 4000; i++)
+            {
+                float dealt = mods.ApplyCritical(100f, random);
+                if (dealt > 100.5f)
+                {
+                    crits++;
+                    AssertNearlyEqual(350f, dealt, "glass cannon crit damage");
+                }
+            }
+
+            if (crits < 800 || crits > 1200)
+            {
+                throw new InvalidOperationException("Smoke check failed for perks: glass cannon crit rate expected ~25%, got " + crits + "/4000.");
+            }
+
+            owned.Clear();
+
+            // 플레이어 스탯
+            var blood = new GameLogic();
+            float baseHealth = blood.GetPlayerMaxHealthSmokeSnapshot();
+            blood.GrantPerkSmokeSnapshot(RunPerk.BloodPact);
+            AssertNearlyEqual(baseHealth * PerkConfig.BloodPactMaxHealthMult, blood.GetPlayerMaxHealthSmokeSnapshot(), "blood pact max health");
+
+            var glass = new GameLogic();
+            glass.GrantPerkSmokeSnapshot(RunPerk.GlassCannon);
+            AssertNearlyEqual(0f, glass.GetPlayerMaxShieldSmokeSnapshot(), "glass cannon removes shield");
+
+            var frenzy = new GameLogic();
+            float baseSpeed = frenzy.GetPlayerMoveSpeedSmokeSnapshot();
+            frenzy.GrantPerkSmokeSnapshot(RunPerk.Frenzy);
+            AssertNearlyEqual(baseSpeed * PerkConfig.FrenzyMoveSpeedMult, frenzy.GetPlayerMoveSpeedSmokeSnapshot(), "frenzy move speed");
+
+            var greed = new GameLogic();
+            int baseCost = greed.GetRestShopCardCostWithPerksSmokeSnapshot(CardGrade.Purple);
+            greed.GrantPerkSmokeSnapshot(RunPerk.Greed);
+            int greedCost = greed.GetRestShopCardCostWithPerksSmokeSnapshot(CardGrade.Purple);
+            if (greedCost != Math.Max(1, (int)Math.Ceiling(baseCost * PerkConfig.GreedShopPriceMult)))
+            {
+                throw new InvalidOperationException("Smoke check failed for perks: greed shop price expected 60% of " + baseCost + ", got " + greedCost + ".");
+            }
+
+            // 이중 대시: 기본 대시 + 추가 충전 1개, 셋째는 막히고 쿨다운 뒤 다시 된다.
+            var dasher = new GameLogic();
+            dasher.GrantPerkSmokeSnapshot(RunPerk.DoubleDash);
+            if (dasher.GetPlayerExtraDashChargesSmokeSnapshot() != PerkConfig.ExtraDashCharges)
+            {
+                throw new InvalidOperationException("Smoke check failed for perks: double dash did not add a dash charge.");
+            }
+
+            var player = new Player(3.5f, 3.5f);
+            player.SetExtraDashCharges(1);
+            if (!player.TrySpendDash() || !player.TrySpendDash())
+            {
+                throw new InvalidOperationException("Smoke check failed for perks: double dash should allow two dashes in a row.");
+            }
+
+            if (player.CanDash())
+            {
+                throw new InvalidOperationException("Smoke check failed for perks: a third dash must wait for the cooldown.");
+            }
+
+            player.Stamina = player.MaxStamina;
+            player.UpdateDashCooldown(PlayerConfig.DashCooldownDuration + 0.1f);
+            if (!player.TrySpendDash() || !player.TrySpendDash())
+            {
+                throw new InvalidOperationException("Smoke check failed for perks: both dash charges should recharge after the cooldown.");
+            }
+
+            // 기본(특성 없음) 대시는 예전처럼 하나뿐이다.
+            var single = new Player(3.5f, 3.5f);
+            if (!single.TrySpendDash() || single.CanDash())
+            {
+                throw new InvalidOperationException("Smoke check failed for perks: without double dash only one dash is allowed.");
+            }
+
+            // 얻은 특성은 다시 나오지 않는다.
+            var picker = new GameLogic();
+            for (int i = 0; i < 10; i++)
+            {
+                RunPerk? next = picker.PickAvailablePerkSmokeSnapshot(RunPerkKind.Contract);
+                if (!next.HasValue)
+                {
+                    break;
+                }
+
+                picker.GrantPerkSmokeSnapshot(next.Value);
+            }
+
+            if (picker.PickAvailablePerkSmokeSnapshot(RunPerkKind.Contract).HasValue)
+            {
+                throw new InvalidOperationException("Smoke check failed for perks: an owned contract was offered again.");
+            }
+
+            if (picker.GetAcquiredStatCardSummary().Length != 5)
+            {
+                throw new InvalidOperationException("Smoke check failed for perks: death summary should list all 5 contracts.");
             }
         }
 

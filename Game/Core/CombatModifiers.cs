@@ -11,11 +11,19 @@ namespace My2DEngine.Game.Core
     internal sealed class CombatModifiers
     {
         private readonly Func<StatType, float> bonus;
+        private readonly Func<RunPerk, bool> hasPerk;
 
-        public CombatModifiers(Func<StatType, float> bonus)
+        public CombatModifiers(Func<StatType, float> bonus, Func<RunPerk, bool> hasPerk = null)
         {
             this.bonus = bonus;
+            this.hasPerk = hasPerk ?? (_ => false);
         }
+
+        /// <summary>학살의 계약 누적 수.</summary>
+        internal int SlaughterStacks { get; set; }
+
+        /// <summary>학살의 계약 처치 창. 0이 되면 누적이 사라지고 굶주림(체력 감소)이 시작된다.</summary>
+        internal float SlaughterTimer { get; set; }
 
         /// <summary>대시 직후 피해 증가 카드가 유효한 남은 시간(초).</summary>
         internal float DashStrikeTimer { get; set; }
@@ -50,6 +58,12 @@ namespace My2DEngine.Game.Core
             {
                 KillChainTimer = RewardConfig.KillChainWindow;
             }
+
+            if (killed && hasPerk(RunPerk.Slaughter))
+            {
+                SlaughterStacks = Math.Min(PerkConfig.SlaughterMaxStacks, SlaughterStacks + 1);
+                SlaughterTimer = PerkConfig.SlaughterWindow;
+            }
         }
 
         public void Update(float dt)
@@ -60,6 +74,16 @@ namespace My2DEngine.Game.Core
             if (KillChainTimer > 0f)
             {
                 KillChainTimer = Math.Max(0f, KillChainTimer - step);
+            }
+
+            if (SlaughterTimer > 0f)
+            {
+                SlaughterTimer = Math.Max(0f, SlaughterTimer - step);
+            }
+
+            if (SlaughterTimer <= 0f)
+            {
+                SlaughterStacks = 0;
             }
 
             if (RapidFireDecayTimer <= 0f)
@@ -81,6 +105,8 @@ namespace My2DEngine.Game.Core
             KillChainTimer = 0f;
             RapidFireStreak = 0;
             RapidFireDecayTimer = 0f;
+            SlaughterStacks = 0;
+            SlaughterTimer = PerkConfig.SlaughterWindow;
         }
 
         /// <summary>
@@ -136,19 +162,43 @@ namespace My2DEngine.Game.Core
                 multiplier += Capped(StatType.RapidFireChain, RewardConfig.RapidFireChainBonusCap);
             }
 
-            return Math.Max(0f, damage * multiplier);
+            return Math.Max(0f, damage * multiplier * PerkOutgoingMult());
+        }
+
+        /// <summary>악마의 계약이 주는 피해 배율(피의 계약, 학살 누적, 탐욕). 카드 보정과 따로 곱한다.</summary>
+        private float PerkOutgoingMult()
+        {
+            float mult = 1f;
+            if (hasPerk(RunPerk.BloodPact))
+            {
+                mult *= PerkConfig.BloodPactDamageMult;
+            }
+
+            if (hasPerk(RunPerk.Slaughter))
+            {
+                mult *= 1f + SlaughterStacks * PerkConfig.SlaughterDamagePerStack;
+            }
+
+            if (hasPerk(RunPerk.Greed))
+            {
+                mult *= PerkConfig.GreedDamageMult;
+            }
+
+            return mult;
         }
 
         /// <summary>치명타 확률만큼 피해를 2배로. 확률이 0이면 난수를 쓰지 않는다.</summary>
         public float ApplyCritical(float damage, Random random)
         {
-            float criticalChance = Math.Max(0f, Math.Min(1f, bonus(StatType.CriticalChance)));
+            bool glass = hasPerk(RunPerk.GlassCannon);
+            float criticalChance = bonus(StatType.CriticalChance) + (glass ? PerkConfig.GlassCannonCritBonus : 0f);
+            criticalChance = Math.Max(0f, Math.Min(1f, criticalChance));
             if (criticalChance <= 0f || random.NextDouble() >= criticalChance)
             {
                 return damage;
             }
 
-            return damage * 2f;
+            return damage * (glass ? PerkConfig.GlassCannonCritMult : PerkConfig.BaseCritMult);
         }
 
         /// <summary>받는 피해에 피해 감소 카드(최대 65%)를 적용한다.</summary>
@@ -160,7 +210,8 @@ namespace My2DEngine.Game.Core
             }
 
             float reduction = Math.Max(0f, Math.Min(0.65f, bonus(StatType.DamageReduction)));
-            return Math.Max(0f, damage * (1f - reduction));
+            float frenzy = hasPerk(RunPerk.Frenzy) ? PerkConfig.FrenzyIncomingMult : 1f;
+            return Math.Max(0f, damage * (1f - reduction) * frenzy);
         }
 
         /// <summary>흡혈 비율. 독 안개 방에서는 환경 위험이 무력화되지 않게 절반으로 줄인다.</summary>

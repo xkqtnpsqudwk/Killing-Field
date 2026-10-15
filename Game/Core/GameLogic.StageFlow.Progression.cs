@@ -265,6 +265,7 @@ namespace My2DEngine.Game.Core
                 runBossesKilled++;
 
             ApplyOnEnemyKilledRunStatBonuses();
+            TryCorpseBlast(enemy);
             TrySpawnAmmoDrop(enemy);
             TrySpawnCoinDrop(enemy);
         }
@@ -359,13 +360,13 @@ namespace My2DEngine.Game.Core
             float luckBonus = isNormalEnemy && permanentProgression != null
                 ? permanentProgression.GetLuckLevel() * (RewardConfig.LuckCoinDropBonusMax / 10f)
                 : 0f;
-            float chance = Math.Min(1f, baseChance + runBonus + luckBonus);
+            float chance = ApplyPerkCoinChance(Math.Min(1f, baseChance + runBonus + luckBonus), isNormalEnemy);
             if (rewardRandom.NextDouble() > chance)
             {
                 return;
             }
 
-            int coinAmount = enemy.IsBoss ? 3 : enemy.IsMiniBoss ? 2 : 1;
+            int coinAmount = ApplyPerkCoinAmount(enemy.IsBoss ? 3 : enemy.IsMiniBoss ? 2 : 1);
             StageRoom room = roomLookup.FindAt(enemy.X, enemy.Y) ?? roomLookup.FindCurrent(player.Position.X, player.Position.Y);
             rewardPickups.Add(new RewardPickup
             {
@@ -781,7 +782,7 @@ namespace My2DEngine.Game.Core
 
         private int GetRestShopCardCost(CardGrade grade)
         {
-            return RewardRules.RestShopCardCost(grade, bossClearGrowthCount, GetRunStatBonus(StatType.ShopDiscount));
+            return ApplyPerkShopPrice(RewardRules.RestShopCardCost(grade, bossClearGrowthCount, GetRunStatBonus(StatType.ShopDiscount)));
         }
 
         private bool TrySpendRestShopCost(RewardPickup pickup)

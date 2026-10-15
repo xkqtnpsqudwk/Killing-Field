@@ -28,6 +28,12 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
         public float ShieldRegenRate;
         public float ShieldRegenDelay;
 
+        /// <summary>얻은 규칙 카드·악마의 계약.</summary>
+        public RunPerk[] Perks;
+
+        /// <summary>학살의 계약 누적 수.</summary>
+        public int SlaughterStacks;
+
         /// <summary>카드로 모은 스탯 누적량(상한 적용).</summary>
         public float Bonus(StatType stat) => StatCardCatalog.Get(stat).Clamp(CardTotals[(int)stat]);
 
@@ -75,13 +81,15 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             OverlayPanels.Header(r, "현재 스탯", panelCenterX, panelY + 13f);
 
             float colTop = panelY + 34f;
-            float colH = PanelH - 34f - 34f;
+            float colH = PanelH - 34f - 48f;
             float colW = (float)Math.Floor((PanelW - 28f - ColumnGap * 2f) / 3f);
             float colX0 = panelX + 14f;
 
             DrawSurvival(r, v, player, colX0, colTop, colW, colH);
             DrawOffense(r, v, weapon, colX0 + colW + ColumnGap, colTop, colW, colH);
             DrawMobility(r, v, player, colX0 + (colW + ColumnGap) * 2f, colTop, colW, colH);
+
+            DrawPerkLine(r, v, colX0 + 4f, panelY + PanelH - 41f);
 
             // 아래 줄: 영구 스탯과 닫기 안내
             float footY = panelY + PanelH - 25f;
@@ -90,6 +98,33 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
                 $"체력 +{data.GetHealthBonus() * 100f:0}%   속도 +{data.GetMoveSpeedBonus() * 100f:0}%";
             PixelUi.Text(r, permanent, colX0 + 4f, footY, PixelPalette.Brass, TextSize, 1f);
             PixelUi.TextRight(r, "P 닫기", panelX + PanelW - 18f, footY, PixelPalette.TextDim, TextSize, 1f);
+        }
+
+        /// <summary>얻은 규칙 카드(금색)와 악마의 계약(빨강)을 한 줄로 늘어놓는다.</summary>
+        private static void DrawPerkLine(Renderer r, PlayerStatsView v, float x, float y)
+        {
+            PixelUi.Text(r, "특성", x, y, PixelPalette.TextDim, TextSize, 1f);
+            float cursor = x + r.MeasureText("특성", TextSize).Width + 10f;
+            if (v.Perks == null || v.Perks.Length == 0)
+            {
+                PixelUi.Text(r, "없음", cursor, y, Zero, TextSize, 1f);
+                return;
+            }
+
+            foreach (RunPerk perk in v.Perks)
+            {
+                RunPerkDefinition definition = RunPerkCatalog.Get(perk);
+                bool contract = definition.Kind == RunPerkKind.Contract;
+                string label = definition.Name;
+                if (perk == RunPerk.Slaughter)
+                {
+                    label += $" x{v.SlaughterStacks}";
+                }
+
+                Color color = contract ? Color.FromArgb(255, 255, 92, 80) : PixelPalette.Brass;
+                PixelUi.Text(r, label, cursor, y, color, TextSize, 1f, bold: contract);
+                cursor += r.MeasureText(label, TextSize, contract).Width + 12f;
+            }
         }
 
         // ── 세 칸 ────────────────────────────────────────────────────────────

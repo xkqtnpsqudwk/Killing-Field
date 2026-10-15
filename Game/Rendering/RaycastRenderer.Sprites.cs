@@ -534,6 +534,11 @@ namespace My2DEngine.Game.Rendering
                 return Color.FromArgb(255, 255, 225, 120);
             }
 
+            if (offer.IsPerkCard && RunPerkCatalog.Get(offer.Perk).Kind == RunPerkKind.Contract)
+            {
+                return Ui.Screens.CardRewardScreen.ContractColor;
+            }
+
             return offer.IsWeaponCard
                 ? CardGradeHelper.GetGradeColor(offer.WeaponGrade)
                 : CardGradeHelper.GetGradeColor(offer.Grade);
@@ -551,6 +556,11 @@ namespace My2DEngine.Game.Rendering
             if (offer.IsWeaponCard)
             {
                 return gradeName + " " + WeaponPresentation.GetDisplayName(offer.WeaponType);
+            }
+
+            if (offer.IsPerkCard)
+            {
+                return gradeName + " " + RunPerkCatalog.Get(offer.Perk).Name;
             }
 
             return gradeName + " " + GetShortStatName(offer.StatType);

@@ -133,6 +133,8 @@ namespace My2DEngine.Game
             MaxStamina = PlayerConfig.StaminaMax;
             StaminaRecoverTimer = 0f;
             DashCooldownTimer = 0f;
+            ExtraDashCharges = MaxExtraDashCharges;
+            ExtraDashRechargeTimer = 0f;
             DashTimer = 0f;
             DashDirX = 0f;
             DashDirY = 0f;
@@ -160,6 +162,8 @@ namespace My2DEngine.Game
             Stamina = MaxStamina;
             StaminaRecoverTimer = 0f;
             DashCooldownTimer = 0f;
+            ExtraDashCharges = MaxExtraDashCharges;
+            ExtraDashRechargeTimer = 0f;
             DashTimer = 0f;
             DashDirX = 0f;
             DashDirY = 0f;
@@ -290,6 +294,18 @@ namespace My2DEngine.Game
 
         public void UpdateDashCooldown(float dt)
         {
+            if (ExtraDashCharges < MaxExtraDashCharges)
+            {
+                ExtraDashRechargeTimer -= dt;
+                if (ExtraDashRechargeTimer <= 0f)
+                {
+                    ExtraDashCharges++;
+                    ExtraDashRechargeTimer = ExtraDashCharges < MaxExtraDashCharges
+                        ? PlayerConfig.DashCooldownDuration * DashCooldownMult
+                        : 0f;
+                }
+            }
+
             if (DashCooldownTimer <= 0f)
             {
                 DashCooldownTimer = 0f;
@@ -407,8 +423,37 @@ namespace My2DEngine.Game
         public bool CanDash()
         {
             return !IsDead &&
-                DashCooldownTimer <= 0f &&
+                (DashCooldownTimer <= 0f || ExtraDashCharges > 0) &&
                 Stamina >= PlayerConfig.DashStaminaCost;
+        }
+
+        /// <summary>
+        /// 이중 대시(규칙 카드)로 생기는 추가 대시 충전 최대 수. 0이면 예전처럼 대시 하나.
+        /// 기본 대시는 DashCooldownTimer로, 추가 충전은 따로 회복된다.
+        /// </summary>
+        public int MaxExtraDashCharges { get; private set; }
+
+        /// <summary>지금 쓸 수 있는 추가 대시 충전 수.</summary>
+        public int ExtraDashCharges { get; private set; }
+
+        /// <summary>추가 충전 하나가 회복되기까지 남은 시간(초).</summary>
+        public float ExtraDashRechargeTimer { get; private set; }
+
+        /// <summary>추가 대시 충전 최대 수를 정한다. 늘어난 만큼은 바로 찬 상태로 준다.</summary>
+        public void SetExtraDashCharges(int max)
+        {
+            max = System.Math.Max(0, max);
+            if (max > MaxExtraDashCharges)
+            {
+                ExtraDashCharges += max - MaxExtraDashCharges;
+            }
+
+            MaxExtraDashCharges = max;
+            ExtraDashCharges = System.Math.Min(ExtraDashCharges, max);
+            if (ExtraDashCharges >= max)
+            {
+                ExtraDashRechargeTimer = 0f;
+            }
         }
 
         /// <summary>
@@ -427,6 +472,19 @@ namespace My2DEngine.Game
             if (Stamina < 0f)
             {
                 Stamina = 0f;
+            }
+
+            if (DashCooldownTimer > 0f)
+            {
+                // 기본 대시가 쿨다운 중이면 추가 충전을 쓴다.
+                ExtraDashCharges--;
+                if (ExtraDashRechargeTimer <= 0f)
+                {
+                    ExtraDashRechargeTimer = PlayerConfig.DashCooldownDuration * DashCooldownMult;
+                }
+
+                StaminaRecoverTimer = PlayerConfig.StaminaRecoverDelay;
+                return true;
             }
 
             DashCooldownTimer = PlayerConfig.DashCooldownDuration * DashCooldownMult;

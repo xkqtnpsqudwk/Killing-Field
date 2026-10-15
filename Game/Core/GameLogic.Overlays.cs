@@ -137,6 +137,8 @@ namespace My2DEngine.Game.Core
             playerStatsView.LifeStealToxic = modifiers.LifeStealRatio(true);
             playerStatsView.ShieldRegenRate = GetEffectiveShieldRegenRate();
             playerStatsView.ShieldRegenDelay = GetEffectiveShieldRegenDelayDuration();
+            playerStatsView.Perks = GetOwnedPerks();
+            playerStatsView.SlaughterStacks = modifiers.SlaughterStacks;
             return playerStatsView;
         }
     }
