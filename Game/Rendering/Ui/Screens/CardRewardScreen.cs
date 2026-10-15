@@ -63,6 +63,38 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             if (top >= 0) DrawSlot(r, v, top);
         }
 
+        /// <summary>
+        /// 고르지 않아 타서 사라지는 카드들. 카드 화면이 닫힌 뒤 GameLogic이 부른다.
+        /// drawDim이면 화면을 덮던 검은 막도 타는 동안 서서히 걷힌다.
+        /// </summary>
+        public static void DrawBurning(Renderer r, CardRewardView v, bool drawDim)
+        {
+            CardDeckMotion motion = v.Motion;
+            int count = motion?.BurnCount ?? 0;
+            if (count == 0)
+            {
+                return;
+            }
+
+            if (drawDim)
+            {
+                OverlayPanels.Dim(r, (int)(185 * Math.Min(1f, motion.BurnRemaining / 0.9f)));
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                motion.GetBurn(i, out RectangleF rect, out Color accent, out int tier, out object item, out float progress, out float lineY);
+                if (progress >= 1f || !(item is RewardCardOffer offer))
+                {
+                    continue;
+                }
+
+                CardLook look = new CardLook { Tier = tier, ClipBottom = lineY, FrameTint = CardDeckMotion.BurnTint(progress) };
+                DrawCard(r, v, offer, rect.X, rect.Y, rect.Width, rect.Height, look, landed: true);
+                CardArt.DrawBurnEdge(r, rect.X, rect.Width, lineY, i + 1);
+            }
+        }
+
         private static int TopSlot(CardRewardView v)
         {
             if (v.Motion == null) return -1;
@@ -86,11 +118,13 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             if (offer == null) return;
 
             CardDeckMotion motion = v.Motion;
+            if (motion != null && !motion.Visible(i)) return;
+
             RectangleF rect = GetCardRect(v, i);
             float y = (float)Math.Round(rect.Y + (motion?.OffsetY(i) ?? 0f));
-            float hover = motion?.Hover(i) ?? 0f;
+            CardLook look = new CardLook { Hover = motion?.Hover(i) ?? 0f, Tier = GetTier(offer) };
             bool landed = motion == null || motion.Drop(i) >= 1f;
-            DrawCard(r, v, offer, rect.X, y, rect.Width, rect.Height, hover, landed);
+            DrawCard(r, v, offer, rect.X, y, rect.Width, rect.Height, look, landed);
             motion?.DrawCardOverlay(r, i, rect.X, y, rect.Width, rect.Height);
         }
 
@@ -120,9 +154,39 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
         /// <summary>카드의 등급 색(테두리 홈·해골 눈·빛 번짐에 쓴다).</summary>
         public static Color GetAccent(RewardCardOffer offer)
         {
-            return offer.IsWeaponCard
-                ? CardGradeHelper.GetGradeColor(offer.WeaponGrade)
-                : CardGradeHelper.GetGradeColor(offer.Grade);
+            return CardGradeHelper.GetGradeColor(GetGrade(offer));
+        }
+
+        /// <summary>카드 장식 단계: 등급 그대로(White 0 ~ Red 4).</summary>
+        public static int GetTier(RewardCardOffer offer)
+        {
+            return (int)GetGrade(offer);
+        }
+
+        /// <summary>고른 카드는 번쩍이고 나머지는 불태우도록 움직임에 알린다. 카드 칸이 비기 전에 부른다.</summary>
+        public static void BeginPick(CardRewardView v, int pickedSlot)
+        {
+            CardDeckMotion motion = v.Motion;
+            if (motion == null) return;
+
+            RectangleF picked = GetCardRect(v, pickedSlot);
+            picked.Offset(0f, motion.OffsetY(pickedSlot));
+            RewardCardOffer pickedOffer = v.Offers[pickedSlot];
+            motion.Pick(picked, GetAccent(pickedOffer), GetTier(pickedOffer));
+
+            for (int i = 0; i < v.SlotCount; i++)
+            {
+                RewardCardOffer offer = v.Offers[i];
+                if (i == pickedSlot || offer == null) continue;
+                RectangleF rect = GetCardRect(v, i);
+                rect.Offset(0f, (float)Math.Round(motion.OffsetY(i)));
+                motion.Burn(rect, GetAccent(offer), GetTier(offer), offer);
+            }
+        }
+
+        private static CardGrade GetGrade(RewardCardOffer offer)
+        {
+            return offer.IsWeaponCard ? offer.WeaponGrade : offer.Grade;
         }
 
         private static void GetLayout(int slotCount, bool wasBossRoom,
@@ -137,29 +201,38 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             cardY = (float)Math.Round(wasBossRoom ? OverlayPanels.ScreenHeight * 0.21f : OverlayPanels.ScreenHeight * 0.18f);
         }
 
-        private static void DrawCard(Renderer r, CardRewardView v, RewardCardOffer offer, float x, float y, float w, float h, float hover, bool landed)
+        private static void DrawCard(Renderer r, CardRewardView v, RewardCardOffer offer, float x, float y, float w, float h, CardLook look, bool landed)
         {
-            OverlayPanels.CardPanel(r, x, y, w, h, GetAccent(offer), hover);
+            OverlayPanels.CardPanel(r, x, y, w, h, GetAccent(offer), look);
             if (!landed)
             {
                 // 떨어지는 동안은 테두리만 보인다. 꽂히는 순간 번쩍이며 내용이 드러난다.
                 return;
             }
 
+            float clip = look.ClipBottom > 0f ? look.ClipBottom : float.MaxValue;
             float cx = x + w * 0.5f;
             if (offer.IsWeaponCard)
-                DrawWeaponContent(r, v, offer, cx, y, w);
+                DrawWeaponContent(r, v, offer, cx, y, w, clip);
             else
-                DrawStatContent(r, v, offer, cx, y, w);
+                DrawStatContent(r, v, offer, cx, y, w, clip);
 
-            DrawOrnamentDivider(r, cx, y + h - 32f, w * 0.78f, PixelPalette.EdgeDim);
-            Color prompt = hover > 0.5f ? PixelPalette.Lighten(PixelPalette.Brass, 0.35f) : Color.FromArgb(255, 255, 225, 100);
-            r.DrawTextCenteredShadow(hover > 0.5f ? "▶ 클릭하여 선택 ◀" : "클릭하여 선택", cx, y + h - 20f, prompt, 6f);
+            if (look.ClipBottom > 0f)
+            {
+                // 타는 카드에는 선택 안내를 쓰지 않는다.
+                return;
+            }
+
+            DrawOrnamentDivider(r, cx, y + h - 32f, w * 0.78f, PixelPalette.EdgeDim, clip);
+            bool hot = look.Hover > 0.5f;
+            Color prompt = hot ? PixelPalette.Lighten(PixelPalette.Brass, 0.35f) : Color.FromArgb(255, 255, 225, 100);
+            r.DrawTextCenteredShadow(hot ? "▶ 클릭하여 선택 ◀" : "클릭하여 선택", cx, y + h - 20f, prompt, 6f);
         }
 
         /// <summary>가운데 마름모가 박힌 구분선.</summary>
-        private static void DrawOrnamentDivider(Renderer r, float cx, float y, float w, Color color)
+        private static void DrawOrnamentDivider(Renderer r, float cx, float y, float w, Color color, float clip)
         {
+            if (y + 3f >= clip) return;
             float half = (float)Math.Round(w * 0.5f);
             r.DrawRectangle(cx - half, y, half - 5f, 1f, color);
             r.DrawRectangle(cx + 5f, y, half - 5f, 1f, color);
@@ -167,7 +240,7 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             r.DrawRectangle(cx - 2f, y - 1f, 4f, 3f, color);
         }
 
-        private static void DrawStatContent(Renderer r, CardRewardView v, RewardCardOffer offer, float cx, float y, float w)
+        private static void DrawStatContent(Renderer r, CardRewardView v, RewardCardOffer offer, float cx, float y, float w, float clip)
         {
             Color gradeColor = CardGradeHelper.GetGradeColor(offer.Grade);
             string gradeName = CardGradeHelper.GetGradeName(offer.Grade);
@@ -176,17 +249,17 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             float nameFontSize = w < 160f ? 10f : 12f;
             float valueFontSize = w < 160f ? 13f : 15f;
 
-            r.DrawTextCenteredShadow("스탯 카드", cx, y + 28f, Color.FromArgb(200, 170, 170, 170), 6f);
-            r.DrawTextCenteredShadow(gradeName, cx, y + 46f, gradeColor, 12f);
-            DrawOrnamentDivider(r, cx, y + 60f, w * 0.7f, PixelUi.Fade(gradeColor, 0.6f));
-            r.DrawTextCenteredShadow(statName, cx, y + 82f, Color.FromArgb(255, 235, 225, 200), nameFontSize, true);
-            r.DrawTextCenteredShadow(valueText, cx, y + 108f, gradeColor, valueFontSize);
+            OverlayPanels.TextClipped(r, "스탯 카드", cx, y + 28f, Color.FromArgb(200, 170, 170, 170), 6f, clip);
+            OverlayPanels.TextClipped(r, gradeName, cx, y + 46f, gradeColor, 12f, clip);
+            DrawOrnamentDivider(r, cx, y + 60f, w * 0.7f, PixelUi.Fade(gradeColor, 0.6f), clip);
+            OverlayPanels.TextClipped(r, statName, cx, y + 82f, Color.FromArgb(255, 235, 225, 200), nameFontSize, clip, true);
+            OverlayPanels.TextClipped(r, valueText, cx, y + 108f, gradeColor, valueFontSize, clip);
 
             // 조건부 카드는 발동 조건을 적어 단순 수치 카드와 구분한다.
             string conditionText = CardText.StatCondition(offer.StatType);
             if (!string.IsNullOrEmpty(conditionText))
             {
-                r.DrawTextCenteredShadow(conditionText, cx, y + 128f, Color.FromArgb(235, 255, 200, 110), 6f);
+                OverlayPanels.TextClipped(r, conditionText, cx, y + 128f, Color.FromArgb(235, 255, 200, 110), 6f, clip);
             }
 
             // 지금까지 모은 양
@@ -199,10 +272,10 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             Color ownedColor = cur < 0
                 ? Color.FromArgb(170, 155, 155, 155)
                 : CardGradeHelper.GetGradeColor((CardGrade)cur);
-            r.DrawTextCenteredShadow(owned, cx, y + 148f, ownedColor, 6f);
+            OverlayPanels.TextClipped(r, owned, cx, y + 148f, ownedColor, 6f, clip);
         }
 
-        private static void DrawWeaponContent(Renderer r, CardRewardView v, RewardCardOffer offer, float cx, float y, float w)
+        private static void DrawWeaponContent(Renderer r, CardRewardView v, RewardCardOffer offer, float cx, float y, float w, float clip)
         {
             Color gradeColor = CardGradeHelper.GetGradeColor(offer.WeaponGrade);
             string gradeName = CardGradeHelper.GetGradeName(offer.WeaponGrade);
@@ -215,12 +288,12 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             Color headerColor = isNewWeapon
                 ? Color.FromArgb(200, 255, 220, 100)
                 : Color.FromArgb(200, 170, 170, 170);
-            r.DrawTextCenteredShadow(headerText, cx, y + 28f, headerColor, 6f);
-            r.DrawTextCenteredShadow(gradeName, cx, y + 46f, gradeColor, 12f);
-            DrawOrnamentDivider(r, cx, y + 60f, w * 0.7f, PixelUi.Fade(gradeColor, 0.6f));
-            r.DrawTextCenteredShadow(weaponName, cx, y + 82f, Color.FromArgb(255, 235, 225, 200), 12f);
-            r.DrawTextCenteredShadow(catName, cx, y + 106f, gradeColor, 12f);
-            r.DrawTextCenteredShadow(effectDesc, cx, y + 148f, Color.FromArgb(200, 210, 210, 210), 6f);
+            OverlayPanels.TextClipped(r, headerText, cx, y + 28f, headerColor, 6f, clip);
+            OverlayPanels.TextClipped(r, gradeName, cx, y + 46f, gradeColor, 12f, clip);
+            DrawOrnamentDivider(r, cx, y + 60f, w * 0.7f, PixelUi.Fade(gradeColor, 0.6f), clip);
+            OverlayPanels.TextClipped(r, weaponName, cx, y + 82f, Color.FromArgb(255, 235, 225, 200), 12f, clip);
+            OverlayPanels.TextClipped(r, catName, cx, y + 106f, gradeColor, 12f, clip);
+            OverlayPanels.TextClipped(r, effectDesc, cx, y + 148f, Color.FromArgb(200, 210, 210, 210), 6f, clip);
         }
     }
 }

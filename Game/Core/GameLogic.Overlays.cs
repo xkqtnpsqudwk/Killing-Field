@@ -31,7 +31,7 @@ namespace My2DEngine.Game.Core
             uiPointerY = gameY;
         }
 
-        /// <summary>고르기 화면 카드의 움직임을 진행한다. 화면이 닫혀 있어도 고른 카드 번쩍임은 진행된다.</summary>
+        /// <summary>고르기 화면 카드의 움직임을 진행한다. 화면이 닫혀 있어도 고른 카드 번쩍임·불탐은 진행된다.</summary>
         private void UpdateOverlayMotion(float dt)
         {
             int cardHover = cardRewardActive ? CardRewardScreen.HitTest(BuildCardRewardView(), uiPointerX, uiPointerY) : -1;
@@ -39,7 +39,11 @@ namespace My2DEngine.Game.Core
 
             bool branchOpen = branchSelectionActive && branchOptionA != null && branchOptionB != null;
             int branchHover = branchOpen ? BranchSelectionScreen.HitTest(uiPointerX, uiPointerY) : -1;
-            branchMotion.Update(dt, branchOpen, branchHover);
+            if (branchMotion.Update(dt, branchOpen, branchHover) && cardMotion.BurnRemaining > 0f)
+            {
+                // 카드 보상에서 고르지 않은 카드가 타는 동안은 다음 룸 카드를 내려보내지 않는다.
+                branchMotion.Hold(cardMotion.BurnRemaining * 0.85f);
+            }
         }
 
         /// <summary>월드 위에 열린 오버레이 화면을 그린다.</summary>
@@ -55,7 +59,9 @@ namespace My2DEngine.Game.Core
                 BranchSelectionScreen.Draw(r, branchOptionA, branchOptionB, senseLevel, branchMotion);
             }
 
-            // 고른 카드는 다음 화면 위에서 번쩍이며 사라진다.
+            // 고르지 않은 카드는 타서 사라지고, 고른 카드는 그 위에서 번쩍이며 사라진다. 화면이 닫힌 뒤에도 그린다.
+            CardRewardScreen.DrawBurning(r, BuildCardRewardView(), drawDim: !branchSelectionActive);
+            BranchSelectionScreen.DrawBurning(r, branchMotion, senseLevel);
             cardMotion.DrawPick(r);
             branchMotion.DrawPick(r);
 

@@ -35,10 +35,19 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             PixelUi.PlaqueTitle(r, text, cx, cy, PixelPalette.Brass, PixelUi.FontBase, 1f, PixelPalette.Accent);
         }
 
-        /// <summary>카드/분기 패널 배경. 둠풍 카드 테두리를 등급(또는 방 유형) 색으로 빛낸다.</summary>
-        public static void CardPanel(Renderer r, float x, float y, float w, float h, Color gradeColor, float hover = 0f)
+        /// <summary>카드/분기 패널 배경. 둠풍 카드 테두리를 등급(또는 방 유형) 색으로 빛내고 단계별 장식을 붙인다.</summary>
+        public static void CardPanel(Renderer r, float x, float y, float w, float h, Color gradeColor, CardLook look)
         {
-            PixelUi.DoomCard(r, x, y, w, h, gradeColor, hover);
+            CardArt.Draw(r, x, y, w, h, gradeColor, look);
+        }
+
+        /// <summary>clip보다 위에 있을 때만 가운데 정렬 글자를 쓴다(타서 사라지는 카드).</summary>
+        public static void TextClipped(Renderer r, string text, float cx, float cy, Color color, float size, float clip, bool bold = false)
+        {
+            if (cy + size * 0.6f < clip)
+            {
+                r.DrawTextCenteredShadow(text, cx, cy, color, size, bold);
+            }
         }
 
         public static bool Contains(float x, float y, float left, float top, float width, float height)

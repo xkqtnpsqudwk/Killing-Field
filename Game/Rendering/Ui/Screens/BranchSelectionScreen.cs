@@ -39,6 +39,47 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             }
         }
 
+        /// <summary>고르지 않아 타서 사라지는 카드. 분기 화면이 닫힌 뒤 GameLogic이 부른다.</summary>
+        public static void DrawBurning(Renderer r, CardDeckMotion motion, int senseLevel)
+        {
+            int count = motion?.BurnCount ?? 0;
+            for (int i = 0; i < count; i++)
+            {
+                motion.GetBurn(i, out RectangleF rect, out Color accent, out int tier, out object item, out float progress, out float lineY);
+                if (progress >= 1f || !(item is RoomTemplate template))
+                {
+                    continue;
+                }
+
+                CardLook look = new CardLook { Tier = tier, ClipBottom = lineY, FrameTint = CardDeckMotion.BurnTint(progress) };
+                DrawCard(r, template, rect.X, rect.Y, rect.Width, rect.Height, null, senseLevel, look, landed: true);
+                CardArt.DrawBurnEdge(r, rect.X, rect.Width, lineY, i + 7);
+            }
+        }
+
+        /// <summary>고른 카드는 번쩍이고 다른 카드는 불태우도록 움직임에 알린다.</summary>
+        public static void BeginPick(CardDeckMotion motion, int pickedIndex, RoomTemplate picked, RoomTemplate other)
+        {
+            if (motion == null) return;
+
+            RectangleF pickedRect = GetCardRect(pickedIndex);
+            pickedRect.Offset(0f, motion.OffsetY(pickedIndex));
+            motion.Pick(pickedRect, GetAccent(picked), GetTier(picked));
+            if (other != null)
+            {
+                int otherIndex = 1 - pickedIndex;
+                RectangleF otherRect = GetCardRect(otherIndex);
+                otherRect.Offset(0f, (float)Math.Round(motion.OffsetY(otherIndex)));
+                motion.Burn(otherRect, GetAccent(other), GetTier(other), other);
+            }
+        }
+
+        /// <summary>방 유형별 장식 단계: 보스 4(불꽃), 정예 3(뿔), 상점 1(보석), 일반 0.</summary>
+        public static int GetTier(RoomTemplate template)
+        {
+            return template.IsBossRoom ? 4 : (template.IsMiniBossRoom ? 3 : (template.IsRestRoom ? 1 : 0));
+        }
+
         /// <summary>카드 번호(0 = 왼쪽, 1 = 오른쪽)의 카드 몸통 자리(움직임 없이).</summary>
         public static RectangleF GetCardRect(int index)
         {
@@ -60,11 +101,13 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
 
         private static void DrawSlot(Renderer r, int index, RoomTemplate template, string keyLabel, int senseLevel, CardDeckMotion motion)
         {
+            if (motion != null && !motion.Visible(index)) return;
+
             RectangleF rect = GetCardRect(index);
             float y = (float)Math.Round(rect.Y + (motion?.OffsetY(index) ?? 0f));
-            float hover = motion?.Hover(index) ?? 0f;
+            CardLook look = new CardLook { Hover = motion?.Hover(index) ?? 0f, Tier = GetTier(template) };
             bool landed = motion == null || motion.Drop(index) >= 1f;
-            DrawCard(r, template, rect.X, y, rect.Width, rect.Height, keyLabel, senseLevel, hover, landed);
+            DrawCard(r, template, rect.X, y, rect.Width, rect.Height, keyLabel, senseLevel, look, landed);
             motion?.DrawCardOverlay(r, index, rect.X, y, rect.Width, rect.Height);
         }
 
@@ -89,14 +132,16 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             x = (float)Math.Round(index == 0 ? center - CardWidth - CardGap * 0.5f : center + CardGap * 0.5f);
         }
 
-        /// <summary>카드 한 장: 방 유형 색 테두리, 유형 제목, 정보 줄, 선택 키 안내.</summary>
-        private static void DrawCard(Renderer r, RoomTemplate template, float x, float y, float w, float h, string keyLabel, int senseLevel, float hover, bool landed)
+        /// <summary>카드 한 장: 방 유형 색 테두리, 유형 제목, 정보 줄, 선택 키 안내(keyLabel이 null이면 생략).</summary>
+        private static void DrawCard(Renderer r, RoomTemplate template, float x, float y, float w, float h, string keyLabel, int senseLevel, CardLook look, bool landed)
         {
-            OverlayPanels.CardPanel(r, x, y, w, h, GetAccent(template), hover);
+            OverlayPanels.CardPanel(r, x, y, w, h, GetAccent(template), look);
             if (!landed)
             {
                 return;
             }
+
+            float clip = look.ClipBottom > 0f ? look.ClipBottom : float.MaxValue;
 
             float cx = x + w * 0.5f;
 
@@ -123,19 +168,28 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
                 headerColor = Color.FromArgb(255, 170, 205, 255);
             }
 
-            r.DrawTextCenteredShadow(header, cx, y + 27f, headerColor, 12f, true);
-            r.DrawRectangle(x + 14f, y + 39f, w - 28f, 1f, Color.FromArgb(120, 180, 180, 180));
+            OverlayPanels.TextClipped(r, header, cx, y + 27f, headerColor, 12f, clip, true);
+            if (y + 40f < clip)
+            {
+                r.DrawRectangle(x + 14f, y + 39f, w - 28f, 1f, Color.FromArgb(120, 180, 180, 180));
+            }
 
             float lineY = y + 52f;
             foreach (InfoLine line in BuildInfoLines(template, senseLevel))
             {
-                r.DrawTextCenteredShadow(line.Text, cx, lineY, line.Color, 6f);
+                OverlayPanels.TextClipped(r, line.Text, cx, lineY, line.Color, 6f, clip);
                 lineY += 14.5f;
             }
 
+            if (keyLabel == null)
+            {
+                return;
+            }
+
             r.DrawRectangle(x + 14f, y + h - 31f, w - 28f, 1f, Color.FromArgb(120, 180, 180, 180));
-            Color prompt = hover > 0.5f ? PixelPalette.Lighten(PixelPalette.Brass, 0.35f) : Color.FromArgb(255, 255, 225, 100);
-            r.DrawTextCenteredShadow(hover > 0.5f ? "▶ " + keyLabel + " 선택 ◀" : keyLabel + " 선택", cx, y + h - 20f, prompt, 6f);
+            bool hot = look.Hover > 0.5f;
+            Color prompt = hot ? PixelPalette.Lighten(PixelPalette.Brass, 0.35f) : Color.FromArgb(255, 255, 225, 100);
+            r.DrawTextCenteredShadow(hot ? "▶ " + keyLabel + " 선택 ◀" : keyLabel + " 선택", cx, y + h - 20f, prompt, 6f);
         }
 
         /// <summary>감각 단계에 따라 카드에 표시할 정보 줄을 만든다.</summary>

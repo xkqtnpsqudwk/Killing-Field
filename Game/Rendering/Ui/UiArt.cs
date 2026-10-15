@@ -45,6 +45,21 @@ namespace My2DEngine.Game.Rendering.Ui
         public const float SkullWidth = 32f;
         public const float SkullHeight = 26f;
 
+        /// <summary>등급 보석(9×9, 흰색 면). 초록 등급 이상 카드의 모서리 볼트 자리에 박는다.</summary>
+        public static readonly Image Gem = Load("gem.png");
+        public const float GemSize = 9f;
+
+        /// <summary>악마 뿔(60×24). 보라 등급 이상 카드의 해골 뒤에 붙인다. 뿌리는 그림 (30±8, 17).</summary>
+        public static readonly Image Horns = Load("horns.png");
+        public const float HornsWidth = 60f;
+        public const float HornsHeight = 24f;
+
+        /// <summary>옆구리 칼날(16×26). 파랑 등급 이상 카드 양옆에 박는다.</summary>
+        public static readonly Image SpikeLeft = Load("spike_l.png");
+        public static readonly Image SpikeRight = Load("spike_r.png");
+        public const float SpikeWidth = 16f;
+        public const float SpikeHeight = 26f;
+
         /// <summary>빛 번짐(32×32, 흰색). 9칸 테두리 15.</summary>
         public static readonly Image Glow = Load("glow.png");
         public const float GlowBorder = 15f;

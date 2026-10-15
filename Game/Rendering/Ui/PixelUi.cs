@@ -193,63 +193,6 @@ namespace My2DEngine.Game.Rendering.Ui
             }
         }
 
-        /// <summary>
-        /// 둠풍 카드(게임 해상도, 한 칸 = 1). 아래로 갈수록 강조 색이 끓어오르는 안쪽,
-        /// 모서리 뿔과 황동판을 단 금속 테두리, 강조 색으로 빛나는 홈, 위 가운데 해골 장식.
-        /// hover(0~1)가 오르면 빛 번짐과 해골 눈이 타오른다. 뿔과 해골은 몸통 바깥으로 조금 나간다.
-        /// </summary>
-        public static void DoomCard(Renderer r, float x, float y, float w, float h, Color accent, float hover = 0f, float opacity = 1f)
-        {
-            if (opacity <= 0f)
-            {
-                return;
-            }
-
-            accent = PixelPalette.WithAlpha(accent, 255);
-            if (UiArt.Card == null)
-            {
-                Frame(r, x, y, w, h, 1f, PixelPalette.Panel, accent, raised: true, opacity: opacity);
-                r.DrawRectangle(x + 3f, y + 3f, w - 6f, 2f, Fade(accent, 0.8f * opacity));
-                return;
-            }
-
-            float pulse = 0.5f + 0.5f * (float)Math.Sin(Clock * 6.0);
-            if (hover > 0f)
-            {
-                GlowRect(r, x, y, w, h, 14f, PixelPalette.WithAlpha(accent, (int)(hover * (140 + 70 * pulse))), opacity);
-            }
-
-            // 안쪽: 위는 검고 아래로 갈수록 강조 색이 어둡게 끓어오른다.
-            const float inset = 4f;
-            const int bands = 12;
-            float bandH = (h - inset * 2f) / bands;
-            for (int i = 0; i < bands; i++)
-            {
-                float t = i / (float)(bands - 1);
-                Color c = Mix(PixelPalette.PanelDeep, accent, t * t * (0.20f + 0.14f * hover));
-                r.DrawRectangle(x + inset, y + inset + i * bandH, w - inset * 2f, bandH + 1f, Fade(PixelPalette.WithAlpha(c, 252), opacity));
-            }
-
-            float m = UiArt.CardMargin;
-            r.DrawImageNineSlice(UiArt.Card, x - m, y - m, w + m * 2f, h + m * 2f, UiArt.CardBorder, UiArt.CardBorder, White(opacity));
-            Color trim = PixelPalette.Lighten(accent, 0.1f + 0.4f * hover * pulse);
-            r.DrawImageNineSlice(UiArt.CardTrim, x - m, y - m, w + m * 2f, h + m * 2f, UiArt.CardBorder, UiArt.CardBorder, Fade(trim, opacity));
-
-            if (UiArt.Skull != null)
-            {
-                float sx = (float)Math.Round(x + w * 0.5f - UiArt.SkullWidth * 0.5f);
-                float sy = y - 12f;
-                if (hover > 0f)
-                {
-                    GlowRect(r, sx + 8f, sy + 9f, 16f, 6f, 6f, PixelPalette.WithAlpha(accent, (int)(hover * (120 + 120 * pulse))), opacity);
-                }
-
-                r.DrawImage(UiArt.Skull, sx, sy, UiArt.SkullWidth, UiArt.SkullHeight, White(opacity));
-                Color eyes = PixelPalette.Lighten(accent, 0.15f + 0.65f * hover * pulse);
-                r.DrawImage(UiArt.SkullEyes, sx, sy, UiArt.SkullWidth, UiArt.SkullHeight, Fade(eyes, opacity * (0.6f + 0.4f * hover)));
-            }
-        }
-
         /// <summary>사각형 둘레의 빛 번짐. pad만큼 바깥으로 퍼진다.</summary>
         public static void GlowRect(Renderer r, float x, float y, float w, float h, float pad, Color color, float opacity = 1f)
         {
@@ -635,7 +578,7 @@ namespace My2DEngine.Game.Rendering.Ui
         }
 
         /// <summary>불투명도만 담은 흰색 색조(그림을 원래 색으로 그린다).</summary>
-        private static Color White(float opacity)
+        internal static Color White(float opacity)
         {
             return Color.FromArgb(Math.Max(0, Math.Min(255, (int)(255 * opacity))), 255, 255, 255);
         }
@@ -669,8 +612,8 @@ namespace My2DEngine.Game.Rendering.Ui
             return Math.Max(u * 0.5f, (float)Math.Round(size / FontBase) * u * 0.5f);
         }
 
-        /// <summary>정수 하나를 0~1 사이 고정 난수로 바꾼다(배경 장식용).</summary>
-        private static float Hash(int n)
+        /// <summary>정수 하나를 0~1 사이 고정 난수로 바꾼다(배경·카드 장식용).</summary>
+        internal static float Hash(int n)
         {
             unchecked
             {

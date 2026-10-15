@@ -7,7 +7,8 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
     /// <summary>
     /// 고르기 화면(카드 보상, 다음 룸 선택) 카드의 움직임.
     /// 화면이 열리면 카드가 한 장씩 위에서 떨어져 꽂히고, 마우스를 올린 카드는 떠오르며 빛나고,
-    /// 고른 카드는 화면이 닫힌 뒤에도 잠깐 번쩍이며 부풀었다 사라진다. 게임 규칙에는 영향을 주지 않는다.
+    /// 고르면 그 카드는 번쩍이며 부풀었다 사라지고 나머지 카드는 아래부터 불타 사라진다.
+    /// 화면이 닫힌 뒤에도 번쩍임·불탐은 이어서 그린다. 게임 규칙에는 영향을 주지 않는다.
     /// </summary>
     public sealed class CardDeckMotion
     {
@@ -34,20 +35,36 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
         /// <summary>고른 카드가 번쩍이며 사라지는 시간(초).</summary>
         private const float PickDuration = 0.4f;
 
+        /// <summary>고르지 않은 카드 한 장이 다 타는 시간(초).</summary>
+        private const float BurnDuration = 0.85f;
+
+        /// <summary>카드마다 불이 붙는 간격(초).</summary>
+        private const float BurnStagger = 0.08f;
+
         private readonly float[] hover = new float[MaxSlots];
         private float openTime;
         private bool wasOpen;
+
         private RectangleF pickRect;
         private Color pickColor;
+        private int pickTier;
         private float pickTimer;
+
+        private readonly RectangleF[] burnRects = new RectangleF[MaxSlots];
+        private readonly Color[] burnColors = new Color[MaxSlots];
+        private readonly int[] burnTiers = new int[MaxSlots];
+        private readonly object[] burnItems = new object[MaxSlots];
+        private int burnCount;
+        private float burnTime = -1f;
 
         /// <summary>
         /// 매 프레임 부른다. 화면이 새로 열리면 처음부터 다시 떨어뜨린다.
-        /// hoveredSlot은 마우스 아래 카드 번호(없으면 -1).
+        /// hoveredSlot은 마우스 아래 카드 번호(없으면 -1). 화면이 이번에 새로 열렸으면 true.
         /// </summary>
-        public void Update(float dt, bool open, int hoveredSlot)
+        public bool Update(float dt, bool open, int hoveredSlot)
         {
-            if (open && !wasOpen)
+            bool opened = open && !wasOpen;
+            if (opened)
             {
                 openTime = 0f;
                 Array.Clear(hover);
@@ -55,9 +72,20 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
 
             wasOpen = open;
             pickTimer = Math.Max(0f, pickTimer - dt);
+            if (burnTime >= 0f)
+            {
+                burnTime += dt;
+                if (burnTime > BurnTotal)
+                {
+                    burnTime = -1f;
+                    burnCount = 0;
+                    Array.Clear(burnItems);
+                }
+            }
+
             if (!open)
             {
-                return;
+                return opened;
             }
 
             openTime += dt;
@@ -68,14 +96,73 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
                 float target = i == hoveredSlot && Drop(i) >= 1f ? 1f : 0f;
                 hover[i] += (target - hover[i]) * k;
             }
+
+            return opened;
+        }
+
+        /// <summary>떨어지기 시작을 seconds만큼 미룬다(앞 화면 카드가 타는 동안 기다릴 때).</summary>
+        public void Hold(float seconds)
+        {
+            openTime = -Math.Max(0f, seconds);
         }
 
         /// <summary>고른 카드의 번쩍임을 시작한다. rect는 카드 몸통.</summary>
-        public void Pick(RectangleF rect, Color accent)
+        public void Pick(RectangleF rect, Color accent, int tier)
         {
             pickRect = rect;
             pickColor = accent;
+            pickTier = tier;
             pickTimer = PickDuration;
+            burnCount = 0;
+            burnTime = 0f;
+        }
+
+        /// <summary>고르지 않은 카드 한 장을 태운다. Pick 뒤에 부른다. item은 화면이 내용을 다시 그릴 때 쓴다.</summary>
+        public void Burn(RectangleF rect, Color accent, int tier, object item)
+        {
+            if (burnCount >= MaxSlots)
+            {
+                return;
+            }
+
+            burnRects[burnCount] = rect;
+            burnColors[burnCount] = accent;
+            burnTiers[burnCount] = tier;
+            burnItems[burnCount] = item;
+            burnCount++;
+        }
+
+        /// <summary>타는 카드 수(다 타면 0).</summary>
+        public int BurnCount => burnTime >= 0f ? burnCount : 0;
+
+        /// <summary>모든 카드가 다 탈 때까지 남은 시간(초).</summary>
+        public float BurnRemaining => burnTime >= 0f ? Math.Max(0f, BurnTotal - burnTime) : 0f;
+
+        private float BurnTotal => BurnDuration + BurnStagger * Math.Max(0, burnCount - 1);
+
+        /// <summary>
+        /// 타는 카드 정보. progress는 0(불이 막 붙음)~1(다 탐), lineY는 이 높이 아래가 타서 없어졌다는 뜻.
+        /// </summary>
+        public void GetBurn(int index, out RectangleF rect, out Color accent, out int tier, out object item, out float progress, out float lineY)
+        {
+            rect = burnRects[index];
+            accent = burnColors[index];
+            tier = burnTiers[index];
+            item = burnItems[index];
+            float t = Math.Max(0f, Math.Min(1f, (burnTime - index * BurnStagger) / BurnDuration));
+            progress = t;
+
+            // 밑에서 시작해 점점 빨리 타오른다. 위로 삐져나온 뿔·해골까지 다 태운다.
+            float eased = t * (0.6f + 0.4f * t);
+            float bottom = rect.Bottom + 6f;
+            float top = rect.Top - 30f;
+            lineY = bottom - (bottom - top) * eased;
+        }
+
+        /// <summary>타는 카드의 테두리 색조: 불이 붙을수록 달아오른다.</summary>
+        public static Color BurnTint(float progress)
+        {
+            return Color.FromArgb(255, 255, (int)(255 - 70 * progress), (int)(255 - 140 * progress));
         }
 
         /// <summary>마우스를 올린 정도(0~1).</summary>
@@ -94,6 +181,12 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             }
 
             return m;
+        }
+
+        /// <summary>카드가 떨어지기 시작했는지. 아직이면 그리지 않는다.</summary>
+        public bool Visible(int slot)
+        {
+            return openTime - slot * DropStagger > 0f;
         }
 
         /// <summary>떨어짐 진행도(0~1). 1이면 자리에 꽂혔다.</summary>
@@ -161,7 +254,7 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             float w = pickRect.Width + grow * 2f;
             float h = pickRect.Height + grow * 2f;
             PixelUi.GlowRect(r, x, y, w, h, 18f, PixelPalette.WithAlpha(pickColor, (int)(230 * fade)));
-            PixelUi.DoomCard(r, x, y, w, h, pickColor, 1f, fade);
+            CardArt.Draw(r, x, y, w, h, pickColor, new CardLook { Hover = 1f, Opacity = Math.Max(0.01f, fade), Tier = pickTier });
             r.DrawRectangle(x + 4f, y + 4f, w - 8f, h - 8f, Color.FromArgb((int)(220 * fade * fade), 255, 244, 225));
         }
     }

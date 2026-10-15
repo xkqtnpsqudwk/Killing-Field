@@ -789,10 +789,8 @@ namespace My2DEngine.Game.Core
             RewardCardOffer offer = currentCardOffers[index];
             if (offer == null) return;
 
-            CardRewardView view = BuildCardRewardView();
-            System.Drawing.RectangleF pickedRect = CardRewardScreen.GetCardRect(view, index);
-            pickedRect.Offset(0f, cardMotion.OffsetY(index));
-            cardMotion.Pick(pickedRect, CardRewardScreen.GetAccent(offer));
+            // 고른 카드는 번쩍이고 나머지는 불타 사라진다(그리기 전용).
+            CardRewardScreen.BeginPick(BuildCardRewardView(), index);
 
             ApplyCardOffer(offer);
 

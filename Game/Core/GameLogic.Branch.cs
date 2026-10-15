@@ -181,10 +181,9 @@ namespace My2DEngine.Game.Core
         /// <param name="selected">플레이어가 선택한 룸 템플릿.</param>
         private void ConfirmBranchSelection(RoomTemplate selected)
         {
+            // 고른 카드는 번쩍이고 다른 카드는 불타 사라진다(그리기 전용).
             int pickedIndex = selected == branchOptionA ? 0 : 1;
-            System.Drawing.RectangleF pickedRect = BranchSelectionScreen.GetCardRect(pickedIndex);
-            pickedRect.Offset(0f, branchMotion.OffsetY(pickedIndex));
-            branchMotion.Pick(pickedRect, BranchSelectionScreen.GetAccent(selected));
+            BranchSelectionScreen.BeginPick(branchMotion, pickedIndex, selected, pickedIndex == 0 ? branchOptionB : branchOptionA);
 
             branchSelectionActive = false;
             branchOptionA = null;

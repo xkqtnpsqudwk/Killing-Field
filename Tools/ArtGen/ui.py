@@ -322,6 +322,75 @@ def skull():
     return img, eyes
 
 
+def gem():
+    """등급 보석. 9×9 마름모, 면마다 밝기가 다른 흰 그림이라 게임이 등급 색을 곱한다. 카드 모서리 볼트 자리에 박는다."""
+    n = 9
+    c = 4
+    img = np.zeros((n, n, 4), np.uint8)
+    for y in range(n):
+        for x in range(n):
+            dx, dy = x - c, y - c
+            d = abs(dx) + abs(dy)
+            if d > 4:
+                continue
+            if d == 4:
+                v = 40                       # 테두리(색을 곱해도 어둡게 남는다)
+            elif dx <= 0 and dy <= 0:
+                v = 255                      # 왼쪽 위 면: 빛을 받는다
+            elif dx > 0 and dy <= 0:
+                v = 205
+            elif dx <= 0:
+                v = 150
+            else:
+                v = 105
+            img[y, x] = (v, v, v, 255)
+    img[c - 2, c - 1] = (255, 255, 255, 255)   # 반짝이는 점
+    img[c, c] = (230, 230, 230, 255)
+    return img
+
+
+def horns():
+    """보라·빨강 등급 해골에 붙는 악마 뿔. 60×24. 해골 양옆에서 바깥 위로 휘어 오른다."""
+    w, h = 60, 24
+    p = Plate(w, h)
+    cx = (w - 1) / 2
+    for side in (-1, 1):
+        # 2차 베지어 중심선: 뿌리 → 바깥 → 끝(위)
+        p0 = np.array([cx + side * 8.0, 17.0])
+        p1 = np.array([cx + side * 26.0, 18.0])
+        p2 = np.array([cx + side * 27.0, 1.5])
+        steps = 80
+        for i in range(steps + 1):
+            t = i / steps
+            pt = (1 - t) ** 2 * p0 + 2 * (1 - t) * t * p1 + t * t * p2
+            r = 3.6 * (1 - t) + 0.5 * t
+            d2 = (p.X - pt[0]) ** 2 + (p.Y - pt[1]) ** 2
+            m = d2 <= r * r
+            dome = np.sqrt(np.clip(r * r - d2, 0, None)) / max(r, 0.5) * 2.5
+            ring = (i % 9) < 2 and t < 0.8              # 마디: 몇 칸마다 어두운 고리
+            base = 0.42 + 0.45 * t
+            sel = m & ((p.M < 0) | (p.H < dome + t))
+            p.paint(sel, "bone" if t > 0.35 else "rust", base, height=dome + t, add=-0.18 if ring else 0)
+    return p.render()
+
+
+def spike(side):
+    """파랑 등급 이상 카드 옆구리에 박는 금속 칼날. 16×26. side=-1은 왼쪽을 향하고 1은 오른쪽을 향한다."""
+    w, h = 16, 26
+    p = Plate(w, h)
+    cy = (h - 1) / 2
+    # 왼쪽을 향하는 모양으로 계산한 뒤 오른쪽이면 x를 뒤집은 좌표로 칠한다(빛 방향은 그대로).
+    X = p.X if side < 0 else (w - 1 - p.X)
+    blade = (X >= 0.5) & (X <= 12) & (np.abs(p.Y - cy) <= (X - 0.5) * 0.62)
+    ridge = 1 - np.abs(p.Y - cy) / np.maximum((X - 0.5) * 0.62, 0.5)
+    p.paint(blade, "steel", 0.66, height=ridge * 2.4)
+    mount = (X > 11) & (X <= 15) & (np.abs(p.Y - cy) <= 9)
+    p.paint(mount, "brass", 0.62, height=1.5 + np.clip(np.minimum(X - 11, 15 - X), 0, 1.2))
+    for yy in (cy - 6, cy + 6):
+        rivet(p, (13 if side < 0 else w - 14), yy, 1.2, base=0.7, height=1.6)
+    return p.render()
+
+
 def glow():
     """빛 번짐. 32×32 흰색, 가장자리로 갈수록 투명. 단계 알파와 디더링으로 픽셀 느낌을 남긴다."""
     n = 32
@@ -347,6 +416,10 @@ def all_pieces():
     out["plaque.png"], _ = plaque()
     out["skull.png"], out["skull_eyes.png"] = skull()
     out["glow.png"] = glow()
+    out["gem.png"] = gem()
+    out["horns.png"] = horns()
+    out["spike_l.png"] = spike(-1)
+    out["spike_r.png"] = spike(1)
     return out
 
 
