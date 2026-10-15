@@ -257,9 +257,15 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
 
             // 조건부 카드는 발동 조건을 적어 단순 수치 카드와 구분한다.
             string conditionText = CardText.StatCondition(offer.StatType);
+            string linkedText = CardText.StatLinked(offer.StatType, offer.Grade);
             if (!string.IsNullOrEmpty(conditionText))
             {
                 OverlayPanels.TextClipped(r, conditionText, cx, y + 128f, Color.FromArgb(235, 255, 200, 110), 6f, clip);
+            }
+            else if (!string.IsNullOrEmpty(linkedText))
+            {
+                // 합친 카드: 함께 오르는 값
+                OverlayPanels.TextClipped(r, "+ " + linkedText, cx, y + 128f, gradeColor, 6f, clip);
             }
 
             // 지금까지 모은 양

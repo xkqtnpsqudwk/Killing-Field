@@ -73,6 +73,7 @@ namespace My2DEngine.SmokeTests
                 RunDeathSummarySmokeCheck();
                 RunAutoCannonProjectileSmokeCheck();
                 RunNewSynergyCardsSmokeCheck();
+                RunCardReworkSmokeCheck();
                 RunLuckCoinBonusSmokeCheck();
                 RunMoveSpeedDashSynergySmokeCheck();
                 RunLayoutBehaviorChecks();
@@ -905,7 +906,7 @@ namespace My2DEngine.SmokeTests
         }
 
         /// <summary>
-        /// 모든 피해 흡혈 스탯이 0~100%로 고정되고 독안개에서 절반으로 감소하는지 검증한다.
+        /// 모든 피해 흡혈 스탯이 0~25%로 고정되고 독안개에서 절반으로 감소하는지 검증한다.
         /// </summary>
         private static void RunLifeStealStatSmokeCheck()
         {
@@ -921,17 +922,17 @@ namespace My2DEngine.SmokeTests
                 throw new InvalidOperationException("Smoke check failed for life steal: negative value was not clamped to zero.");
             }
 
-            if (world.ClampRunStatBonusSmokeSnapshot(StatType.LifeSteal, 1.25f) != 1f)
+            if (world.ClampRunStatBonusSmokeSnapshot(StatType.LifeSteal, 1.25f) != 0.25f)
             {
-                throw new InvalidOperationException("Smoke check failed for life steal: value above 100% was not capped.");
+                throw new InvalidOperationException("Smoke check failed for life steal: value above 25% was not capped.");
             }
 
-            if (Math.Abs(world.GetLifeStealRatioSmokeSnapshot(0.40f, toxicMistPenaltyActive: false) - 0.40f) > 0.0001f)
+            if (Math.Abs(world.GetLifeStealRatioSmokeSnapshot(0.20f, toxicMistPenaltyActive: false) - 0.20f) > 0.0001f)
             {
                 throw new InvalidOperationException("Smoke check failed for life steal: normal ratio is incorrect.");
             }
 
-            if (Math.Abs(world.GetLifeStealRatioSmokeSnapshot(0.40f, toxicMistPenaltyActive: true) - 0.20f) > 0.0001f)
+            if (Math.Abs(world.GetLifeStealRatioSmokeSnapshot(0.20f, toxicMistPenaltyActive: true) - 0.10f) > 0.0001f)
             {
                 throw new InvalidOperationException("Smoke check failed for life steal: toxic mist penalty did not halve the ratio.");
             }
@@ -969,13 +970,11 @@ namespace My2DEngine.SmokeTests
             StatType[] expectedStats =
             {
                 StatType.DamageReduction,
-                StatType.ShopDiscount,
                 StatType.KillHeal,
                 StatType.KillDashCooldownRefund,
                 StatType.CriticalChance,
                 StatType.CardChoiceBonus,
                 StatType.ShieldRegenRate,
-                StatType.ShieldRegenDelayReduction,
                 StatType.ShieldedDamage,
                 StatType.DashStrikeDamage
             };
@@ -988,11 +987,18 @@ namespace My2DEngine.SmokeTests
                 }
             }
 
+            // 상점 할인은 약탈(코인 드랍)에, 보호막 회복 지연은 보호막 재생에 합쳐져 따로 나오지 않는다.
+            if (world.IsStatInRewardPoolSmokeSnapshot(StatType.ShopDiscount) ||
+                world.IsStatInRewardPoolSmokeSnapshot(StatType.ShieldRegenDelayReduction))
+            {
+                throw new InvalidOperationException("Smoke check failed for expanded stat cards: merged stats must not appear in the reward pool.");
+            }
+
             AssertNearlyEqual(0.65f, world.ClampRunStatBonusSmokeSnapshot(StatType.DamageReduction, 1f), "damage reduction cap");
             AssertNearlyEqual(0.50f, world.ClampRunStatBonusSmokeSnapshot(StatType.ShopDiscount, 1f), "shop discount cap");
             AssertNearlyEqual(0.10f, world.ClampRunStatBonusSmokeSnapshot(StatType.KillHeal, 1f), "kill heal cap");
             AssertNearlyEqual(0.25f, world.ClampRunStatBonusSmokeSnapshot(StatType.KillDashCooldownRefund, 1f), "kill dash refund cap");
-            AssertNearlyEqual(1f, world.ClampRunStatBonusSmokeSnapshot(StatType.CriticalChance, 1.5f), "critical chance cap");
+            AssertNearlyEqual(0.60f, world.ClampRunStatBonusSmokeSnapshot(StatType.CriticalChance, 1.5f), "critical chance cap");
             AssertNearlyEqual(1f, world.ClampRunStatBonusSmokeSnapshot(StatType.CardChoiceBonus, 2f), "card choice cap");
             AssertNearlyEqual(19f, world.ClampRunStatBonusSmokeSnapshot(StatType.ShieldRegenRate, 99f), "shield regen rate cap");
             AssertNearlyEqual(0.80f, world.ClampRunStatBonusSmokeSnapshot(StatType.ShieldRegenDelayReduction, 1f), "shield regen delay cap");
@@ -1221,6 +1227,34 @@ namespace My2DEngine.SmokeTests
         /// <summary>
         /// 5종 신규 조건부 피해 카드가 카드 풀에 등록되고 조건별로 정확히 발동하는지 검증한다.
         /// </summary>
+        /// <summary>
+        /// 2026-10-15 카드 개편: 합친 카드가 함께 오르는 스탯을 올리고,
+        /// AutoCannon 무기 카드에서 탄 드랍이 빠지고 발사 속도가 들어갔는지 검증한다.
+        /// </summary>
+        private static void RunCardReworkSmokeCheck()
+        {
+            var world = new GameLogic();
+
+            AssertNearlyEqual(0.05f, world.ApplyLinkedStatSmokeSnapshot(StatType.CoinDropChance, CardGrade.Blue, StatType.ShopDiscount),
+                "plunder card shop discount");
+            AssertNearlyEqual(0.08f, world.ApplyLinkedStatSmokeSnapshot(StatType.ShieldRegenRate, CardGrade.Blue, StatType.ShieldRegenDelayReduction),
+                "shield regen card delay reduction");
+            AssertNearlyEqual(0f, world.ApplyLinkedStatSmokeSnapshot(StatType.Damage, CardGrade.Red, StatType.ShopDiscount),
+                "non-merged card must not raise another stat");
+
+            if (!world.IsStatInRewardPoolSmokeSnapshot(StatType.AmmoDropChance))
+            {
+                throw new InvalidOperationException("Smoke check failed for card rework: ammo drop stat card must stay in the reward pool.");
+            }
+
+            WeaponUpgradeCategory[] cannon = world.GetUpgradeCategoriesForWeaponSmokeSnapshot(WeaponType.AutoCannon);
+            if (Array.IndexOf(cannon, WeaponUpgradeCategory.AmmoDropBonus) >= 0 ||
+                Array.IndexOf(cannon, WeaponUpgradeCategory.FireRate) < 0)
+            {
+                throw new InvalidOperationException("Smoke check failed for card rework: AutoCannon must offer FireRate instead of AmmoDropBonus.");
+            }
+        }
+
         private static void RunNewSynergyCardsSmokeCheck()
         {
             var world = new GameLogic();
@@ -1228,16 +1262,21 @@ namespace My2DEngine.SmokeTests
             StatType[] newStats =
             {
                 StatType.LowHealthRage,
-                StatType.KillChain,
-                StatType.ExplosiveSpecialist,
-                StatType.LowAmmoRage,
-                StatType.RapidFireChain
+                StatType.KillChain
             };
 
             foreach (var stat in newStats)
             {
                 if (!world.IsStatInRewardPoolSmokeSnapshot(stat))
                     throw new InvalidOperationException("Smoke check failed for new synergy cards: " + stat + " is missing from the reward pool.");
+            }
+
+            // 폭발 전문가·탄창 분노·연사 가속은 풀에서 뺐다. 저장된 런의 값은 아래 계산처럼 그대로 효과가 있다.
+            StatType[] retiredStats = { StatType.ExplosiveSpecialist, StatType.LowAmmoRage, StatType.RapidFireChain };
+            foreach (var stat in retiredStats)
+            {
+                if (world.IsStatInRewardPoolSmokeSnapshot(stat))
+                    throw new InvalidOperationException("Smoke check failed for new synergy cards: retired stat " + stat + " is still in the reward pool.");
             }
 
             // LowHealthRage: 체력 29% — 발동, 체력 31% — 미발동

@@ -24,13 +24,13 @@ namespace My2DEngine.Game
         Range = 1,
         /// <summary>BearKiller 전용 - 발사 탄환 수 증가.</summary>
         Pellets = 2,
-        /// <summary>HChainGun / DuelBerettas - 발사 속도 증가.</summary>
+        /// <summary>HChainGun / DuelBerettas / AutoCannon - 발사 속도 증가.</summary>
         FireRate = 3,
         /// <summary>HChainGun 전용 - 탄 퍼짐 감소.</summary>
         Spread = 4,
         /// <summary>AutoCannon 전용 - 폭발 범위 증가.</summary>
         Splash = 5,
-        /// <summary>AutoCannon 전용 - 탄약 드랍 확률 증가.</summary>
+        /// <summary>예전 AutoCannon 전용 - 탄약 드랍 확률 증가. 2026-10-15부터 카드로 나오지 않고, 저장된 런에만 남는다.</summary>
         AmmoDropBonus = 6,
         /// <summary>무기별 Red 카드 전용 - 특수기 해금.</summary>
         Special = 7

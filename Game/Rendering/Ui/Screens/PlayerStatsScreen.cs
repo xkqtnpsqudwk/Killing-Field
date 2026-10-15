@@ -116,7 +116,7 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
                 toxic ?? CardTag(v.Count(StatType.LifeSteal)));
             rowY = PercentRow(r, x, rowY, w, row++, "처치 회복", v.Total(StatType.KillHeal), v.Count(StatType.KillHeal));
             rowY = Row(r, x, rowY, w, row++, "보호막 회복", $"{v.ShieldRegenRate:0.#}/s", Value, CardTag(v.Count(StatType.ShieldRegenRate)));
-            Row(r, x, rowY, w, row, "회복 지연", $"{v.ShieldRegenDelay:0.#}s", Value, CardTag(v.Count(StatType.ShieldRegenDelayReduction)));
+            Row(r, x, rowY, w, row, "회복 지연", $"{v.ShieldRegenDelay:0.#}s", Value, CardTag(v.Count(StatType.ShieldRegenRate)));
         }
 
         private static void DrawOffense(Renderer r, PlayerStatsView v, Weapon weapon, float x, float y, float w, float h)
@@ -168,7 +168,7 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
                 v.Total(StatType.AmmoDropChance) > 0f ? Boosted : Value, CardTag(v.Count(StatType.AmmoDropChance)));
             rowY = Row(r, x, rowY, w, row++, "코인 드랍", Pct(coinDrop),
                 v.Total(StatType.CoinDropChance) > 0f ? Boosted : Value, CardTag(v.Count(StatType.CoinDropChance)));
-            rowY = PercentRow(r, x, rowY, w, row++, "상점 할인", v.Total(StatType.ShopDiscount), v.Count(StatType.ShopDiscount));
+            rowY = PercentRow(r, x, rowY, w, row++, "상점 할인", v.Total(StatType.ShopDiscount), v.Count(StatType.CoinDropChance));
             rowY = Row(r, x, rowY, w, row++, "카드 선택지", choiceBonus > 0 ? $"+{choiceBonus}" : "0", choiceBonus > 0 ? Boosted : Zero, null);
 
             rowY += 6f;

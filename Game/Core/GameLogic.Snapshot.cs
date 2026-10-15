@@ -200,6 +200,29 @@ namespace My2DEngine.Game.Core
             return false;
         }
 
+        /// <summary>합친 카드를 고른 것처럼 함께 오르는 스탯에 값을 더하고, 그 스탯의 누적값을 돌려준다(상태는 되돌린다).</summary>
+        internal float ApplyLinkedStatSmokeSnapshot(StatType stat, CardGrade grade, StatType linked)
+        {
+            float previous = runStatBonusTotals[(int)linked];
+            int previousGrade = runStatGrade[(int)linked];
+            try
+            {
+                runStatBonusTotals[(int)linked] = 0f;
+                ApplyLinkedStatBonus(stat, grade);
+                return runStatBonusTotals[(int)linked];
+            }
+            finally
+            {
+                runStatBonusTotals[(int)linked] = previous;
+                runStatGrade[(int)linked] = previousGrade;
+            }
+        }
+
+        internal WeaponUpgradeCategory[] GetUpgradeCategoriesForWeaponSmokeSnapshot(WeaponType type)
+        {
+            return GetUpgradeCategoriesForWeapon(type);
+        }
+
         internal bool IsStatOfferAvailableSmokeSnapshot(StatType stat, int floor, bool cardChoiceOffered, float currentBonus)
         {
             int previousFloor = currentFloor;

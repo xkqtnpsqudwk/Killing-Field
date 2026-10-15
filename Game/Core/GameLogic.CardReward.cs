@@ -712,7 +712,8 @@ namespace My2DEngine.Game.Core
                 case WeaponType.HChainGun:
                     return new[] { WeaponUpgradeCategory.Damage, WeaponUpgradeCategory.FireRate, WeaponUpgradeCategory.Spread };
                 case WeaponType.AutoCannon:
-                    return new[] { WeaponUpgradeCategory.Damage, WeaponUpgradeCategory.Splash, WeaponUpgradeCategory.AmmoDropBonus };
+                    // 탄 드랍은 모든 무기 공통 스탯 카드가 맡는다. AutoCannon은 자기 무기다운 강화만 받는다.
+                    return new[] { WeaponUpgradeCategory.Damage, WeaponUpgradeCategory.Splash, WeaponUpgradeCategory.FireRate };
                 case WeaponType.DuelBerettas:
                     return new[] { WeaponUpgradeCategory.Damage, WeaponUpgradeCategory.Range, WeaponUpgradeCategory.FireRate };
                 default:
@@ -868,9 +869,30 @@ namespace My2DEngine.Game.Core
             runStatGrade[statIndex] = Math.Max(runStatGrade[statIndex], (int)grade);
             runStatBonusTotals[statIndex] = nextTotal;
             runStatPickupCount[statIndex]++;
+            ApplyLinkedStatBonus(stat, grade);
 
             ApplyCombinedProgressionStats(refillHealth: false, healMaxHealthDelta: stat == StatType.MaxHealth);
             stageStatus.Show(BuildStatCardMessage(stat, grade, actualBonus), 3f);
+        }
+
+        /// <summary>합친 카드(약탈, 보호막 재생)를 고르면 함께 오르는 스탯에도 값을 더한다.</summary>
+        private void ApplyLinkedStatBonus(StatType stat, CardGrade grade)
+        {
+            StatCardDefinition definition = StatCardCatalog.Get(stat);
+            if (!definition.Linked.HasValue)
+            {
+                return;
+            }
+
+            StatType linked = definition.Linked.Value;
+            int index = (int)linked;
+            float current = ClampRunStatBonusTotal(linked, runStatBonusTotals[index]);
+            float next = ClampRunStatBonusTotal(linked, current + definition.GetLinkedBonus(grade));
+            if (next > current)
+            {
+                runStatBonusTotals[index] = next;
+                runStatGrade[index] = Math.Max(runStatGrade[index], (int)grade);
+            }
         }
 
         private static float ClampRunStatBonusTotal(StatType stat, float value)

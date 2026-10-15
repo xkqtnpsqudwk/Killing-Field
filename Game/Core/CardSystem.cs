@@ -41,16 +41,16 @@ namespace My2DEngine.Game
     /// </summary>
     public static class CardGradeHelper
     {
-        /// <summary>등급별 보너스 값 (1% ~ 5%). 스탯 카드 효과에 사용된다.</summary>
+        /// <summary>등급별 보너스 값 (3% ~ 18%). 스탯 카드 효과에 사용된다. 카드마다 따로 정한 값이 있으면 그쪽을 쓴다.</summary>
         public static float GetBonusValue(CardGrade grade)
         {
             switch (grade)
             {
-                case CardGrade.White:  return 0.01f;
-                case CardGrade.Green:  return 0.02f;
-                case CardGrade.Blue:   return 0.03f;
-                case CardGrade.Purple: return 0.04f;
-                case CardGrade.Red:    return 0.05f;
+                case CardGrade.White:  return 0.03f;
+                case CardGrade.Green:  return 0.05f;
+                case CardGrade.Blue:   return 0.08f;
+                case CardGrade.Purple: return 0.12f;
+                case CardGrade.Red:    return 0.18f;
                 default: return 0f;
             }
         }

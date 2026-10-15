@@ -529,7 +529,8 @@ namespace My2DEngine.Game
                         * (1f + GetUpgradeMult(type, WeaponUpgradeCategory.Damage));
                     Range                       = WeaponConfig.RocketRange;
                     SpreadRadius                = WeaponConfig.RocketSpread;
-                    currentShotCooldownDuration = WeaponConfig.RocketCooldown;
+                    currentShotCooldownDuration = WeaponConfig.RocketCooldown
+                        * (1f - GetUpgradeMult(type, WeaponUpgradeCategory.FireRate));
                     PelletCount                 = 1;
                     SplashRadius                = WeaponConfig.RocketSplashRadius
                         * (1f + GetUpgradeMult(type, WeaponUpgradeCategory.Splash));

@@ -33,6 +33,19 @@ namespace My2DEngine.Game.Core
             return StatCardCatalog.Get(stat).Condition;
         }
 
+        /// <summary>합친 카드가 함께 올리는 값(예: "상점 할인 -5%"). 없으면 null.</summary>
+        public static string StatLinked(StatType stat, CardGrade grade)
+        {
+            StatCardDefinition definition = StatCardCatalog.Get(stat);
+            if (!definition.Linked.HasValue)
+            {
+                return null;
+            }
+
+            StatCardDefinition linked = StatCardCatalog.Get(definition.Linked.Value);
+            return linked.Name + " " + linked.FormatOfferValue(definition.GetLinkedBonus(grade));
+        }
+
         public static string CategoryName(WeaponUpgradeCategory cat)
         {
             switch (cat)
