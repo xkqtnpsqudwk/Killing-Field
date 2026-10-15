@@ -61,6 +61,7 @@ namespace My2DEngine.SmokeTests
                 RunRoguelikeStartSmokeCheck(GameLogic.DifficultyPreset.Normal, "roguelike start normal");
                 RunRoguelikeStartSmokeCheck(GameLogic.DifficultyPreset.Hard, "roguelike start hard");
                 RunSaveContinueSmokeCheck();
+                RunRunSaveFormatSmokeCheck();
                 RunRoomObjectiveTemplateSmokeCheck();
                 RunKeyTargetRevealSmokeCheck();
                 RunRoomDifficultyRewardSmokeCheck();
@@ -593,6 +594,84 @@ namespace My2DEngine.SmokeTests
             finally
             {
                 world.DeleteRunProgress();
+            }
+        }
+
+        /// <summary>
+        /// 런 저장의 스탯 카드 보너스가 한 열(run_stat_bonus_state)로 오가고,
+        /// 예전 스탯별 열만 있는 저장도 읽히는지 검증한다. 임시 DB 파일을 쓴다.
+        /// </summary>
+        private static void RunRunSaveFormatSmokeCheck()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "kf_smoke_" + Guid.NewGuid().ToString("N") + ".db");
+            try
+            {
+                var repo = new SqliteProgressionRepository(path);
+
+                // 새 DB에서도 기록·설정이 저장된다(예전에는 run_records 표를 만들기 전에 열을 보강하다 예외가 나서
+                // 새로 설치하면 기록·설정 표가 만들어지지 않았다).
+                repo.SaveRunRecord(new RunRecord { FloorReached = 12, EnemiesKilled = 30, EndedAt = "smoke" });
+                RunRecord[] records = repo.LoadRunRecords(5);
+                if (records == null || records.Length != 1 || records[0].FloorReached != 12)
+                {
+                    throw new InvalidOperationException("Smoke check failed for run save format: run record was not saved on a fresh database.");
+                }
+
+                repo.SaveSettings(new GameSettings { FovDegrees = 70f });
+                if (Math.Abs(repo.LoadSettings().FovDegrees - 70f) > 0.01f)
+                {
+                    throw new InvalidOperationException("Smoke check failed for run save format: settings were not saved on a fresh database.");
+                }
+
+                var data = new RunSaveData
+                {
+                    Floor = 7,
+                    PlayerHealth = 55f,
+                    RunStatBonusState = "0.03,0,0,0,0.25",
+                    RunPerkMask = 0b101,
+                    WeaponAmmoState = "",
+                    WeaponUpgradeState = "",
+                    RunStatGradeState = "",
+                    RunStatPickupState = ""
+                };
+                repo.SaveRunSave(data);
+                RunSaveData loaded = repo.LoadRunSave();
+                if (loaded == null || loaded.Floor != 7 || loaded.RunStatBonusState != data.RunStatBonusState || loaded.RunPerkMask != 0b101)
+                {
+                    throw new InvalidOperationException("Smoke check failed for run save format: stat bonus state or perks did not round-trip.");
+                }
+
+                // GameLogic: 새 형식 문자열에서 되살린다(저장보다 스탯이 많으면 나머지는 0).
+                var world = new GameLogic();
+                float[] restored = world.RestoreRunStatBonusesSmokeSnapshot(loaded);
+                AssertNearlyEqual(0.03f, restored[(int)StatType.MaxHealth], "restored max health bonus");
+                AssertNearlyEqual(0.25f, restored[(int)StatType.Damage], "restored damage bonus");
+                AssertNearlyEqual(0f, restored[(int)StatType.FireRate], "missing stat restores as zero");
+
+                // 직렬화가 다시 같은 값으로 읽힌다.
+                var roundTrip = new RunSaveData { RunStatBonusState = world.SerializeRunStatBonusesSmokeSnapshot() };
+                float[] again = new GameLogic().RestoreRunStatBonusesSmokeSnapshot(roundTrip);
+                AssertNearlyEqual(0.25f, again[(int)StatType.Damage], "serialized damage bonus");
+
+                // 예전 저장: 스탯별 열만 있고 새 형식 열은 비어 있다.
+                float[] legacy = new float[25];
+                legacy[(int)StatType.Damage] = 0.4f;
+                legacy[(int)StatType.MaxShield] = 0.3f;
+                repo.WriteLegacyStatBonusesForSmoke(legacy);
+                RunSaveData old = repo.LoadRunSave();
+                if (old == null || !string.IsNullOrEmpty(old.RunStatBonusState))
+                {
+                    throw new InvalidOperationException("Smoke check failed for run save format: legacy row was not readable.");
+                }
+
+                float[] migrated = new GameLogic().RestoreRunStatBonusesSmokeSnapshot(old);
+                AssertNearlyEqual(0.4f, migrated[(int)StatType.Damage], "legacy damage bonus");
+                AssertNearlyEqual(0.3f, migrated[(int)StatType.MaxShield], "legacy max shield bonus");
+            }
+            finally
+            {
+                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+                try { File.Delete(path); } catch (IOException) { }
             }
         }
 

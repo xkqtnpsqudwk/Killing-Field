@@ -259,6 +259,22 @@ namespace My2DEngine.Game.Core
 
         internal bool TrySkipCardsSmokeSnapshot() => TrySkipCards();
 
+        /// <summary>저장 데이터로 스탯 카드 보너스를 되살리고 상한 적용 값을 돌려준다.</summary>
+        internal float[] RestoreRunStatBonusesSmokeSnapshot(RunSaveData save)
+        {
+            RestoreRunStatBonuses(save);
+            float[] values = new float[runStatBonusTotals.Length];
+            for (int i = 0; i < values.Length; i++)
+            {
+                values[i] = GetRunStatBonus((StatType)i);
+            }
+
+            return values;
+        }
+
+        /// <summary>지금 스탯 카드 보너스를 저장 문자열로 만든다.</summary>
+        internal string SerializeRunStatBonusesSmokeSnapshot() => SerializeRunStatBonuses();
+
         internal float GetPlayerMaxHealthSmokeSnapshot() => player.MaxHealth;
 
         internal float GetPlayerMaxShieldSmokeSnapshot() => player.MaxShield;

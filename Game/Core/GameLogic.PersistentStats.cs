@@ -364,31 +364,6 @@ namespace My2DEngine.Game.Core
             {
                 Floor               = currentFloor,
                 PlayerHealth        = player.Health,
-                BonusMaxHealth      = GetRunStatBonus(StatType.MaxHealth),
-                BonusMoveSpeed      = GetRunStatBonus(StatType.MoveSpeed),
-                BonusDamage         = GetRunStatBonus(StatType.Damage),
-                BonusAmmoDropChance = GetRunStatBonus(StatType.AmmoDropChance),
-                BonusDashCooldown   = GetRunStatBonus(StatType.DashCooldown),
-                BonusCoinDropChance = GetRunStatBonus(StatType.CoinDropChance),
-                BonusLifeSteal      = GetRunStatBonus(StatType.LifeSteal),
-                BonusDamageReduction = GetRunStatBonus(StatType.DamageReduction),
-                BonusShopDiscount = GetRunStatBonus(StatType.ShopDiscount),
-                BonusKillHeal = GetRunStatBonus(StatType.KillHeal),
-                BonusKillDashCooldownRefund = GetRunStatBonus(StatType.KillDashCooldownRefund),
-                BonusCriticalChance = GetRunStatBonus(StatType.CriticalChance),
-                BonusCardChoiceBonus = GetRunStatBonus(StatType.CardChoiceBonus),
-                BonusShieldRegenRate = GetRunStatBonus(StatType.ShieldRegenRate),
-                BonusShieldRegenDelayReduction = GetRunStatBonus(StatType.ShieldRegenDelayReduction),
-                BonusShieldedDamage = GetRunStatBonus(StatType.ShieldedDamage),
-                BonusDashStrikeDamage = GetRunStatBonus(StatType.DashStrikeDamage),
-                BonusLowHealthRage = GetRunStatBonus(StatType.LowHealthRage),
-                BonusKillChain = GetRunStatBonus(StatType.KillChain),
-                BonusExplosiveSpecialist = GetRunStatBonus(StatType.ExplosiveSpecialist),
-                BonusLowAmmoRage = GetRunStatBonus(StatType.LowAmmoRage),
-                BonusRapidFireChain = GetRunStatBonus(StatType.RapidFireChain),
-                BonusMaxShield = GetRunStatBonus(StatType.MaxShield),
-                BonusAmmoCapacity = GetRunStatBonus(StatType.AmmoCapacity),
-                BonusFireRate = GetRunStatBonus(StatType.FireRate),
                 RunPerkMask = runPerkMask,
                 PlayerShield = player.Shield,
                 ShieldRegenDelayTimer = player.ShieldRegenDelayTimer,
@@ -404,6 +379,7 @@ namespace My2DEngine.Game.Core
                 WeaponUpgradeState  = SerializeWeaponUpgradeState(),
                 RunStatGradeState   = SerializeIntArray(runStatGrade),
                 RunStatPickupState  = SerializeIntArray(runStatPickupCount),
+                RunStatBonusState   = SerializeRunStatBonuses(),
             };
             progressionRepository.SaveRunSave(data);
         }
@@ -438,33 +414,9 @@ namespace My2DEngine.Game.Core
             ResetRunEndlessState();
 
             // 카드 보너스 복원
-            runStatBonusTotals[(int)StatType.MaxHealth]      = save.BonusMaxHealth;
-            runStatBonusTotals[(int)StatType.MoveSpeed]      = save.BonusMoveSpeed;
-            runStatBonusTotals[(int)StatType.Damage]         = save.BonusDamage;
-            runStatBonusTotals[(int)StatType.AmmoDropChance] = save.BonusAmmoDropChance;
-            runStatBonusTotals[(int)StatType.DashCooldown]   = save.BonusDashCooldown;
-            runStatBonusTotals[(int)StatType.CoinDropChance] = save.BonusCoinDropChance;
-            runStatBonusTotals[(int)StatType.LifeSteal]      = save.BonusLifeSteal;
-            runStatBonusTotals[(int)StatType.DamageReduction] = save.BonusDamageReduction;
-            runStatBonusTotals[(int)StatType.ShopDiscount] = save.BonusShopDiscount;
-            runStatBonusTotals[(int)StatType.KillHeal] = save.BonusKillHeal;
-            runStatBonusTotals[(int)StatType.KillDashCooldownRefund] = save.BonusKillDashCooldownRefund;
-            runStatBonusTotals[(int)StatType.CriticalChance] = save.BonusCriticalChance;
-            runStatBonusTotals[(int)StatType.CardChoiceBonus] = save.BonusCardChoiceBonus;
-            runStatBonusTotals[(int)StatType.ShieldRegenRate] = save.BonusShieldRegenRate;
-            runStatBonusTotals[(int)StatType.ShieldRegenDelayReduction] = save.BonusShieldRegenDelayReduction;
-            runStatBonusTotals[(int)StatType.ShieldedDamage] = save.BonusShieldedDamage;
-            runStatBonusTotals[(int)StatType.DashStrikeDamage] = save.BonusDashStrikeDamage;
-            runStatBonusTotals[(int)StatType.LowHealthRage] = save.BonusLowHealthRage;
-            runStatBonusTotals[(int)StatType.KillChain] = save.BonusKillChain;
-            runStatBonusTotals[(int)StatType.ExplosiveSpecialist] = save.BonusExplosiveSpecialist;
-            runStatBonusTotals[(int)StatType.LowAmmoRage] = save.BonusLowAmmoRage;
-            runStatBonusTotals[(int)StatType.RapidFireChain] = save.BonusRapidFireChain;
-            runStatBonusTotals[(int)StatType.MaxShield] = save.BonusMaxShield;
-            runStatBonusTotals[(int)StatType.AmmoCapacity] = save.BonusAmmoCapacity;
-            runStatBonusTotals[(int)StatType.FireRate] = save.BonusFireRate;
+            RestoreRunStatBonuses(save);
             runPerkMask = save.RunPerkMask & ((1 << RunPerkCatalog.Count) - 1);
-            cardChoiceBonusOffered = save.CardChoiceBonusOffered || save.BonusCardChoiceBonus >= 1f;
+            cardChoiceBonusOffered = save.CardChoiceBonusOffered || runStatBonusTotals[(int)StatType.CardChoiceBonus] >= 1f;
             RestoreIntArray(save.RunStatGradeState, runStatGrade, -1);
             RestoreIntArray(save.RunStatPickupState, runStatPickupCount, 0);
             ClampRunStatBonusTotals();
@@ -625,6 +577,54 @@ namespace My2DEngine.Game.Core
             }
 
             return string.Join(",", parts);
+        }
+
+        /// <summary>스탯 카드 누적 보너스를 StatType 순서로 쉼표로 이어 쓴다(상한 적용 값).</summary>
+        private string SerializeRunStatBonuses()
+        {
+            string[] parts = new string[runStatBonusTotals.Length];
+            for (int i = 0; i < parts.Length; i++)
+            {
+                parts[i] = GetRunStatBonus((StatType)i).ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            return string.Join(",", parts);
+        }
+
+        /// <summary>
+        /// 저장된 스탯 카드 누적 보너스를 되살린다. 새 형식(문자열)이 없으면 예전 스탯별 열 값을 쓴다.
+        /// 저장보다 스탯 종류가 늘었으면 남는 스탯은 0이다.
+        /// </summary>
+        private void RestoreRunStatBonuses(RunSaveData save)
+        {
+            Array.Clear(runStatBonusTotals);
+            if (!string.IsNullOrWhiteSpace(save.RunStatBonusState))
+            {
+                string[] parts = save.RunStatBonusState.Split(',');
+                int count = Math.Min(parts.Length, runStatBonusTotals.Length);
+                for (int i = 0; i < count; i++)
+                {
+                    if (float.TryParse(parts[i], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out float value))
+                    {
+                        runStatBonusTotals[i] = value;
+                    }
+                }
+
+                return;
+            }
+
+            float[] legacy = save.LegacyStatBonuses;
+            if (legacy == null)
+            {
+                return;
+            }
+
+            int legacyCount = Math.Min(legacy.Length, runStatBonusTotals.Length);
+            for (int i = 0; i < legacyCount; i++)
+            {
+                runStatBonusTotals[i] = legacy[i];
+            }
         }
 
         private static string SerializeIntArray(int[] values)

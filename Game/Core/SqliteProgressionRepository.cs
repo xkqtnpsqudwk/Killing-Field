@@ -16,6 +16,33 @@ namespace My2DEngine.Game.Core
             dbPath = Path.Combine(baseDir, DbFileName);
         }
 
+        /// <summary>지정한 파일을 쓰는 저장소(스모크 테스트용 임시 DB).</summary>
+        internal SqliteProgressionRepository(string dbPath)
+        {
+            this.dbPath = dbPath;
+        }
+
+        /// <summary>
+        /// 스모크 테스트 전용: 예전 형식처럼 스탯별 열에 값을 쓰고 새 형식 열을 비운다(이전 저장 읽기 검사).
+        /// </summary>
+        internal void WriteLegacyStatBonusesForSmoke(float[] values)
+        {
+            EnsureDatabase();
+            using (var conn = OpenConnection())
+            using (var cmd = conn.CreateCommand())
+            {
+                var sets = new System.Collections.Generic.List<string> { "run_stat_bonus_state = ''" };
+                for (int i = 0; i < LegacyStatBonusColumns.Length && i < values.Length; i++)
+                {
+                    sets.Add(LegacyStatBonusColumns[i] + " = @v" + i);
+                    cmd.Parameters.AddWithValue("@v" + i, values[i]);
+                }
+
+                cmd.CommandText = "UPDATE run_save SET " + string.Join(", ", sets) + " WHERE id = 1";
+                cmd.ExecuteNonQuery();
+            }
+        }
+
         public PermanentProgressionData Load()
         {
             try
@@ -157,6 +184,7 @@ namespace My2DEngine.Game.Core
                 EnsureColumnExists(conn, "run_save", "bonus_ammo_capacity", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "bonus_fire_rate", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "run_perks", "INTEGER NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "run_stat_bonus_state", "TEXT NOT NULL DEFAULT ''");
                 EnsureColumnExists(conn, "run_save", "player_shield", "REAL NOT NULL DEFAULT 100");
                 EnsureColumnExists(conn, "run_save", "shield_regen_delay_timer", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "card_choice_bonus_offered", "INTEGER NOT NULL DEFAULT 0");
@@ -169,8 +197,8 @@ namespace My2DEngine.Game.Core
                 EnsureColumnExists(conn, "run_save", "run_stat_grade_state", "TEXT NOT NULL DEFAULT ''");
                 EnsureColumnExists(conn, "run_save", "run_stat_pickup_state", "TEXT NOT NULL DEFAULT ''");
                 EnsureColumnExists(conn, "permanent_progression", "has_seen_controls", "INTEGER NOT NULL DEFAULT 0");
-                EnsureColumnExists(conn, "run_records", "is_victory", "INTEGER NOT NULL DEFAULT 0");
 
+                // run_records는 아래에서 만든다. 열 보강은 표를 만든 뒤에 해야 새 DB에서 예외가 나지 않는다.
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"
@@ -185,6 +213,8 @@ namespace My2DEngine.Game.Core
                         )";
                     cmd.ExecuteNonQuery();
                 }
+
+                EnsureColumnExists(conn, "run_records", "is_victory", "INTEGER NOT NULL DEFAULT 0");
 
                 using (var cmd = conn.CreateCommand())
                 {
@@ -221,6 +251,21 @@ namespace My2DEngine.Game.Core
             }
         }
 
+        /// <summary>
+        /// 예전 런 저장이 스탯 카드 보너스를 스탯마다 열 하나씩 담던 열 이름(StatType 0~24 순서).
+        /// 2026-10-15부터는 run_stat_bonus_state 한 열에 모두 담고, 이 열들은 그 값이 비어 있는
+        /// 예전 저장을 읽을 때만 쓴다. 새 스탯을 넣어도 여기에는 더하지 않는다.
+        /// </summary>
+        private static readonly string[] LegacyStatBonusColumns =
+        {
+            "bonus_max_health", "bonus_move_speed", "bonus_dash_cooldown", "bonus_ammo_drop", "bonus_damage",
+            "bonus_coin_drop", "bonus_life_steal", "bonus_damage_reduction", "bonus_shop_discount", "bonus_kill_heal",
+            "bonus_kill_dash_refund", "bonus_crit_chance", "bonus_card_choice_bonus", "bonus_shield_regen_rate",
+            "bonus_shield_regen_delay", "bonus_shielded_damage", "bonus_dash_strike_damage", "bonus_low_health_rage",
+            "bonus_kill_chain", "bonus_explosive_specialist", "bonus_low_ammo_rage", "bonus_rapid_fire_chain",
+            "bonus_max_shield", "bonus_ammo_capacity", "bonus_fire_rate"
+        };
+
         public RunSaveData LoadRunSave()
         {
             try
@@ -230,71 +275,46 @@ namespace My2DEngine.Game.Core
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"
-                        SELECT floor, player_health,
-                               bonus_max_health, bonus_move_speed, bonus_damage,
-                               bonus_ammo_drop, bonus_dash_cooldown, bonus_coin_drop, bonus_life_steal,
-                               bonus_damage_reduction, bonus_shop_discount, bonus_kill_heal,
-                               bonus_kill_dash_refund, bonus_crit_chance, bonus_card_choice_bonus,
-                               bonus_shield_regen_rate, bonus_shield_regen_delay,
-                               bonus_shielded_damage, bonus_dash_strike_damage,
-                               player_shield, shield_regen_delay_timer, card_choice_bonus_offered,
+                        SELECT floor, player_health, player_shield, shield_regen_delay_timer, card_choice_bonus_offered,
                                combat_floor_clears, boss_clear_growth, owned_weapons_mask, coin_count,
                                weapon_card_pool_count, rest_room_cooldown, current_weapon_type,
                                weapon_ammo_state, weapon_upgrade_state,
-                               run_stat_grade_state, run_stat_pickup_state,
-                               bonus_low_health_rage, bonus_kill_chain,
-                               bonus_explosive_specialist, bonus_low_ammo_rage, bonus_rapid_fire_chain,
-                               bonus_max_shield, bonus_ammo_capacity, bonus_fire_rate, run_perks
+                               run_stat_grade_state, run_stat_pickup_state, run_stat_bonus_state, run_perks, "
+                        + string.Join(", ", LegacyStatBonusColumns) + @"
                         FROM run_save WHERE id = 1";
 
                     using (var reader = cmd.ExecuteReader())
                     {
                         if (!reader.Read()) return null;
 
+                        const int legacyStart = 18;
+                        float[] legacy = new float[LegacyStatBonusColumns.Length];
+                        for (int i = 0; i < legacy.Length; i++)
+                        {
+                            legacy[i] = (float)reader.GetDouble(legacyStart + i);
+                        }
+
                         return new RunSaveData
                         {
                             Floor               = reader.GetInt32(0),
                             PlayerHealth        = (float)reader.GetDouble(1),
-                            BonusMaxHealth      = (float)reader.GetDouble(2),
-                            BonusMoveSpeed      = (float)reader.GetDouble(3),
-                            BonusDamage         = (float)reader.GetDouble(4),
-                            BonusAmmoDropChance = (float)reader.GetDouble(5),
-                            BonusDashCooldown   = (float)reader.GetDouble(6),
-                            BonusCoinDropChance = (float)reader.GetDouble(7),
-                            BonusLifeSteal      = (float)reader.GetDouble(8),
-                            BonusDamageReduction = (float)reader.GetDouble(9),
-                            BonusShopDiscount = (float)reader.GetDouble(10),
-                            BonusKillHeal = (float)reader.GetDouble(11),
-                            BonusKillDashCooldownRefund = (float)reader.GetDouble(12),
-                            BonusCriticalChance = (float)reader.GetDouble(13),
-                            BonusCardChoiceBonus = (float)reader.GetDouble(14),
-                            BonusShieldRegenRate = (float)reader.GetDouble(15),
-                            BonusShieldRegenDelayReduction = (float)reader.GetDouble(16),
-                            BonusShieldedDamage = (float)reader.GetDouble(17),
-                            BonusDashStrikeDamage = (float)reader.GetDouble(18),
-                            PlayerShield = (float)reader.GetDouble(19),
-                            ShieldRegenDelayTimer = (float)reader.GetDouble(20),
-                            CardChoiceBonusOffered = reader.GetInt32(21) != 0,
-                            ClearedCombatFloorCount = reader.GetInt32(22),
-                            BossClearGrowthCount = reader.GetInt32(23),
-                            OwnedWeaponsMask    = reader.GetInt32(24),
-                            CoinCount           = reader.GetInt32(25),
-                            WeaponCardPoolCount = reader.GetInt32(26),
-                            RestRoomOpportunityCooldownActive = reader.GetInt32(27) != 0,
-                            CurrentWeaponType   = reader.GetInt32(28),
-                            WeaponAmmoState     = reader.GetString(29),
-                            WeaponUpgradeState  = reader.GetString(30),
-                            RunStatGradeState   = reader.GetString(31),
-                            RunStatPickupState  = reader.GetString(32),
-                            BonusLowHealthRage  = (float)reader.GetDouble(33),
-                            BonusKillChain      = (float)reader.GetDouble(34),
-                            BonusExplosiveSpecialist = (float)reader.GetDouble(35),
-                            BonusLowAmmoRage    = (float)reader.GetDouble(36),
-                            BonusRapidFireChain = (float)reader.GetDouble(37),
-                            BonusMaxShield      = (float)reader.GetDouble(38),
-                            BonusAmmoCapacity   = (float)reader.GetDouble(39),
-                            BonusFireRate       = (float)reader.GetDouble(40),
-                            RunPerkMask         = reader.GetInt32(41),
+                            PlayerShield        = (float)reader.GetDouble(2),
+                            ShieldRegenDelayTimer = (float)reader.GetDouble(3),
+                            CardChoiceBonusOffered = reader.GetInt32(4) != 0,
+                            ClearedCombatFloorCount = reader.GetInt32(5),
+                            BossClearGrowthCount = reader.GetInt32(6),
+                            OwnedWeaponsMask    = reader.GetInt32(7),
+                            CoinCount           = reader.GetInt32(8),
+                            WeaponCardPoolCount = reader.GetInt32(9),
+                            RestRoomOpportunityCooldownActive = reader.GetInt32(10) != 0,
+                            CurrentWeaponType   = reader.GetInt32(11),
+                            WeaponAmmoState     = reader.GetString(12),
+                            WeaponUpgradeState  = reader.GetString(13),
+                            RunStatGradeState   = reader.GetString(14),
+                            RunStatPickupState  = reader.GetString(15),
+                            RunStatBonusState   = reader.GetString(16),
+                            RunPerkMask         = reader.GetInt32(17),
+                            LegacyStatBonuses   = legacy,
                         };
                     }
                 }
@@ -314,52 +334,25 @@ namespace My2DEngine.Game.Core
                 using (var conn = OpenConnection())
                 using (var cmd = conn.CreateCommand())
                 {
+                    // 예전 스탯 열(bonus_*)은 쓰지 않아 기본값 0이 된다. 값은 run_stat_bonus_state에 있다.
                     cmd.CommandText = @"
                         INSERT OR REPLACE INTO run_save
-                            (id, floor, player_health,
-                             bonus_max_health, bonus_move_speed, bonus_damage,
-                             bonus_ammo_drop, bonus_dash_cooldown, bonus_coin_drop, bonus_life_steal,
-                             bonus_damage_reduction, bonus_shop_discount, bonus_kill_heal,
-                             bonus_kill_dash_refund, bonus_crit_chance, bonus_card_choice_bonus,
-                             bonus_shield_regen_rate, bonus_shield_regen_delay,
-                             bonus_shielded_damage, bonus_dash_strike_damage,
-                             player_shield, shield_regen_delay_timer, card_choice_bonus_offered,
+                            (id, floor, player_health, player_shield, shield_regen_delay_timer, card_choice_bonus_offered,
                              combat_floor_clears, boss_clear_growth, owned_weapons_mask, coin_count,
                              weapon_card_pool_count, rest_room_cooldown, current_weapon_type,
                              weapon_ammo_state, weapon_upgrade_state,
-                             run_stat_grade_state, run_stat_pickup_state,
-                             bonus_low_health_rage, bonus_kill_chain,
-                             bonus_explosive_specialist, bonus_low_ammo_rage, bonus_rapid_fire_chain,
-                             bonus_max_shield, bonus_ammo_capacity, bonus_fire_rate, run_perks,
+                             run_stat_grade_state, run_stat_pickup_state, run_stat_bonus_state, run_perks,
                              saved_at)
                         VALUES
-                            (1, @fl, @ph, @bh, @bm, @bd, @ba, @bdc, @bcd, @bls,
-                             @bdr, @bsd, @bkh, @bkdr, @bcc, @bcb, @bsrr, @bsrd, @bsdm, @bdsd, @ps, @srdt, @bcbo,
+                            (1, @fl, @ph, @ps, @srdt, @bcbo,
                              @cf, @bg, @ow, @cc,
-                             @wcp, @rrc, @cwt, @was, @wus, @rgs, @rps,
-                             @blhr, @bkc, @bes, @blar, @brfc,
-                             @bmsh, @bamc, @bfr, @rpk,
+                             @wcp, @rrc, @cwt,
+                             @was, @wus,
+                             @rgs, @rps, @rbs, @rpk,
                              @sa)";
 
                     cmd.Parameters.AddWithValue("@fl", data.Floor);
                     cmd.Parameters.AddWithValue("@ph", data.PlayerHealth);
-                    cmd.Parameters.AddWithValue("@bh", data.BonusMaxHealth);
-                    cmd.Parameters.AddWithValue("@bm", data.BonusMoveSpeed);
-                    cmd.Parameters.AddWithValue("@bd", data.BonusDamage);
-                    cmd.Parameters.AddWithValue("@ba", data.BonusAmmoDropChance);
-                    cmd.Parameters.AddWithValue("@bdc", data.BonusDashCooldown);
-                    cmd.Parameters.AddWithValue("@bcd", data.BonusCoinDropChance);
-                    cmd.Parameters.AddWithValue("@bls", data.BonusLifeSteal);
-                    cmd.Parameters.AddWithValue("@bdr", data.BonusDamageReduction);
-                    cmd.Parameters.AddWithValue("@bsd", data.BonusShopDiscount);
-                    cmd.Parameters.AddWithValue("@bkh", data.BonusKillHeal);
-                    cmd.Parameters.AddWithValue("@bkdr", data.BonusKillDashCooldownRefund);
-                    cmd.Parameters.AddWithValue("@bcc", data.BonusCriticalChance);
-                    cmd.Parameters.AddWithValue("@bcb", data.BonusCardChoiceBonus);
-                    cmd.Parameters.AddWithValue("@bsrr", data.BonusShieldRegenRate);
-                    cmd.Parameters.AddWithValue("@bsrd", data.BonusShieldRegenDelayReduction);
-                    cmd.Parameters.AddWithValue("@bsdm", data.BonusShieldedDamage);
-                    cmd.Parameters.AddWithValue("@bdsd", data.BonusDashStrikeDamage);
                     cmd.Parameters.AddWithValue("@ps", data.PlayerShield);
                     cmd.Parameters.AddWithValue("@srdt", data.ShieldRegenDelayTimer);
                     cmd.Parameters.AddWithValue("@bcbo", data.CardChoiceBonusOffered ? 1 : 0);
@@ -374,14 +367,7 @@ namespace My2DEngine.Game.Core
                     cmd.Parameters.AddWithValue("@wus", data.WeaponUpgradeState ?? string.Empty);
                     cmd.Parameters.AddWithValue("@rgs", data.RunStatGradeState ?? string.Empty);
                     cmd.Parameters.AddWithValue("@rps", data.RunStatPickupState ?? string.Empty);
-                    cmd.Parameters.AddWithValue("@blhr", data.BonusLowHealthRage);
-                    cmd.Parameters.AddWithValue("@bkc", data.BonusKillChain);
-                    cmd.Parameters.AddWithValue("@bes", data.BonusExplosiveSpecialist);
-                    cmd.Parameters.AddWithValue("@blar", data.BonusLowAmmoRage);
-                    cmd.Parameters.AddWithValue("@brfc", data.BonusRapidFireChain);
-                    cmd.Parameters.AddWithValue("@bmsh", data.BonusMaxShield);
-                    cmd.Parameters.AddWithValue("@bamc", data.BonusAmmoCapacity);
-                    cmd.Parameters.AddWithValue("@bfr", data.BonusFireRate);
+                    cmd.Parameters.AddWithValue("@rbs", data.RunStatBonusState ?? string.Empty);
                     cmd.Parameters.AddWithValue("@rpk", data.RunPerkMask);
                     cmd.Parameters.AddWithValue("@sa", DateTime.UtcNow.ToString("o"));
 

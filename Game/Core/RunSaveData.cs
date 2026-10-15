@@ -4,31 +4,17 @@ namespace My2DEngine.Game.Core
     {
         public int Floor { get; set; }
         public float PlayerHealth { get; set; }
-        public float BonusMaxHealth { get; set; }
-        public float BonusMoveSpeed { get; set; }
-        public float BonusDamage { get; set; }
-        public float BonusAmmoDropChance { get; set; }
-        public float BonusDashCooldown { get; set; }
-        public float BonusCoinDropChance { get; set; }
-        public float BonusLifeSteal { get; set; }
-        public float BonusDamageReduction { get; set; }
-        public float BonusShopDiscount { get; set; }
-        public float BonusKillHeal { get; set; }
-        public float BonusKillDashCooldownRefund { get; set; }
-        public float BonusCriticalChance { get; set; }
-        public float BonusCardChoiceBonus { get; set; }
-        public float BonusShieldRegenRate { get; set; }
-        public float BonusShieldRegenDelayReduction { get; set; }
-        public float BonusShieldedDamage { get; set; }
-        public float BonusDashStrikeDamage { get; set; }
-        public float BonusLowHealthRage { get; set; }
-        public float BonusKillChain { get; set; }
-        public float BonusExplosiveSpecialist { get; set; }
-        public float BonusLowAmmoRage { get; set; }
-        public float BonusRapidFireChain { get; set; }
-        public float BonusMaxShield { get; set; }
-        public float BonusAmmoCapacity { get; set; }
-        public float BonusFireRate { get; set; }
+
+        /// <summary>
+        /// 스탯 카드 누적 보너스(StatType 순서, 쉼표로 구분, 소수는 InvariantCulture).
+        /// 새 스탯을 넣어도 DB 열을 늘리지 않는다.
+        /// </summary>
+        public string RunStatBonusState { get; set; }
+
+        /// <summary>
+        /// 예전 저장의 스탯별 열 값(StatType 0~24 순서). RunStatBonusState가 비어 있을 때만 쓴다.
+        /// </summary>
+        public float[] LegacyStatBonuses { get; set; }
 
         /// <summary>얻은 규칙 카드·악마의 계약 비트 묶음(RunPerk 값 = 비트 위치).</summary>
         public int RunPerkMask { get; set; }
