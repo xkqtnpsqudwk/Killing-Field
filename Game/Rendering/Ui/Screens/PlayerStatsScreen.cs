@@ -57,7 +57,7 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             OverlayPanels.Panel(r, panelX, panelY, panelW, panelH,
                 Color.FromArgb(232, 18, 24, 34), Color.FromArgb(210, 140, 205, 255));
 
-            OverlayPanels.Header(r, "현재 스탯", panelCenterX, panelY + 18f);
+            OverlayPanels.Header(r, "현재 스탯", panelCenterX, panelY + 13f);
             r.DrawTextCenteredShadow("P로 닫기", panelCenterX, panelY + 38f,
                 Color.FromArgb(205, 188, 188, 188), 6f);
 

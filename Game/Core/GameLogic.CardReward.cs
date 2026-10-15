@@ -789,6 +789,11 @@ namespace My2DEngine.Game.Core
             RewardCardOffer offer = currentCardOffers[index];
             if (offer == null) return;
 
+            CardRewardView view = BuildCardRewardView();
+            System.Drawing.RectangleF pickedRect = CardRewardScreen.GetCardRect(view, index);
+            pickedRect.Offset(0f, cardMotion.OffsetY(index));
+            cardMotion.Pick(pickedRect, CardRewardScreen.GetAccent(offer));
+
             ApplyCardOffer(offer);
 
             cardRewardActive = false;

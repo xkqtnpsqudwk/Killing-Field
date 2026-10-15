@@ -16,7 +16,7 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             if (progress > 1f) progress = 1f;
 
             OverlayPanels.Dim(r, (int)(160f + progress * 55f));
-            PixelUi.Frame(r, fw * 0.5f - 170f, fh * 0.24f, 340f, fh * 0.34f, 1f, PixelPalette.PanelDeep, PixelPalette.Brass);
+            PixelUi.MetalPanel(r, fw * 0.5f - 170f, fh * 0.24f, 340f, fh * 0.34f, 1f, PixelPalette.PanelDeep, PixelPalette.Brass);
 
             PixelUi.Title(r, "666층 돌파", fw * 0.5f, fh * 0.33f, PixelPalette.Brass, PixelUi.FontBase * 2f, 1f);
             r.DrawTextCenteredShadow("최종 보스를 격파했습니다", fw * 0.5f, fh * 0.405f,

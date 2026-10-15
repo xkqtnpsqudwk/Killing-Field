@@ -373,7 +373,7 @@ namespace My2DEngine.Game.Rendering
 
             float ratio = bossEnemy.MaxHealth > 0f ? bossEnemy.Health / bossEnemy.MaxHealth : 0f;
             GetBossBarRect(out float x, out float y, out float w, out float h);
-            PixelUi.Frame(r, x, y, w, h, HudUnit, PixelPalette.Panel, PixelPalette.Edge);
+            PixelUi.HudFrame(r, x, y, w, h, HudUnit, PixelPalette.Panel, PixelPalette.Edge);
             PixelUi.SegmentBar(r, x + 4f, y + h - 13f, w - 8f, 9f, HudUnit, ratio, PixelPalette.AccentHot, 24);
         }
 
@@ -470,7 +470,7 @@ namespace My2DEngine.Game.Rendering
                 return;
             }
 
-            PixelUi.Frame(r, x, y, w, h, HudUnit, PixelPalette.Panel, edge, raised: true, opacity: Math.Min(1f, alpha));
+            PixelUi.HudFrame(r, x, y, w, h, HudUnit, PixelPalette.Panel, edge, Math.Min(1f, alpha));
         }
 
         /// <summary>
@@ -497,8 +497,8 @@ namespace My2DEngine.Game.Rendering
             float contentSize = visibleTiles * cellSize;
             const float border = 4f;
 
-            PixelUi.Frame(r, MiniMapMargin, MiniMapMargin, contentSize + border * 2f, contentSize + border * 2f, HudUnit,
-                PixelPalette.PanelDeep, PixelPalette.Edge, raised: false);
+            PixelUi.HudFrame(r, MiniMapMargin, MiniMapMargin, contentSize + border * 2f, contentSize + border * 2f, HudUnit,
+                PixelPalette.PanelDeep);
             float panelX = MiniMapMargin + border;
             float panelY = MiniMapMargin + border;
             float panelRight = panelX + contentSize;
@@ -591,7 +591,7 @@ namespace My2DEngine.Game.Rendering
             }
 
             GetAmmoBoxRect(out float x, out float y, out float w, out float h);
-            PixelUi.Frame(r, x, y, w, h, HudUnit, PixelPalette.Panel, PixelPalette.EdgeDim);
+            PixelUi.HudFrame(r, x, y, w, h, HudUnit, PixelPalette.Panel);
             r.DrawRectangle(x + 4f, y + 15f, w - 8f, 1f, PixelPalette.EdgeDim);
 
             // 남은 탄약 비율을 상자 아래쪽 얇은 막대로 보여 준다.
@@ -615,7 +615,7 @@ namespace My2DEngine.Game.Rendering
             }
 
             GetCoinBoxRect(out float x, out float y, out float w, out float h);
-            PixelUi.Frame(r, x, y, w, h, HudUnit, PixelPalette.Panel, PixelPalette.EdgeDim);
+            PixelUi.HudFrame(r, x, y, w, h, HudUnit, PixelPalette.Panel);
 
             // 픽셀 동전 아이콘
             float cx = x + 6f;
@@ -738,7 +738,7 @@ namespace My2DEngine.Game.Rendering
             }
 
             GetStatusBoxRect(out float x, out float y, out float w, out float h);
-            PixelUi.Frame(r, x, y, w, h, HudUnit, PixelPalette.Panel, PixelPalette.EdgeDim);
+            PixelUi.HudFrame(r, x, y, w, h, HudUnit, PixelPalette.Panel);
 
             float ratio = player.MaxHealth > 0f ? player.Health / player.MaxHealth : 0f;
             bool critical = ratio < 0.3f && ((int)(HudTime * 5f) % 2 == 0);
@@ -906,7 +906,7 @@ namespace My2DEngine.Game.Rendering
             GetCoinBoxRect(out float coinX, out float coinY, out float coinW, out _);
             float panelX = coinX + coinW - panelW;
             float panelY = coinY - RightBoxGap - panelH - ((1f - alpha) * 6f);
-            PixelUi.Frame(r, panelX, panelY, panelW, panelH, HudUnit, PixelPalette.Panel, PixelPalette.Darken(accent, 0.4f), raised: true, opacity: alpha);
+            PixelUi.HudFrame(r, panelX, panelY, panelW, panelH, HudUnit, PixelPalette.Panel, null, alpha);
             r.DrawRectangle(panelX + 4f, panelY + 4f, 2f, panelH - 8f, PixelUi.Fade(accent, alpha));
             PixelUi.Text(r, toastText, panelX + 10f, panelY + (panelH - HudSmallText) * 0.5f - 1f, PixelUi.Fade(accent, alpha), HudSmallText, HudUnit, bold: true);
         }
@@ -948,7 +948,7 @@ namespace My2DEngine.Game.Rendering
             if (uiFade > 0f)
             {
                 GetDeathPanelRect(out float x, out float y, out float w, out float h);
-                PixelUi.Frame(r, x, y, w, h, HudUnit, PixelPalette.PanelDeep, PixelPalette.Accent, raised: true, opacity: uiFade);
+                PixelUi.MetalPanel(r, x, y, w, h, HudUnit, PixelPalette.PanelDeep, PixelPalette.Accent, uiFade);
             }
 
             DrawDeathPresentation(r, deathProgress);

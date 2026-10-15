@@ -66,6 +66,17 @@ namespace My2DEngine
 
         private void UpdatePlayingWorld()
         {
+            // 카드 고르기처럼 커서가 보이는 오버레이에서는 마우스 위치를 게임 좌표로 넘겨 올린 카드가 반응하게 한다.
+            if (HasMouseSelectableOverlay && ClientSize.Width > 0 && ClientSize.Height > 0)
+            {
+                world.SetUiPointer(lastMousePosition.X * GameRenderWidth / (float)ClientSize.Width,
+                    lastMousePosition.Y * GameRenderHeight / (float)ClientSize.Height);
+            }
+            else
+            {
+                world.SetUiPointer(-1f, -1f);
+            }
+
             world.Update();
         }
 

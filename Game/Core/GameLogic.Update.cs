@@ -35,6 +35,8 @@ namespace My2DEngine.Game.Core
                 dt = 0.05f;
             }
 
+            UpdateOverlayMotion(dt);
+
             bool playerStatsOverlayWasActive = playerStatsOverlayActive;
             HandlePlayerStatsOverlayInput();
 

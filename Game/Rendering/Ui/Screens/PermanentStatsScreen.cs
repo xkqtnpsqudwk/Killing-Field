@@ -28,7 +28,7 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             OverlayPanels.Panel(r, panelX, panelY, PanelW, PanelH,
                 Color.FromArgb(228, 18, 24, 34), Color.FromArgb(200, 255, 210, 115));
 
-            OverlayPanels.Header(r, "영구 스탯", panelCenterX, panelY + 18f);
+            OverlayPanels.Header(r, "영구 스탯", panelCenterX, panelY + 13f);
             r.DrawTextCenteredShadow("보스 처치 시 포인트 +1", panelCenterX, panelY + 40f,
                 Color.FromArgb(210, 190, 190, 190), 6f);
             r.DrawTextCenteredShadow("미사용 포인트: " + data.UnspentPoints, panelCenterX, panelY + 54f,
@@ -113,7 +113,7 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             GetCardRect(slot, out float x, out float y);
             float centerX = x + CardW * 0.5f;
 
-            OverlayPanels.Panel(r, x, y, CardW, CardH, Color.FromArgb(205, 28, 36, 50), accent);
+            PixelUi.HudFrame(r, x, y, CardW, CardH, 1f, Color.FromArgb(250, 28, 36, 50), accent);
 
             r.DrawTextCenteredShadow(title, centerX, y + 14f, accent, 12f, true);
             r.DrawTextCenteredShadow(levelText, centerX, y + 33f,

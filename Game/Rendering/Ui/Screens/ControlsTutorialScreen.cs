@@ -17,7 +17,7 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             float panelX = cx - panelW * 0.5f;
             float panelY = 70f;
 
-            PixelUi.Frame(r, panelX, panelY, panelW, panelH, 1f, PixelPalette.Panel, PixelPalette.Info, raised: true, opacity: alpha);
+            PixelUi.HudFrame(r, panelX, panelY, panelW, panelH, 1f, PixelPalette.Panel, PixelPalette.Info, alpha);
 
             float ty = panelY + 10f;
             float lineH = 15f;

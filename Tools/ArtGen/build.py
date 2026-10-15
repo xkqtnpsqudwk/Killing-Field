@@ -5,6 +5,7 @@
   Game/Images/Bosses/<이름>/...                                               64×64
   Game/Images/Gun/<이름>/<이름>_sprite_sheet.png                               512×64 (8프레임)
   Game/Images/World/{wall,floor,ceiling,Door,DoorOpen}.png                     256×256
+  Game/Images/Ui/*.png                                                         UI 테두리·장식 조각
 미리보기: Tools/ArtGen/preview/*.png (저장소에는 넣지 않는다)
 """
 
@@ -21,6 +22,7 @@ import demons     # noqa: E402
 import bosses     # noqa: E402
 import weapons    # noqa: E402
 import world      # noqa: E402
+import ui         # noqa: E402
 from preview import sheet as preview_sheet   # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -61,6 +63,9 @@ def main():
     for fname, arr in world.all_textures().items():
         save(arr, os.path.join(IMAGES, "World", fname))
         print("world", fname)
+    for fname, arr in ui.all_pieces().items():
+        save(arr, os.path.join(IMAGES, "Ui", fname))
+        print("ui   ", fname)
     if "--preview" in sys.argv:
         pv = os.path.join(HERE, "preview")
         os.makedirs(pv, exist_ok=True)

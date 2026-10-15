@@ -16,6 +16,32 @@ namespace My2DEngine.Game.Core
         private CardRewardView cardRewardView;
         private PlayerStatsView playerStatsView;
 
+        // 고르기 화면 카드의 움직임(떨어짐·떠오름·고른 카드 번쩍임). 그리기 전용이다.
+        private readonly CardDeckMotion cardMotion = new CardDeckMotion();
+        private readonly CardDeckMotion branchMotion = new CardDeckMotion();
+
+        // 마우스 위치(게임 해상도 좌표). 오버레이가 열려 있을 때 Form1이 매 프레임 넘긴다.
+        private float uiPointerX = -1f;
+        private float uiPointerY = -1f;
+
+        /// <summary>마우스 위치를 게임 해상도 좌표로 받는다. 카드에 마우스를 올린 반응에 쓴다.</summary>
+        public void SetUiPointer(float gameX, float gameY)
+        {
+            uiPointerX = gameX;
+            uiPointerY = gameY;
+        }
+
+        /// <summary>고르기 화면 카드의 움직임을 진행한다. 화면이 닫혀 있어도 고른 카드 번쩍임은 진행된다.</summary>
+        private void UpdateOverlayMotion(float dt)
+        {
+            int cardHover = cardRewardActive ? CardRewardScreen.HitTest(BuildCardRewardView(), uiPointerX, uiPointerY) : -1;
+            cardMotion.Update(dt, cardRewardActive, cardHover);
+
+            bool branchOpen = branchSelectionActive && branchOptionA != null && branchOptionB != null;
+            int branchHover = branchOpen ? BranchSelectionScreen.HitTest(uiPointerX, uiPointerY) : -1;
+            branchMotion.Update(dt, branchOpen, branchHover);
+        }
+
         /// <summary>월드 위에 열린 오버레이 화면을 그린다.</summary>
         private void DrawOverlayScreens(Renderer r)
         {
@@ -26,8 +52,12 @@ namespace My2DEngine.Game.Core
 
             if (branchSelectionActive && branchOptionA != null && branchOptionB != null)
             {
-                BranchSelectionScreen.Draw(r, branchOptionA, branchOptionB, senseLevel);
+                BranchSelectionScreen.Draw(r, branchOptionA, branchOptionB, senseLevel, branchMotion);
             }
+
+            // 고른 카드는 다음 화면 위에서 번쩍이며 사라진다.
+            cardMotion.DrawPick(r);
+            branchMotion.DrawPick(r);
 
             DrawPermanentStatsScreen(r);
 
@@ -70,6 +100,7 @@ namespace My2DEngine.Game.Core
                     StatCounts = runStatPickupCount,
                     StatTotals = runStatBonusTotals,
                     OwnedWeapons = ownedWeapons,
+                    Motion = cardMotion,
                 };
             }
 

@@ -17,7 +17,7 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
         private const float CardGap = 18f;
         private const float CardYRatio = 0.18f;
 
-        public static void Draw(Renderer r, RoomTemplate optionA, RoomTemplate optionB, int senseLevel)
+        public static void Draw(Renderer r, RoomTemplate optionA, RoomTemplate optionB, int senseLevel, CardDeckMotion motion = null)
         {
             float fw = OverlayPanels.ScreenWidth;
             float fh = OverlayPanels.ScreenHeight;
@@ -25,21 +25,56 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             OverlayPanels.Dim(r, 170);
             OverlayPanels.Header(r, "다음 룸 선택", fw * 0.5f, fh * 0.10f);
 
-            GetCardX(0, out float ax);
-            GetCardX(1, out float bx);
-            float cardY = fh * CardYRatio;
-            DrawCard(r, optionA, ax, cardY, CardWidth, CardHeight, "[1]", senseLevel);
-            DrawCard(r, optionB, bx, cardY, CardWidth, CardHeight, "[2]", senseLevel);
+            // 마우스를 올린 카드는 빛 번짐이 가리지 않게 나중에 그린다.
+            bool rightOnTop = motion != null && motion.Hover(1) > motion.Hover(0);
+            if (rightOnTop)
+            {
+                DrawSlot(r, 0, optionA, "[1]", senseLevel, motion);
+                DrawSlot(r, 1, optionB, "[2]", senseLevel, motion);
+            }
+            else
+            {
+                DrawSlot(r, 1, optionB, "[2]", senseLevel, motion);
+                DrawSlot(r, 0, optionA, "[1]", senseLevel, motion);
+            }
+        }
+
+        /// <summary>카드 번호(0 = 왼쪽, 1 = 오른쪽)의 카드 몸통 자리(움직임 없이).</summary>
+        public static RectangleF GetCardRect(int index)
+        {
+            GetCardX(index, out float x);
+            return new RectangleF(x, (float)Math.Round(OverlayPanels.ScreenHeight * CardYRatio), CardWidth, CardHeight);
+        }
+
+        /// <summary>방 유형 색(테두리 홈·해골 눈·빛 번짐에 쓴다).</summary>
+        public static Color GetAccent(RoomTemplate template)
+        {
+            return template.IsBossRoom
+                ? Color.FromArgb(255, 200, 80, 50)
+                : (template.IsRestRoom
+                    ? Color.FromArgb(255, 110, 210, 170)
+                    : (template.IsMiniBossRoom
+                    ? Color.FromArgb(255, 160, 100, 220)
+                    : Color.FromArgb(255, 100, 130, 180)));
+        }
+
+        private static void DrawSlot(Renderer r, int index, RoomTemplate template, string keyLabel, int senseLevel, CardDeckMotion motion)
+        {
+            RectangleF rect = GetCardRect(index);
+            float y = (float)Math.Round(rect.Y + (motion?.OffsetY(index) ?? 0f));
+            float hover = motion?.Hover(index) ?? 0f;
+            bool landed = motion == null || motion.Drop(index) >= 1f;
+            DrawCard(r, template, rect.X, y, rect.Width, rect.Height, keyLabel, senseLevel, hover, landed);
+            motion?.DrawCardOverlay(r, index, rect.X, y, rect.Width, rect.Height);
         }
 
         /// <summary>게임 좌표 클릭이 닿은 카드 번호(0 = 왼쪽, 1 = 오른쪽). 없으면 -1.</summary>
         public static int HitTest(float x, float y)
         {
-            float cardY = OverlayPanels.ScreenHeight * CardYRatio;
             for (int i = 0; i < 2; i++)
             {
-                GetCardX(i, out float cardX);
-                if (OverlayPanels.Contains(x, y, cardX, cardY, CardWidth, CardHeight))
+                RectangleF rect = GetCardRect(i);
+                if (OverlayPanels.Contains(x, y, rect.X, rect.Y, rect.Width, rect.Height))
                 {
                     return i;
                 }
@@ -51,21 +86,17 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
         private static void GetCardX(int index, out float x)
         {
             float center = OverlayPanels.ScreenWidth * 0.5f;
-            x = index == 0 ? center - CardWidth - CardGap * 0.5f : center + CardGap * 0.5f;
+            x = (float)Math.Round(index == 0 ? center - CardWidth - CardGap * 0.5f : center + CardGap * 0.5f);
         }
 
         /// <summary>카드 한 장: 방 유형 색 테두리, 유형 제목, 정보 줄, 선택 키 안내.</summary>
-        private static void DrawCard(Renderer r, RoomTemplate template, float x, float y, float w, float h, string keyLabel, int senseLevel)
+        private static void DrawCard(Renderer r, RoomTemplate template, float x, float y, float w, float h, string keyLabel, int senseLevel, float hover, bool landed)
         {
-            Color borderColor = template.IsBossRoom
-                ? Color.FromArgb(220, 200, 80, 50)
-                : (template.IsRestRoom
-                    ? Color.FromArgb(220, 110, 210, 170)
-                    : (template.IsMiniBossRoom
-                    ? Color.FromArgb(220, 160, 100, 220)
-                    : Color.FromArgb(200, 100, 130, 180)));
-
-            OverlayPanels.CardPanel(r, x, y, w, h, borderColor);
+            OverlayPanels.CardPanel(r, x, y, w, h, GetAccent(template), hover);
+            if (!landed)
+            {
+                return;
+            }
 
             float cx = x + w * 0.5f;
 
@@ -92,19 +123,19 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
                 headerColor = Color.FromArgb(255, 170, 205, 255);
             }
 
-            r.DrawTextCenteredShadow(header, cx, y + 14f, headerColor, 12f, true);
-            r.DrawRectangle(x + 8f, y + 25f, w - 16f, 1f, Color.FromArgb(120, 180, 180, 180));
+            r.DrawTextCenteredShadow(header, cx, y + 27f, headerColor, 12f, true);
+            r.DrawRectangle(x + 14f, y + 39f, w - 28f, 1f, Color.FromArgb(120, 180, 180, 180));
 
-            float lineY = y + 38f;
+            float lineY = y + 52f;
             foreach (InfoLine line in BuildInfoLines(template, senseLevel))
             {
                 r.DrawTextCenteredShadow(line.Text, cx, lineY, line.Color, 6f);
                 lineY += 14.5f;
             }
 
-            r.DrawRectangle(x + 8f, y + h - 28f, w - 16f, 1f, Color.FromArgb(120, 180, 180, 180));
-            r.DrawTextCenteredShadow(keyLabel + " 선택", cx, y + h - 14f,
-                Color.FromArgb(255, 255, 225, 100), 6f);
+            r.DrawRectangle(x + 14f, y + h - 31f, w - 28f, 1f, Color.FromArgb(120, 180, 180, 180));
+            Color prompt = hover > 0.5f ? PixelPalette.Lighten(PixelPalette.Brass, 0.35f) : Color.FromArgb(255, 255, 225, 100);
+            r.DrawTextCenteredShadow(hover > 0.5f ? "▶ " + keyLabel + " 선택 ◀" : keyLabel + " 선택", cx, y + h - 20f, prompt, 6f);
         }
 
         /// <summary>감각 단계에 따라 카드에 표시할 정보 줄을 만든다.</summary>

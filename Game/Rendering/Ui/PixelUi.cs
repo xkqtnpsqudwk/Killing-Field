@@ -61,7 +61,7 @@ namespace My2DEngine.Game.Rendering.Ui
     }
 
     /// <summary>
-    /// 이미지 없이 사각형과 픽셀 글꼴만으로 그리는 레트로 UI 도구.
+    /// 레트로 픽셀 UI 도구. 패널·버튼·카드 테두리는 UiArt 그림 조각(9칸 늘림)을 쓰고, 조각이 없으면 사각형으로 그린다.
     /// 모든 크기는 픽셀 한 칸(u) 단위다. 메뉴는 <see cref="UnitFor"/>로 u를 정하고, 640x360 HUD는 u=1을 쓴다.
     /// </summary>
     public static class PixelUi
@@ -123,37 +123,176 @@ namespace My2DEngine.Game.Rendering.Ui
         }
 
         /// <summary>
-        /// 패널. 픽셀 테두리 상자에 모서리 리벳과, 제목이 있으면 머리띠를 붙인다.
+        /// 패널. 리벳 박은 금속 테두리를 두르고, 제목이 있으면 위쪽 안에 뿔 달린 명판을 단다.
         /// </summary>
-        /// <returns>제목 띠 아래 내용 영역의 Y 좌표.</returns>
+        /// <returns>제목 아래 내용 영역의 Y 좌표.</returns>
         public static float Panel(Renderer r, float x, float y, float w, float h, float u, string title = null, Color? accent = null)
         {
             Color edge = accent ?? PixelPalette.Edge;
-            Frame(r, x, y, w, h, u, PixelPalette.Panel, edge);
-
-            // 모서리 리벳
-            Color rivet = PixelPalette.Lighten(edge, 0.25f);
-            float inset = u * 4f;
-            r.DrawRectangle(x + inset, y + inset, u * 2f, u * 2f, rivet);
-            r.DrawRectangle(x + w - inset - u * 2f, y + inset, u * 2f, u * 2f, rivet);
-            r.DrawRectangle(x + inset, y + h - inset - u * 2f, u * 2f, u * 2f, rivet);
-            r.DrawRectangle(x + w - inset - u * 2f, y + h - inset - u * 2f, u * 2f, u * 2f, rivet);
+            MetalPanel(r, x, y, w, h, u, PixelPalette.Panel, edge);
 
             if (string.IsNullOrEmpty(title))
             {
-                return y + u * 8f;
+                return y + u * 12f;
             }
 
-            float textSize = FontBase * u;
-            float bandH = textSize + u * 8f;
-            float bandY = y + u * 8f;
-            float bandX = x + u * 10f;
-            float bandW = w - u * 20f;
-            r.DrawRectangle(bandX, bandY, bandW, bandH, PixelPalette.Darken(edge, 0.62f));
-            r.DrawRectangle(bandX, bandY + bandH - u, bandW, u, edge);
-            r.DrawRectangle(bandX, bandY, u * 2f, bandH, PixelPalette.Lighten(edge, 0.2f));
-            TextCentered(r, title, x + w * 0.5f, bandY + bandH * 0.5f, PixelPalette.Text, textSize, u, bold: true);
-            return bandY + bandH + u * 6f;
+            PlaqueTitle(r, title, x + w * 0.5f, y + u * 20f, PixelPalette.Text, FontBase * u, u, edge);
+            return y + u * 34f;
+        }
+
+        /// <summary>
+        /// 금속 패널. 안쪽을 채우고 리벳 박은 금속 테두리를 두른다.
+        /// accent가 있으면 테두리 안쪽에 그 색 선을 그어 화면별 색(파랑·금색 등)을 남긴다.
+        /// 그림 조각이 없으면 예전 사각형 테두리로 그린다.
+        /// </summary>
+        public static void MetalPanel(Renderer r, float x, float y, float w, float h, float u, Color fill, Color? accent = null, float opacity = 1f)
+        {
+            if (opacity <= 0f)
+            {
+                return;
+            }
+
+            if (UiArt.Panel == null)
+            {
+                Frame(r, x, y, w, h, u, fill, accent ?? PixelPalette.Edge, raised: true, opacity: opacity);
+                return;
+            }
+
+            float fillInset = u * 4f;
+            float inset = u * UiArt.PanelInset;
+            r.DrawRectangle(x + fillInset, y + fillInset, w - fillInset * 2f, h - fillInset * 2f, Fade(fill, opacity));
+            InnerShadow(r, x + inset, y + inset, w - inset * 2f, h - inset * 2f, u, opacity);
+            r.DrawImageNineSlice(UiArt.Panel, x, y, w, h, UiArt.PanelBorder, UiArt.PanelBorder * u, White(opacity));
+
+            if (accent.HasValue)
+            {
+                OutlineRect(r, x + inset, y + inset, w - inset * 2f, h - inset * 2f, u, Fade(PixelPalette.WithAlpha(accent.Value, 170), opacity));
+            }
+        }
+
+        /// <summary>HUD 상자. 얇은 금속 테두리. accent가 있으면 안쪽에 색 선을 긋는다.</summary>
+        public static void HudFrame(Renderer r, float x, float y, float w, float h, float u, Color fill, Color? accent = null, float opacity = 1f)
+        {
+            if (opacity <= 0f)
+            {
+                return;
+            }
+
+            if (UiArt.Hud == null)
+            {
+                Frame(r, x, y, w, h, u, fill, accent ?? PixelPalette.EdgeDim, raised: true, opacity: opacity);
+                return;
+            }
+
+            r.DrawRectangle(x + u * 2f, y + u * 2f, w - u * 4f, h - u * 4f, Fade(fill, opacity));
+            r.DrawImageNineSlice(UiArt.Hud, x, y, w, h, UiArt.HudBorder, UiArt.HudBorder * u, White(opacity));
+            if (accent.HasValue)
+            {
+                float i = u * UiArt.HudInset;
+                OutlineRect(r, x + i, y + i, w - i * 2f, h - i * 2f, u, Fade(PixelPalette.WithAlpha(accent.Value, 150), opacity));
+            }
+        }
+
+        /// <summary>
+        /// 둠풍 카드(게임 해상도, 한 칸 = 1). 아래로 갈수록 강조 색이 끓어오르는 안쪽,
+        /// 모서리 뿔과 황동판을 단 금속 테두리, 강조 색으로 빛나는 홈, 위 가운데 해골 장식.
+        /// hover(0~1)가 오르면 빛 번짐과 해골 눈이 타오른다. 뿔과 해골은 몸통 바깥으로 조금 나간다.
+        /// </summary>
+        public static void DoomCard(Renderer r, float x, float y, float w, float h, Color accent, float hover = 0f, float opacity = 1f)
+        {
+            if (opacity <= 0f)
+            {
+                return;
+            }
+
+            accent = PixelPalette.WithAlpha(accent, 255);
+            if (UiArt.Card == null)
+            {
+                Frame(r, x, y, w, h, 1f, PixelPalette.Panel, accent, raised: true, opacity: opacity);
+                r.DrawRectangle(x + 3f, y + 3f, w - 6f, 2f, Fade(accent, 0.8f * opacity));
+                return;
+            }
+
+            float pulse = 0.5f + 0.5f * (float)Math.Sin(Clock * 6.0);
+            if (hover > 0f)
+            {
+                GlowRect(r, x, y, w, h, 14f, PixelPalette.WithAlpha(accent, (int)(hover * (140 + 70 * pulse))), opacity);
+            }
+
+            // 안쪽: 위는 검고 아래로 갈수록 강조 색이 어둡게 끓어오른다.
+            const float inset = 4f;
+            const int bands = 12;
+            float bandH = (h - inset * 2f) / bands;
+            for (int i = 0; i < bands; i++)
+            {
+                float t = i / (float)(bands - 1);
+                Color c = Mix(PixelPalette.PanelDeep, accent, t * t * (0.20f + 0.14f * hover));
+                r.DrawRectangle(x + inset, y + inset + i * bandH, w - inset * 2f, bandH + 1f, Fade(PixelPalette.WithAlpha(c, 252), opacity));
+            }
+
+            float m = UiArt.CardMargin;
+            r.DrawImageNineSlice(UiArt.Card, x - m, y - m, w + m * 2f, h + m * 2f, UiArt.CardBorder, UiArt.CardBorder, White(opacity));
+            Color trim = PixelPalette.Lighten(accent, 0.1f + 0.4f * hover * pulse);
+            r.DrawImageNineSlice(UiArt.CardTrim, x - m, y - m, w + m * 2f, h + m * 2f, UiArt.CardBorder, UiArt.CardBorder, Fade(trim, opacity));
+
+            if (UiArt.Skull != null)
+            {
+                float sx = (float)Math.Round(x + w * 0.5f - UiArt.SkullWidth * 0.5f);
+                float sy = y - 12f;
+                if (hover > 0f)
+                {
+                    GlowRect(r, sx + 8f, sy + 9f, 16f, 6f, 6f, PixelPalette.WithAlpha(accent, (int)(hover * (120 + 120 * pulse))), opacity);
+                }
+
+                r.DrawImage(UiArt.Skull, sx, sy, UiArt.SkullWidth, UiArt.SkullHeight, White(opacity));
+                Color eyes = PixelPalette.Lighten(accent, 0.15f + 0.65f * hover * pulse);
+                r.DrawImage(UiArt.SkullEyes, sx, sy, UiArt.SkullWidth, UiArt.SkullHeight, Fade(eyes, opacity * (0.6f + 0.4f * hover)));
+            }
+        }
+
+        /// <summary>사각형 둘레의 빛 번짐. pad만큼 바깥으로 퍼진다.</summary>
+        public static void GlowRect(Renderer r, float x, float y, float w, float h, float pad, Color color, float opacity = 1f)
+        {
+            if (UiArt.Glow == null || color.A <= 0 || opacity <= 0f)
+            {
+                return;
+            }
+
+            r.DrawImageNineSlice(UiArt.Glow, x - pad, y - pad, w + pad * 2f, h + pad * 2f, UiArt.GlowBorder, pad * 1.4f, Fade(color, opacity));
+        }
+
+        /// <summary>
+        /// 뿔 달린 금속 명판 위에 제목을 쓴다. 명판 폭은 글자 폭에 맞춘다. 그림 조각이 없으면 띠로 그린다.
+        /// </summary>
+        public static void PlaqueTitle(Renderer r, string text, float cx, float cy, Color color, float size, float u, Color? accent = null)
+        {
+            SizeF m = r.MeasureText(text, size, true);
+            if (UiArt.Plaque == null)
+            {
+                float bw = m.Width + u * 24f;
+                float bh = size + u * 8f;
+                r.DrawRectangle(cx - bw * 0.5f, cy - bh * 0.5f, bw, bh, PixelPalette.Darken(accent ?? PixelPalette.Edge, 0.62f));
+                TextCentered(r, text, cx, cy, color, size, u, bold: true);
+                return;
+            }
+
+            // 명판 그림 한 칸 크기. 안쪽 홈(약 13칸)에 글자가 들어가게 키운다.
+            float k = Math.Max(u, (float)Math.Ceiling((size + u * 2f) / 13f));
+            float capW = UiArt.PlaqueCap * k;
+            float plaqueH = UiArt.PlaqueHeight * k;
+            float midW = (float)Math.Ceiling(Math.Max(k, m.Width + u * 12f - (UiArt.PlaqueCap - 8f) * k * 2f));
+            float left = (float)Math.Round(cx - (capW * 2f + midW) * 0.5f);
+            float top = (float)Math.Round(cy - plaqueH * 0.5f);
+            float cap = UiArt.PlaqueCap / UiArt.Plaque.Width;
+            if (accent.HasValue)
+            {
+                GlowRect(r, left + capW, top + k * 4f, midW, plaqueH - k * 8f, k * 5f, PixelPalette.WithAlpha(accent.Value, 110));
+            }
+
+            r.DrawImageRegion(UiArt.Plaque, left, top, capW, plaqueH, 0f, 0f, cap, 1f);
+            r.DrawImageRegion(UiArt.Plaque, left + capW, top, midW, plaqueH, cap, 0f, 1f - cap, 1f);
+            r.DrawImageRegion(UiArt.Plaque, left + capW + midW, top, capW, plaqueH, 1f - cap, 0f, 1f, 1f);
+            TextCentered(r, text, cx, top + plaqueH * 0.5f, color, size, u, bold: true);
         }
 
         /// <summary>
@@ -189,11 +328,36 @@ namespace My2DEngine.Game.Rendering.Ui
                     break;
             }
 
-            Frame(r, rect.X, rect.Y, rect.Width, rect.Height, u, fill, edge, raised: state != PixelButtonState.Disabled);
+            if (UiArt.Button == null)
+            {
+                Frame(r, rect.X, rect.Y, rect.Width, rect.Height, u, fill, edge, raised: state != PixelButtonState.Disabled);
 
-            // 왼쪽 색 표식: 버튼 종류를 구분한다.
-            Color stripe = state == PixelButtonState.Disabled ? PixelPalette.EdgeDim : accentColor;
-            r.DrawRectangle(rect.X + u * 4f, rect.Y + u * 4f, u * 2f, rect.Height - u * 8f, stripe);
+                // 왼쪽 색 표식: 버튼 종류를 구분한다.
+                Color stripe = state == PixelButtonState.Disabled ? PixelPalette.EdgeDim : accentColor;
+                r.DrawRectangle(rect.X + u * 4f, rect.Y + u * 4f, u * 2f, rect.Height - u * 8f, stripe);
+            }
+            else
+            {
+                // 금속 버튼. 홈이 버튼 색으로 은은히 빛나고, 마우스를 올리면 타오른다.
+                float pulse = 0.5f + 0.5f * (float)Math.Sin(Clock * 7.0);
+                if (state == PixelButtonState.Hover)
+                {
+                    GlowRect(r, rect.X, rect.Y, rect.Width, rect.Height, u * 6f, PixelPalette.WithAlpha(accentColor, (int)(90 + 60 * pulse)));
+                }
+
+                float inset = u * UiArt.ButtonInset;
+                r.DrawRectangle(rect.X + u * 2f, rect.Y + u * 2f, rect.Width - u * 4f, rect.Height - u * 4f, fill);
+                InnerShadow(r, rect.X + inset, rect.Y + inset, rect.Width - inset * 2f, rect.Height - inset * 2f, u, 1f);
+                Color frameTint = state == PixelButtonState.Disabled ? Color.FromArgb(255, 110, 110, 110) : Color.White;
+                r.DrawImageNineSlice(UiArt.Button, rect.X, rect.Y, rect.Width, rect.Height, UiArt.ButtonBorder, UiArt.ButtonBorder * u, frameTint);
+                if (state != PixelButtonState.Disabled)
+                {
+                    Color trim = state == PixelButtonState.Hover
+                        ? PixelPalette.Lighten(accentColor, 0.2f + 0.35f * pulse)
+                        : PixelPalette.WithAlpha(accentColor, 130);
+                    r.DrawImageNineSlice(UiArt.ButtonTrim, rect.X, rect.Y, rect.Width, rect.Height, UiArt.ButtonBorder, UiArt.ButtonBorder * u, trim);
+                }
+            }
 
             float labelSize = LabelSizeFor(rect.Height, u, sub != null);
             if (string.IsNullOrEmpty(sub))
@@ -432,6 +596,48 @@ namespace My2DEngine.Game.Rendering.Ui
             {
                 r.DrawRectangle(0, ly, width, Math.Max(1f, u * 0.5f), Color.FromArgb(28, 0, 0, 0));
             }
+        }
+
+        /// <summary>UI 장식 애니메이션(맥박 등)에 쓰는 초 단위 시계.</summary>
+        public static double Clock => ClockWatch.Elapsed.TotalSeconds;
+
+        private static readonly System.Diagnostics.Stopwatch ClockWatch = System.Diagnostics.Stopwatch.StartNew();
+
+        /// <summary>두 색을 섞는다(t=0이면 a, 1이면 b). 알파는 a를 따른다.</summary>
+        public static Color Mix(Color a, Color b, float t)
+        {
+            t = Math.Max(0f, Math.Min(1f, t));
+            return Color.FromArgb(a.A,
+                (int)(a.R + (b.R - a.R) * t),
+                (int)(a.G + (b.G - a.G) * t),
+                (int)(a.B + (b.B - a.B) * t));
+        }
+
+        /// <summary>사각형 둘레에 두께 u 선을 긋는다.</summary>
+        public static void OutlineRect(Renderer r, float x, float y, float w, float h, float u, Color color)
+        {
+            r.DrawRectangle(x, y, w, u, color);
+            r.DrawRectangle(x, y + h - u, w, u, color);
+            r.DrawRectangle(x, y + u, u, h - u * 2f, color);
+            r.DrawRectangle(x + w - u, y + u, u, h - u * 2f, color);
+        }
+
+        /// <summary>금속 테두리 안쪽 위·왼쪽에 그림자를 드리워 판이 파여 들어간 것처럼 보이게 한다.</summary>
+        private static void InnerShadow(Renderer r, float x, float y, float w, float h, float u, float opacity)
+        {
+            if (w <= u * 4f || h <= u * 4f)
+            {
+                return;
+            }
+
+            r.DrawRectangle(x, y, w, u * 2f, Color.FromArgb((int)(110 * opacity), 0, 0, 0));
+            r.DrawRectangle(x, y + u * 2f, u * 2f, h - u * 2f, Color.FromArgb((int)(80 * opacity), 0, 0, 0));
+        }
+
+        /// <summary>불투명도만 담은 흰색 색조(그림을 원래 색으로 그린다).</summary>
+        private static Color White(float opacity)
+        {
+            return Color.FromArgb(Math.Max(0, Math.Min(255, (int)(255 * opacity))), 255, 255, 255);
         }
 
         /// <summary>색의 알파에 불투명도(0~1)를 곱한다.</summary>

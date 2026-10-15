@@ -181,6 +181,11 @@ namespace My2DEngine.Game.Core
         /// <param name="selected">플레이어가 선택한 룸 템플릿.</param>
         private void ConfirmBranchSelection(RoomTemplate selected)
         {
+            int pickedIndex = selected == branchOptionA ? 0 : 1;
+            System.Drawing.RectangleF pickedRect = BranchSelectionScreen.GetCardRect(pickedIndex);
+            pickedRect.Offset(0f, branchMotion.OffsetY(pickedIndex));
+            branchMotion.Pick(pickedRect, BranchSelectionScreen.GetAccent(selected));
+
             branchSelectionActive = false;
             branchOptionA = null;
             branchOptionB = null;
