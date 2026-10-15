@@ -35,10 +35,10 @@ namespace My2DEngine.Game.Core
         /// <summary>고르기 화면 카드의 움직임을 진행한다. 화면이 닫혀 있어도 고른 카드 번쩍임·불탐은 진행된다.</summary>
         private void UpdateOverlayMotion(float dt)
         {
-            int cardHover = cardRewardActive ? CardRewardScreen.HitTest(BuildCardRewardView(), uiPointerX, uiPointerY) : -1;
-            cardMotion.Update(dt, cardRewardActive, cardHover);
+            int cardHover = CardRewardOpen ? CardRewardScreen.HitTest(BuildCardRewardView(), uiPointerX, uiPointerY) : -1;
+            cardMotion.Update(dt, CardRewardOpen, cardHover);
 
-            bool branchOpen = branchSelectionActive && branchOptionA != null && branchOptionB != null;
+            bool branchOpen = BranchSelectionOpen && branchOptionA != null && branchOptionB != null;
             int branchHover = branchOpen ? BranchSelectionScreen.HitTest(uiPointerX, uiPointerY) : -1;
             if (branchMotion.Update(dt, branchOpen, branchHover) && cardMotion.BurnRemaining > 0f)
             {
@@ -50,30 +50,30 @@ namespace My2DEngine.Game.Core
         /// <summary>월드 위에 열린 오버레이 화면을 그린다.</summary>
         private void DrawOverlayScreens(Renderer r)
         {
-            if (cardRewardActive)
+            if (CardRewardOpen)
             {
                 CardRewardScreen.Draw(r, BuildCardRewardView());
             }
 
-            if (branchSelectionActive && branchOptionA != null && branchOptionB != null)
+            if (BranchSelectionOpen && branchOptionA != null && branchOptionB != null)
             {
                 BranchSelectionScreen.Draw(r, branchOptionA, branchOptionB, senseLevel, branchMotion);
             }
 
             // 고르지 않은 카드는 타서 사라지고, 고른 카드는 그 위에서 번쩍이며 사라진다. 화면이 닫힌 뒤에도 그린다.
-            CardRewardScreen.DrawBurning(r, BuildCardRewardView(), drawDim: !branchSelectionActive && !cardRewardActive);
+            CardRewardScreen.DrawBurning(r, BuildCardRewardView(), drawDim: !BranchSelectionOpen && !CardRewardOpen);
             BranchSelectionScreen.DrawBurning(r, branchMotion, senseLevel);
             cardMotion.DrawPick(r);
             branchMotion.DrawPick(r);
 
             DrawPermanentStatsScreen(r);
 
-            if (playerStatsOverlayActive)
+            if (PlayerStatsOpen)
             {
                 PlayerStatsScreen.Draw(r, BuildPlayerStatsView());
             }
 
-            if (endingSequenceActive)
+            if (EndingOpen)
             {
                 EndingScreen.Draw(r, 1f - (endingSequenceTimer / EndingSequenceDuration), endingUnlockedNow);
             }
@@ -90,7 +90,7 @@ namespace My2DEngine.Game.Core
         /// <summary>영구 스탯 화면. 메인 메뉴에서도 쓴다.</summary>
         private void DrawPermanentStatsScreen(Renderer r)
         {
-            if (permanentStatsUiActive)
+            if (PermanentStatsOpen)
             {
                 PermanentStatsScreen.Draw(r, permanentProgression ?? PermanentProgressionData.CreateDefault());
             }

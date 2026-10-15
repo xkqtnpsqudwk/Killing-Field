@@ -36,8 +36,6 @@ namespace My2DEngine.Game.Core
         /// <summary>현재 런 결과를 저장소에 이미 기록했는지 여부.</summary>
         private bool runResultRecorded;
 
-        /// <summary>영구 스탯 배분 UI가 열려 있는지 여부.</summary>
-        private bool permanentStatsUiActive;
 
         /// <summary>I 키 토글을 한 번만 처리하기 위한 이전 프레임 입력 상태.</summary>
         private bool permanentStatsToggleHeld;
@@ -151,7 +149,7 @@ namespace My2DEngine.Game.Core
         private void HandlePermanentStatsInput()
         {
             bool toggleHeld = Input.GetKey(Keys.I);
-            if (endingSequenceActive)
+            if (EndingOpen)
             {
                 permanentStatsToggleHeld = toggleHeld;
                 return;
@@ -160,12 +158,12 @@ namespace My2DEngine.Game.Core
             if (toggleHeld &&
                 !permanentStatsToggleHeld &&
                 !CardRewardRevealPending &&
-                !cardRewardActive &&
-                !branchSelectionActive &&
-                !playerStatsOverlayActive)
+                !CardRewardOpen &&
+                !BranchSelectionOpen &&
+                !PlayerStatsOpen)
             {
-                permanentStatsUiActive = !permanentStatsUiActive;
-                if (permanentStatsUiActive)
+                ToggleOverlay(GameplayOverlay.PermanentStats);
+                if (PermanentStatsOpen)
                 {
                     OnPermanentStatsUiOpened();
                 }
@@ -173,7 +171,7 @@ namespace My2DEngine.Game.Core
 
             permanentStatsToggleHeld = toggleHeld;
 
-            if (!permanentStatsUiActive)
+            if (!PermanentStatsOpen)
             {
                 permanentStatKey1Held = false;
                 permanentStatKey2Held = false;
@@ -237,7 +235,7 @@ namespace My2DEngine.Game.Core
 
         private void ResetPermanentStatsUiState()
         {
-            permanentStatsUiActive = false;
+            CloseOverlay(GameplayOverlay.PermanentStats);
             permanentStatsToggleHeld = false;
             permanentStatKey1Held = false;
             permanentStatKey2Held = false;
@@ -444,7 +442,7 @@ namespace My2DEngine.Game.Core
         }
 
         /// <summary>영구 스탯 UI가 현재 열려 있는지 여부 (메뉴에서 오버레이 렌더링 여부 판단용).</summary>
-        public bool PermanentStatsUiActive => permanentStatsUiActive;
+        public bool PermanentStatsUiActive => PermanentStatsOpen;
 
         /// <summary>영구 스탯 UI가 열려 있을 때 마우스 클릭 좌표를 다음 프레임 입력 처리로 전달한다.</summary>
         public void NotifyPermanentStatsMouseClick(float gameX, float gameY)

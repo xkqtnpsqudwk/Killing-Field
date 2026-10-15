@@ -276,7 +276,7 @@ namespace My2DEngine.Game.Core
             interactKeyHeld = false;
             specialKeyHeld = false;
             roomLookup.ForgetCurrent();
-            branchSelectionActive = false;
+            CloseOverlay(GameplayOverlay.BranchSelection);
             branchOptionA = null;
             branchOptionB = null;
             branch1KeyHeld = false;

@@ -37,12 +37,12 @@ namespace My2DEngine.Game.Core
 
             UpdateOverlayMotion(dt);
 
-            bool playerStatsOverlayWasActive = playerStatsOverlayActive;
+            bool playerStatsOverlayWasActive = PlayerStatsOpen;
             HandlePlayerStatsOverlayInput();
 
-            bool permanentUiWasActive = permanentStatsUiActive;
+            bool permanentUiWasActive = PermanentStatsOpen;
             HandlePermanentStatsInput();
-            if (playerStatsOverlayWasActive || playerStatsOverlayActive || permanentUiWasActive || permanentStatsUiActive)
+            if (playerStatsOverlayWasActive || PlayerStatsOpen || permanentUiWasActive || PermanentStatsOpen)
             {
                 interactPromptText = null;
                 weapon.PendingShot = false;
@@ -56,7 +56,7 @@ namespace My2DEngine.Game.Core
             UpdateDeathPresentation(dt);
             UpdateEndingSequence(dt);
 
-            if (endingSequenceActive)
+            if (EndingOpen)
             {
                 interactPromptText = null;
                 weapon.PendingShot = false;

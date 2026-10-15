@@ -1,6 +1,6 @@
 namespace My2DEngine.Game.Core
 {
-    /// <summary>플레이 화면 위를 덮고 있는 오버레이. 여러 개가 켜져 있으면 위에 그려지는 것 하나만 대표로 고른다.</summary>
+    /// <summary>플레이 화면 위를 덮고 있는 오버레이. 한 번에 하나만 열린다(GameLogic.OverlayState).</summary>
     public enum GameplayOverlay
     {
         None,
@@ -20,41 +20,36 @@ namespace My2DEngine.Game.Core
 
     /// <summary>
     /// GameLogic의 입력 모드 규칙 partial.
-    /// 오버레이 플래그 조합으로 흩어져 있던 "지금 이 입력을 받아도 되는가"를 이름 붙은 규칙으로 모은다.
+    /// "지금 이 입력을 받아도 되는가"를 오버레이 상태에서 나온 이름 붙은 규칙으로 모은다.
     /// 새 오버레이를 추가하면 <see cref="ActiveOverlay"/>와 아래 규칙만 고치면 된다.
     /// </summary>
     public partial class GameLogic
     {
-        /// <summary>현재 대표 오버레이. 화면을 통째로 멈추는 것이 선택 UI보다 우선한다.</summary>
+        /// <summary>지금 열린 오버레이. 아무것도 없고 카드 보상이 뜨기 직전이면 CardRewardReveal.</summary>
         public GameplayOverlay ActiveOverlay
         {
             get
             {
-                if (playerStatsOverlayActive) return GameplayOverlay.PlayerStats;
-                if (permanentStatsUiActive) return GameplayOverlay.PermanentStats;
-                if (endingSequenceActive) return GameplayOverlay.Ending;
-                if (cardRewardActive) return GameplayOverlay.CardReward;
-                if (branchSelectionActive) return GameplayOverlay.BranchSelection;
-                if (CardRewardRevealPending) return GameplayOverlay.CardRewardReveal;
-                return GameplayOverlay.None;
+                if (activeOverlay != GameplayOverlay.None) return activeOverlay;
+                return CardRewardRevealPending ? GameplayOverlay.CardRewardReveal : GameplayOverlay.None;
             }
         }
 
         /// <summary>월드를 멈추는 전체 화면 오버레이(스탯·영구 스탯·엔딩)가 켜져 있다.</summary>
         private bool IsWorldPausedByOverlay =>
-            playerStatsOverlayActive || permanentStatsUiActive || endingSequenceActive;
+            PlayerStatsOpen || PermanentStatsOpen || EndingOpen;
 
         /// <summary>카드·분기 선택 UI가 숫자키와 F키를 쓰고 있다.</summary>
-        private bool IsSelectionUiActive => cardRewardActive || branchSelectionActive;
+        private bool IsSelectionUiActive => CardRewardOpen || BranchSelectionOpen;
 
         /// <summary>카드 보상 연출부터 분기 선택까지, 방 클리어 후 보상 흐름이 진행 중이다.</summary>
         private bool IsRewardFlowActive => CardRewardRevealPending || IsSelectionUiActive;
 
         /// <summary>방 진행과 상호작용 안내를 멈춰야 한다(보상 흐름, 영구 스탯 UI, 엔딩).</summary>
-        private bool IsStageFlowPaused => IsRewardFlowActive || permanentStatsUiActive || endingSequenceActive;
+        private bool IsStageFlowPaused => IsRewardFlowActive || PermanentStatsOpen || EndingOpen;
 
         /// <summary>E 키 상호작용을 막아야 한다(보상 흐름, 엔딩).</summary>
-        private bool IsInteractBlocked => IsRewardFlowActive || endingSequenceActive;
+        private bool IsInteractBlocked => IsRewardFlowActive || EndingOpen;
 
         /// <summary>발사·무기 전환을 받을 수 있다. 승리·사망·전체 화면 오버레이 중에는 막는다.</summary>
         private bool CanUseCombatInput => !victory && !player.IsDead && !IsWorldPausedByOverlay;

@@ -244,10 +244,10 @@ namespace My2DEngine.Game.Core
             cardRewardNextFloorIsBoss = true;
             cardRerollCount = 0;
             GenerateCardOffers();
-            cardRewardActive = true;
+            OpenOverlay(GameplayOverlay.CardReward);
         }
 
-        internal bool CardRewardActiveSmokeSnapshot => cardRewardActive;
+        internal bool CardRewardActiveSmokeSnapshot => CardRewardOpen;
 
         internal int GetCoinsSmokeSnapshot() => player.CoinCount;
 

@@ -149,7 +149,7 @@ namespace My2DEngine.Game.Core
         }
 
         /// <summary>보스 보상(무기 카드)은 다시 뽑거나 건너뛸 수 없다.</summary>
-        private bool CardRewardAllowsRerollAndSkip => cardRewardActive && !cardRewardWasBossRoom;
+        private bool CardRewardAllowsRerollAndSkip => CardRewardOpen && !cardRewardWasBossRoom;
 
         /// <summary>코인을 내고 카드를 새로 뽑는다. 지금 카드는 모두 불타고 새 카드가 떨어진다.</summary>
         private bool TryRerollCards()

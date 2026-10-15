@@ -18,7 +18,7 @@ namespace My2DEngine.Game.Core
         /// <param name="dt">이번 프레임의 경과 시간(초). BGM 크로스페이드 계산에 사용된다.</param>
         private void UpdateBackgroundMusicState(float dt)
         {
-            if (victory || endingSequenceActive)
+            if (victory || EndingOpen)
             {
                 audio.SilenceMusic();
                 return;

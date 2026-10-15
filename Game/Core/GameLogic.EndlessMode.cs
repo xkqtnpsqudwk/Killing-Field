@@ -10,7 +10,6 @@ namespace My2DEngine.Game.Core
         private const int FinalRoguelikeFloor = 666;
         private const float EndingSequenceDuration = 4.8f;
 
-        private bool endingSequenceActive;
         private bool endingSequenceCompleted;
         private bool endingUnlockedNow;
         private float endingSequenceTimer;
@@ -25,7 +24,7 @@ namespace My2DEngine.Game.Core
         {
             endingUnlockedNow = !IsEndlessModeUnlocked();
             UnlockEndlessMode();
-            endingSequenceActive = true;
+            OpenOverlay(GameplayOverlay.Ending);
             endingSequenceCompleted = false;
             endingSequenceTimer = EndingSequenceDuration;
 
@@ -38,7 +37,7 @@ namespace My2DEngine.Game.Core
 
         private void UpdateEndingSequence(float dt)
         {
-            if (!endingSequenceActive)
+            if (!EndingOpen)
             {
                 return;
             }
@@ -50,14 +49,14 @@ namespace My2DEngine.Game.Core
             }
 
             endingSequenceTimer = 0f;
-            endingSequenceActive = false;
+            CloseOverlay(GameplayOverlay.Ending);
             endingSequenceCompleted = true;
             stageStatus.Show("엔딩 완료 - [E] 무한 모드 진입", 4f);
         }
 
         private void ResetEndingSequenceState()
         {
-            endingSequenceActive = false;
+            CloseOverlay(GameplayOverlay.Ending);
             endingSequenceCompleted = false;
             endingUnlockedNow = false;
             endingSequenceTimer = 0f;

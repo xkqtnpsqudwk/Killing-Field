@@ -1575,6 +1575,11 @@ namespace My2DEngine.SmokeTests
             // 다시 뽑기: 코인이 모자라면 안 되고, 되면 비용만큼 빠지고 다음 비용이 오른다.
             var shop = new GameLogic();
             shop.OpenCardRewardSmokeSnapshot(bossRoom: false);
+            if (shop.ActiveOverlay != GameplayOverlay.CardReward)
+            {
+                throw new InvalidOperationException("Smoke check failed for overlay state: card reward did not become the active overlay.");
+            }
+
             shop.SetCoinsSmokeSnapshot(SynergyConfig.RerollBaseCost - 1);
             if (shop.TryRerollCardsSmokeSnapshot())
             {
@@ -1595,6 +1600,21 @@ namespace My2DEngine.SmokeTests
                 shop.CardRewardActiveSmokeSnapshot)
             {
                 throw new InvalidOperationException("Smoke check failed for skip: coins or state is wrong after skipping.");
+            }
+
+            // 다음 층이 보스라 분기 없이 닫힌다: 오버레이가 남지 않아야 한다.
+            if (shop.ActiveOverlay != GameplayOverlay.None)
+            {
+                throw new InvalidOperationException("Smoke check failed for overlay state: overlay left open after skipping, got " + shop.ActiveOverlay + ".");
+            }
+
+            // 새 런은 열린 오버레이를 남기지 않는다.
+            var restart = new GameLogic();
+            restart.OpenCardRewardSmokeSnapshot(bossRoom: false);
+            restart.StartRoguelikeRun();
+            if (restart.ActiveOverlay != GameplayOverlay.None && restart.ActiveOverlay != GameplayOverlay.CardRewardReveal)
+            {
+                throw new InvalidOperationException("Smoke check failed for overlay state: new run kept overlay " + restart.ActiveOverlay + ".");
             }
 
             // 보스 보상은 다시 뽑거나 건너뛸 수 없다.

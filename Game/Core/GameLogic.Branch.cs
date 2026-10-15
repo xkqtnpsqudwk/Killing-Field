@@ -13,8 +13,6 @@ namespace My2DEngine.Game.Core
     /// </summary>
     public partial class GameLogic
     {
-        /// <summary>분기 선택 UI가 현재 활성화되어 있는지 여부.</summary>
-        private bool branchSelectionActive;
 
         /// <summary>분기 선택지 A (왼쪽 카드, 1번 키)로 제시될 룸 템플릿.</summary>
         private RoomTemplate branchOptionA;
@@ -63,7 +61,7 @@ namespace My2DEngine.Game.Core
             }
 
             restRoomOpportunityCooldownActive = BranchIncludesRestRoom(branchOptionA, branchOptionB);
-            branchSelectionActive = true;
+            OpenOverlay(GameplayOverlay.BranchSelection);
             pendingBranchClickX = -1f;
             pendingBranchClickY = -1f;
         }
@@ -136,7 +134,7 @@ namespace My2DEngine.Game.Core
         /// </summary>
         private void HandleBranchInput()
         {
-            if (!branchSelectionActive)
+            if (!BranchSelectionOpen)
             {
                 pendingBranchClickX = -1f;
                 pendingBranchClickY = -1f;
@@ -185,7 +183,7 @@ namespace My2DEngine.Game.Core
             int pickedIndex = selected == branchOptionA ? 0 : 1;
             BranchSelectionScreen.BeginPick(branchMotion, pickedIndex, selected, pickedIndex == 0 ? branchOptionB : branchOptionA);
 
-            branchSelectionActive = false;
+            CloseOverlay(GameplayOverlay.BranchSelection);
             branchOptionA = null;
             branchOptionB = null;
             branch1KeyHeld = false;
@@ -205,6 +203,6 @@ namespace My2DEngine.Game.Core
         }
 
         /// <summary>분기 선택 UI가 현재 열려 있는지 여부.</summary>
-        public bool BranchSelectionActive => branchSelectionActive;
+        public bool BranchSelectionActive => BranchSelectionOpen;
     }
 }

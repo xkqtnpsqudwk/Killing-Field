@@ -10,13 +10,12 @@ namespace My2DEngine.Game.Core
     /// </summary>
     public partial class GameLogic
     {
-        private bool playerStatsOverlayActive;
         private bool playerStatsToggleHeld;
 
         private void HandlePlayerStatsOverlayInput()
         {
             bool toggleHeld = Input.GetKey(Keys.P);
-            if (endingSequenceActive)
+            if (EndingOpen)
             {
                 playerStatsToggleHeld = toggleHeld;
                 return;
@@ -25,12 +24,12 @@ namespace My2DEngine.Game.Core
             if (toggleHeld &&
                 !playerStatsToggleHeld &&
                 !CardRewardRevealPending &&
-                !cardRewardActive &&
-                !branchSelectionActive &&
-                !permanentStatsUiActive)
+                !CardRewardOpen &&
+                !BranchSelectionOpen &&
+                !PermanentStatsOpen)
             {
-                playerStatsOverlayActive = !playerStatsOverlayActive;
-                if (playerStatsOverlayActive)
+                ToggleOverlay(GameplayOverlay.PlayerStats);
+                if (PlayerStatsOpen)
                 {
                     OnPlayerStatsOverlayOpened();
                 }
@@ -49,7 +48,7 @@ namespace My2DEngine.Game.Core
 
         private void ResetPlayerStatsOverlayState()
         {
-            playerStatsOverlayActive = false;
+            CloseOverlay(GameplayOverlay.PlayerStats);
             playerStatsToggleHeld = false;
         }
     }

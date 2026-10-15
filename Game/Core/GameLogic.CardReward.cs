@@ -32,8 +32,6 @@ namespace My2DEngine.Game.Core
 
         // ── 카드 보상 상태 ──────────────────────────────────────────────
 
-        /// <summary>카드 선택 UI가 현재 활성화되어 있는지 여부.</summary>
-        private bool cardRewardActive;
 
         /// <summary>룸 클리어 후 카드 보상 UI를 실제로 띄우기까지 남은 대기 시간(초).</summary>
         private float cardRewardRevealTimer;
@@ -126,7 +124,7 @@ namespace My2DEngine.Game.Core
             pendingCardClickX = -1f;
             pendingCardClickY = -1f;
             cardRewardRevealTimer = CardRewardRevealDelaySeconds;
-            cardRewardActive = false;
+            CloseOverlay(GameplayOverlay.CardReward);
         }
 
         private void GenerateCardOffers()
@@ -776,13 +774,13 @@ namespace My2DEngine.Game.Core
 
             cardRerollCount = 0;
             GenerateCardOffers();
-            cardRewardActive = true;
+            OpenOverlay(GameplayOverlay.CardReward);
         }
 
         /// <summary>카드 보상 UI가 활성일 때 마우스 클릭 좌표(게임 해상도 기준)로 카드를 선택한다.</summary>
         private void HandleCardInput()
         {
-            if (!cardRewardActive) return;
+            if (!CardRewardOpen) return;
             if (pendingCardClickX < 0f) return;
 
             float clickX = pendingCardClickX;
@@ -819,13 +817,13 @@ namespace My2DEngine.Game.Core
         }
 
         /// <summary>카드 보상 UI가 현재 열려 있는지 여부 (Form1에서 마우스 캡처 해제 판단용).</summary>
-        public bool CardRewardActive => cardRewardActive;
+        public bool CardRewardActive => CardRewardOpen;
 
         /// <summary>룸 클리어 후 카드 UI가 아직 나타나지 않았지만 곧 표시될 대기 상태인지 여부.</summary>
         private bool CardRewardRevealPending => cardRewardRevealTimer > 0f;
 
         /// <summary>마우스 자유 입력이 필요한 오버레이 UI가 열려 있는지 여부.</summary>
-        public bool MouseSelectableOverlayActive => IsSelectionUiActive || permanentStatsUiActive;
+        public bool MouseSelectableOverlayActive => IsSelectionUiActive || PermanentStatsOpen;
 
         private void ConfirmCardSelection(int index)
         {
@@ -842,7 +840,7 @@ namespace My2DEngine.Game.Core
         /// <summary>카드를 고르거나 건너뛴 뒤 보상 화면을 닫고 다음 단계(분기 선택, 다음 층 안내)로 넘어간다.</summary>
         private void FinishCardReward()
         {
-            cardRewardActive = false;
+            CloseOverlay(GameplayOverlay.CardReward);
             ClearCurrentCardOffers();
             pendingCardClickX = -1f;
             pendingCardClickY = -1f;
@@ -974,7 +972,7 @@ namespace My2DEngine.Game.Core
         /// <summary>카드 UI 표시 상태만 초기화한다 (층 전환 시). 런 카드 등급은 유지.</summary>
         private void ResetCardDisplayState()
         {
-            cardRewardActive = false;
+            CloseOverlay(GameplayOverlay.CardReward);
             cardRewardRevealTimer = 0f;
             cardRewardWasBossRoom = false;
             cardRewardNextFloorIsBoss = false;
@@ -988,6 +986,8 @@ namespace My2DEngine.Game.Core
         /// <summary>런 전체 카드 상태를 초기화한다 (새 런 시작 시).</summary>
         private void ResetCardRunState()
         {
+            // 새 런·이어하기: 지난 런에서 열려 있던 오버레이(사망 직전 카드 화면 등)를 남기지 않는다.
+            activeOverlay = GameplayOverlay.None;
             ResetCardDisplayState();
             weaponCardPoolCount = 0;
             cardChoiceBonusOffered = false;
