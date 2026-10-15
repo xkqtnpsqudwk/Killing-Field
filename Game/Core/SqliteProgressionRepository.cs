@@ -153,6 +153,9 @@ namespace My2DEngine.Game.Core
                 EnsureColumnExists(conn, "run_save", "bonus_explosive_specialist", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "bonus_low_ammo_rage", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "bonus_rapid_fire_chain", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_max_shield", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_ammo_capacity", "REAL NOT NULL DEFAULT 0");
+                EnsureColumnExists(conn, "run_save", "bonus_fire_rate", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "player_shield", "REAL NOT NULL DEFAULT 100");
                 EnsureColumnExists(conn, "run_save", "shield_regen_delay_timer", "REAL NOT NULL DEFAULT 0");
                 EnsureColumnExists(conn, "run_save", "card_choice_bonus_offered", "INTEGER NOT NULL DEFAULT 0");
@@ -239,7 +242,8 @@ namespace My2DEngine.Game.Core
                                weapon_ammo_state, weapon_upgrade_state,
                                run_stat_grade_state, run_stat_pickup_state,
                                bonus_low_health_rage, bonus_kill_chain,
-                               bonus_explosive_specialist, bonus_low_ammo_rage, bonus_rapid_fire_chain
+                               bonus_explosive_specialist, bonus_low_ammo_rage, bonus_rapid_fire_chain,
+                               bonus_max_shield, bonus_ammo_capacity, bonus_fire_rate
                         FROM run_save WHERE id = 1";
 
                     using (var reader = cmd.ExecuteReader())
@@ -286,6 +290,9 @@ namespace My2DEngine.Game.Core
                             BonusExplosiveSpecialist = (float)reader.GetDouble(35),
                             BonusLowAmmoRage    = (float)reader.GetDouble(36),
                             BonusRapidFireChain = (float)reader.GetDouble(37),
+                            BonusMaxShield      = (float)reader.GetDouble(38),
+                            BonusAmmoCapacity   = (float)reader.GetDouble(39),
+                            BonusFireRate       = (float)reader.GetDouble(40),
                         };
                     }
                 }
@@ -321,6 +328,7 @@ namespace My2DEngine.Game.Core
                              run_stat_grade_state, run_stat_pickup_state,
                              bonus_low_health_rage, bonus_kill_chain,
                              bonus_explosive_specialist, bonus_low_ammo_rage, bonus_rapid_fire_chain,
+                             bonus_max_shield, bonus_ammo_capacity, bonus_fire_rate,
                              saved_at)
                         VALUES
                             (1, @fl, @ph, @bh, @bm, @bd, @ba, @bdc, @bcd, @bls,
@@ -328,6 +336,7 @@ namespace My2DEngine.Game.Core
                              @cf, @bg, @ow, @cc,
                              @wcp, @rrc, @cwt, @was, @wus, @rgs, @rps,
                              @blhr, @bkc, @bes, @blar, @brfc,
+                             @bmsh, @bamc, @bfr,
                              @sa)";
 
                     cmd.Parameters.AddWithValue("@fl", data.Floor);
@@ -368,6 +377,9 @@ namespace My2DEngine.Game.Core
                     cmd.Parameters.AddWithValue("@bes", data.BonusExplosiveSpecialist);
                     cmd.Parameters.AddWithValue("@blar", data.BonusLowAmmoRage);
                     cmd.Parameters.AddWithValue("@brfc", data.BonusRapidFireChain);
+                    cmd.Parameters.AddWithValue("@bmsh", data.BonusMaxShield);
+                    cmd.Parameters.AddWithValue("@bamc", data.BonusAmmoCapacity);
+                    cmd.Parameters.AddWithValue("@bfr", data.BonusFireRate);
                     cmd.Parameters.AddWithValue("@sa", DateTime.UtcNow.ToString("o"));
 
                     cmd.ExecuteNonQuery();

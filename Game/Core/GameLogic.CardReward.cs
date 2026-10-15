@@ -871,7 +871,14 @@ namespace My2DEngine.Game.Core
             runStatPickupCount[statIndex]++;
             ApplyLinkedStatBonus(stat, grade);
 
+            float previousMaxShield = player.MaxShield;
             ApplyCombinedProgressionStats(refillHealth: false, healMaxHealthDelta: stat == StatType.MaxHealth);
+            if (stat == StatType.MaxShield)
+            {
+                // 최대 체력 카드처럼 늘어난 만큼은 바로 채워 준다.
+                player.AddShield(player.MaxShield - previousMaxShield);
+            }
+
             stageStatus.Show(BuildStatCardMessage(stat, grade, actualBonus), 3f);
         }
 

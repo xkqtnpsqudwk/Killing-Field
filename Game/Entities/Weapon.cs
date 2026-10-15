@@ -69,6 +69,12 @@ namespace My2DEngine.Game
         /// <summary>스탯 카드 '데미지' 보너스 배율 (1.0 = 없음). 모든 무기에 공통 적용.</summary>
         public float StatDamageMult { get; private set; } = 1f;
 
+        /// <summary>스탯 카드 '최대 탄약' 배율 (1.0 = 없음). 모든 무기의 최대 장탄 수에 곱한다.</summary>
+        public float AmmoCapacityMult { get; private set; } = 1f;
+
+        /// <summary>스탯 카드 '발사 속도' 보너스(0 = 없음). 모든 무기의 발사 쿨타임을 이 비율만큼 줄인다.</summary>
+        public float StatFireRateBonus { get; private set; }
+
         /// <summary>영구 스탯이 제공하는 Pistol 전용 추가 피해 배율 (1.0 = 없음).</summary>
         public float PermanentPistolDamageMult { get; private set; } = 1f;
 
@@ -122,6 +128,8 @@ namespace My2DEngine.Game
                     weaponUpgradeLevels[w, c] = 0;
 
             StatDamageMult = 1f;
+            AmmoCapacityMult = 1f;
+            StatFireRateBonus = 0f;
             SpecialCooldownTimer = 0f;
             LmgBurstRemaining = 0;
             PlazmaLaserActive = false;
@@ -152,10 +160,12 @@ namespace My2DEngine.Game
         /// <summary>
         /// 저장된 런 상태를 기준으로 무기 업그레이드, 탄약, 현재 장착 무기를 복원한다.
         /// 영구 스탯 배율은 별도로 다시 적용되므로 여기서는 런 전용 상태만 다룬다.
+        /// ammoCapacityMult는 '최대 탄약' 카드 배율로, 늘어난 탄약이 기본 최대치에서 잘리지 않게 먼저 적용한다.
         /// </summary>
-        public void RestoreSavedRunState(int[] ammoCounts, int[,] upgradeLevels, WeaponType currentType)
+        public void RestoreSavedRunState(int[] ammoCounts, int[,] upgradeLevels, WeaponType currentType, float ammoCapacityMult = 1f)
         {
             ResetRunUpgrades();
+            AmmoCapacityMult = Math.Max(1f, ammoCapacityMult);
 
             if (upgradeLevels != null)
             {
@@ -246,6 +256,41 @@ namespace My2DEngine.Game
         public void SetStatDamageMult(float mult)
         {
             StatDamageMult = Math.Max(1f, mult);
+        }
+
+        /// <summary>
+        /// 스탯 카드 '최대 탄약' 배율을 설정한다. 최대치가 늘어난 만큼 모든 무기에 탄약을 채워 준다.
+        /// </summary>
+        public void SetStatAmmoCapacityMult(float mult)
+        {
+            mult = Math.Max(1f, mult);
+            if (Math.Abs(mult - AmmoCapacityMult) < 0.0001f)
+            {
+                return;
+            }
+
+            for (int i = 0; i < ammoPerWeapon.Length; i++)
+            {
+                int before = GetMaxAmmoForType((WeaponType)i);
+                int after = (int)Math.Round(GetBaseMaxAmmo((WeaponType)i) * mult);
+                ammoPerWeapon[i] = Math.Max(0, Math.Min(after, ammoPerWeapon[i] + Math.Max(0, after - before)));
+            }
+
+            AmmoCapacityMult = mult;
+            ApplyWeaponStats(CurrentType);
+        }
+
+        /// <summary>스탯 카드 '발사 속도' 보너스를 설정한다(0~0.9). 현재 무기 쿨타임을 바로 다시 계산한다.</summary>
+        public void SetStatFireRateBonus(float bonus)
+        {
+            bonus = Math.Max(0f, Math.Min(0.9f, bonus));
+            if (Math.Abs(bonus - StatFireRateBonus) < 0.0001f)
+            {
+                return;
+            }
+
+            StatFireRateBonus = bonus;
+            ApplyWeaponStats(CurrentType);
         }
 
         /// <summary>
@@ -550,6 +595,10 @@ namespace My2DEngine.Game
                     break;
             }
 
+            // 스탯 카드: 최대 탄약 배율과 공통 발사 속도
+            MagazineSize = GetMaxAmmoForType(type);
+            currentShotCooldownDuration *= 1f - StatFireRateBonus;
+
             // 탄약이 새 탄창 크기를 초과하면 클램프
             int typeIdx = (int)type;
             if (ammoPerWeapon[typeIdx] > MagazineSize)
@@ -581,7 +630,14 @@ namespace My2DEngine.Game
             }
         }
 
-        private static int GetMaxAmmoForType(WeaponType type)
+        /// <summary>'최대 탄약' 카드 배율을 적용한 최대 장탄 수.</summary>
+        private int GetMaxAmmoForType(WeaponType type)
+        {
+            return (int)Math.Round(GetBaseMaxAmmo(type) * AmmoCapacityMult);
+        }
+
+        /// <summary>무기별 기본 최대 장탄 수(WeaponConfig).</summary>
+        private static int GetBaseMaxAmmo(WeaponType type)
         {
             switch (type)
             {

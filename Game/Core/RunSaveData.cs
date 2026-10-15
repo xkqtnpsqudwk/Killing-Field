@@ -26,6 +26,9 @@ namespace My2DEngine.Game.Core
         public float BonusExplosiveSpecialist { get; set; }
         public float BonusLowAmmoRage { get; set; }
         public float BonusRapidFireChain { get; set; }
+        public float BonusMaxShield { get; set; }
+        public float BonusAmmoCapacity { get; set; }
+        public float BonusFireRate { get; set; }
         public float PlayerShield { get; set; }
         public float ShieldRegenDelayTimer { get; set; }
         public bool CardChoiceBonusOffered { get; set; }

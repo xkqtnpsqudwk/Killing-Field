@@ -360,6 +360,17 @@ namespace My2DEngine.Game
             ShieldRegenDelayTimer = System.Math.Max(0f, System.Math.Min(ShieldRegenDelayDuration, ShieldRegenDelayTimer));
         }
 
+        /// <summary>보호막을 amount만큼 채운다(최대치 안). '최대 보호막' 카드로 늘어난 만큼 채울 때 쓴다.</summary>
+        public void AddShield(float amount)
+        {
+            if (amount <= 0f)
+            {
+                return;
+            }
+
+            Shield = System.Math.Min(MaxShield, Shield + amount);
+        }
+
         public void RestoreShieldState(float shield, float regenDelayTimer)
         {
             Shield = System.Math.Max(0f, System.Math.Min(MaxShield, shield));

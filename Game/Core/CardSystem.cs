@@ -28,7 +28,10 @@ namespace My2DEngine.Game
         KillChain = 18,
         ExplosiveSpecialist = 19,
         LowAmmoRage = 20,
-        RapidFireChain = 21
+        RapidFireChain = 21,
+        MaxShield = 22,
+        AmmoCapacity = 23,
+        FireRate = 24
     }
 
     /// <summary>

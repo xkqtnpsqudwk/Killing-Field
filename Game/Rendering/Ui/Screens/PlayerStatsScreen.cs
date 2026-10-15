@@ -102,8 +102,10 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             rowY = Gauge(r, x, rowY, w, "체력", $"{player.Health:0} / {player.MaxHealth:0}",
                 player.MaxHealth > 0f ? player.Health / player.MaxHealth : 0f, PixelPalette.Health,
                 maxBonus > 0f ? $"최대 +{maxBonus * 100f:0}%" : null);
+            float shieldBonus = v.Total(StatType.MaxShield);
             rowY = Gauge(r, x, rowY, w, "보호막", $"{player.Shield:0} / {player.MaxShield:0}",
-                player.MaxShield > 0f ? player.Shield / player.MaxShield : 0f, PixelPalette.Shield, null);
+                player.MaxShield > 0f ? player.Shield / player.MaxShield : 0f, PixelPalette.Shield,
+                shieldBonus > 0f ? $"최대 +{shieldBonus * 100f:0}%" : null);
             rowY = Gauge(r, x, rowY, w, "스태미나", $"{player.Stamina:0} / {player.MaxStamina:0}",
                 player.MaxStamina > 0f ? player.Stamina / player.MaxStamina : 0f, PixelPalette.Stamina, null);
 
@@ -125,10 +127,13 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
 
             int row = 0;
             rowY = Row(r, x, rowY, w, row++, "무기", CardText.WeaponName(weapon.CurrentType), PixelPalette.Brass, null);
-            rowY = Row(r, x, rowY, w, row++, "탄약", $"{weapon.CurrentAmmo} / {weapon.MagazineSize}", Value, null);
+            rowY = Row(r, x, rowY, w, row++, "탄약", $"{weapon.CurrentAmmo} / {weapon.MagazineSize}",
+                v.Total(StatType.AmmoCapacity) > 0f ? Boosted : Value,
+                v.Total(StatType.AmmoCapacity) > 0f ? $"최대 +{v.Total(StatType.AmmoCapacity) * 100f:0}%" : null);
             rowY = Row(r, x, rowY, w, row++, "공격력", $"{weapon.CurrentDamage:0.0}", Value, null);
             rowY = Row(r, x, rowY, w, row++, "공격 배율", $"x{weapon.StatDamageMult:0.00}",
                 weapon.StatDamageMult > 1.001f ? Boosted : Value, CardTag(v.Count(StatType.Damage)));
+            rowY = PercentRow(r, x, rowY, w, row++, "발사 속도", v.Bonus(StatType.FireRate), v.Count(StatType.FireRate), plus: true);
             rowY = PercentRow(r, x, rowY, w, row++, "치명타", v.Bonus(StatType.CriticalChance), v.Count(StatType.CriticalChance));
 
             rowY += 3f;
@@ -141,9 +146,21 @@ namespace My2DEngine.Game.Rendering.Ui.Screens
             rowY = PercentRow(r, x, rowY, w, row++, "대시 직후", v.Total(StatType.DashStrikeDamage), v.Count(StatType.DashStrikeDamage), plus: true);
             rowY = PercentRow(r, x, rowY, w, row++, "저체력", v.Total(StatType.LowHealthRage), v.Count(StatType.LowHealthRage), plus: true);
             rowY = PercentRow(r, x, rowY, w, row++, "연속 처치", v.Total(StatType.KillChain), v.Count(StatType.KillChain), plus: true);
-            rowY = PercentRow(r, x, rowY, w, row++, "폭발", v.Total(StatType.ExplosiveSpecialist), v.Count(StatType.ExplosiveSpecialist), plus: true);
-            rowY = PercentRow(r, x, rowY, w, row++, "탄약 부족", v.Total(StatType.LowAmmoRage), v.Count(StatType.LowAmmoRage), plus: true);
-            PercentRow(r, x, rowY, w, row, "연사", v.Total(StatType.RapidFireChain), v.Count(StatType.RapidFireChain), plus: true);
+
+            // 보상 풀에서 뺀 카드는 예전 저장으로 값이 남아 있을 때만 보인다.
+            rowY = RetiredRow(r, x, rowY, w, ref row, "폭발", v, StatType.ExplosiveSpecialist);
+            rowY = RetiredRow(r, x, rowY, w, ref row, "탄약 부족", v, StatType.LowAmmoRage);
+            RetiredRow(r, x, rowY, w, ref row, "연사", v, StatType.RapidFireChain);
+        }
+
+        private static float RetiredRow(Renderer r, float x, float y, float w, ref int row, string label, PlayerStatsView v, StatType stat)
+        {
+            if (v.Total(stat) <= 0.0001f)
+            {
+                return y;
+            }
+
+            return PercentRow(r, x, y, w, row++, label, v.Total(stat), v.Count(stat), plus: true);
         }
 
         private static void DrawMobility(Renderer r, PlayerStatsView v, Player player, float x, float y, float w, float h)

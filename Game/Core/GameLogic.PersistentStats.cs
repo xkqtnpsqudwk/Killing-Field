@@ -113,11 +113,13 @@ namespace My2DEngine.Game.Core
                     dashCooldownReduction + PlayerConfig.MoveSpeedDashSynergyBonus);
             player.SetDashCooldownMult(1f - dashCooldownReduction);
             player.ConfigureShield(
-                PlayerConfig.PlayerShieldMax,
+                PlayerConfig.PlayerShieldMax * (1f + GetRunStatBonus(StatType.MaxShield)),
                 GetEffectiveShieldRegenRate(),
                 GetEffectiveShieldRegenDelayDuration());
 
             weapon.SetStatDamageMult(1f + GetRunStatBonus(StatType.Damage));
+            weapon.SetStatAmmoCapacityMult(1f + GetRunStatBonus(StatType.AmmoCapacity));
+            weapon.SetStatFireRateBonus(GetRunStatBonus(StatType.FireRate));
             weapon.SetPermanentPistolDamageMult(1f + data.GetPistolDamageBonus());
 
             senseLevel = data.GetSenseTier();
@@ -377,6 +379,9 @@ namespace My2DEngine.Game.Core
                 BonusExplosiveSpecialist = GetRunStatBonus(StatType.ExplosiveSpecialist),
                 BonusLowAmmoRage = GetRunStatBonus(StatType.LowAmmoRage),
                 BonusRapidFireChain = GetRunStatBonus(StatType.RapidFireChain),
+                BonusMaxShield = GetRunStatBonus(StatType.MaxShield),
+                BonusAmmoCapacity = GetRunStatBonus(StatType.AmmoCapacity),
+                BonusFireRate = GetRunStatBonus(StatType.FireRate),
                 PlayerShield = player.Shield,
                 ShieldRegenDelayTimer = player.ShieldRegenDelayTimer,
                 CardChoiceBonusOffered = cardChoiceBonusOffered,
@@ -447,6 +452,9 @@ namespace My2DEngine.Game.Core
             runStatBonusTotals[(int)StatType.ExplosiveSpecialist] = save.BonusExplosiveSpecialist;
             runStatBonusTotals[(int)StatType.LowAmmoRage] = save.BonusLowAmmoRage;
             runStatBonusTotals[(int)StatType.RapidFireChain] = save.BonusRapidFireChain;
+            runStatBonusTotals[(int)StatType.MaxShield] = save.BonusMaxShield;
+            runStatBonusTotals[(int)StatType.AmmoCapacity] = save.BonusAmmoCapacity;
+            runStatBonusTotals[(int)StatType.FireRate] = save.BonusFireRate;
             cardChoiceBonusOffered = save.CardChoiceBonusOffered || save.BonusCardChoiceBonus >= 1f;
             RestoreIntArray(save.RunStatGradeState, runStatGrade, -1);
             RestoreIntArray(save.RunStatPickupState, runStatPickupCount, 0);
@@ -462,7 +470,8 @@ namespace My2DEngine.Game.Core
             int[] savedWeaponAmmo = ParseIntArrayOrNull(save.WeaponAmmoState, ownedWeapons.Length);
             int weaponUpgradeCategoryCount = Enum.GetValues(typeof(WeaponUpgradeCategory)).Length;
             int[,] savedWeaponUpgrades = ParseWeaponUpgradeState(save.WeaponUpgradeState, ownedWeapons.Length, weaponUpgradeCategoryCount);
-            weapon.RestoreSavedRunState(savedWeaponAmmo, savedWeaponUpgrades, currentWeaponType);
+            weapon.RestoreSavedRunState(savedWeaponAmmo, savedWeaponUpgrades, currentWeaponType,
+                1f + GetRunStatBonus(StatType.AmmoCapacity));
 
             // 스탯 적용 (MaxHealth 포함) 후 저장된 HP로 덮어쓰기
             ApplyCombinedProgressionStats(refillHealth: true, healMaxHealthDelta: false);

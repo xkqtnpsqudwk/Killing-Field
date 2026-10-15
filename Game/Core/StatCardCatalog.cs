@@ -231,6 +231,15 @@ namespace My2DEngine.Game.Core
                     cap: () => RewardConfig.RapidFireChainBonusCap,
                     condition: () => $"연속 명중 {RewardConfig.RapidFireChainMinStreak}회 이상",
                     inRewardPool: false),
+                // 2026-10-15 추가: 빠져 있던 기본 스탯
+                new(StatType.MaxShield, "최대 보호막", "방패", StatValueFormat.Percent,
+                    cap: () => 1.00f),
+                new(StatType.AmmoCapacity, "최대 탄약", "탄약", StatValueFormat.Percent,
+                    cap: () => 1.00f,
+                    baseBonus: grade => Pick(grade, 0.05f, 0.08f, 0.12f, 0.18f, 0.25f)),
+                new(StatType.FireRate, "발사 속도", "속사", StatValueFormat.Percent,
+                    cap: () => 0.40f,
+                    baseBonus: grade => Pick(grade, 0.02f, 0.03f, 0.05f, 0.07f, 0.10f)),
             };
 
             Array values = Enum.GetValues(typeof(StatType));

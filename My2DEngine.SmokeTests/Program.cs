@@ -211,7 +211,8 @@ namespace My2DEngine.SmokeTests
                     throw new InvalidOperationException("Smoke check failed for stat card catalog: short name '" + definition.ShortName + "' is used twice.");
                 }
 
-                bool conditional = stat >= StatType.ShieldedDamage;
+                // 조건부 카드는 15~21. 22 이후(최대 보호막·최대 탄약·발사 속도)는 상시 스탯이다.
+                bool conditional = stat >= StatType.ShieldedDamage && stat <= StatType.RapidFireChain;
                 if (conditional != (definition.Condition != null))
                 {
                     throw new InvalidOperationException(
@@ -1252,6 +1253,43 @@ namespace My2DEngine.SmokeTests
                 Array.IndexOf(cannon, WeaponUpgradeCategory.FireRate) < 0)
             {
                 throw new InvalidOperationException("Smoke check failed for card rework: AutoCannon must offer FireRate instead of AmmoDropBonus.");
+            }
+
+            // 새 기본 스탯 카드: 최대 보호막·최대 탄약·발사 속도
+            StatType[] basics = { StatType.MaxShield, StatType.AmmoCapacity, StatType.FireRate };
+            foreach (StatType stat in basics)
+            {
+                if (!world.IsStatInRewardPoolSmokeSnapshot(stat))
+                {
+                    throw new InvalidOperationException("Smoke check failed for card rework: " + stat + " is missing from the reward pool.");
+                }
+            }
+
+            AssertNearlyEqual(1.00f, world.ClampRunStatBonusSmokeSnapshot(StatType.MaxShield, 5f), "max shield cap");
+            AssertNearlyEqual(1.00f, world.ClampRunStatBonusSmokeSnapshot(StatType.AmmoCapacity, 5f), "ammo capacity cap");
+            AssertNearlyEqual(0.40f, world.ClampRunStatBonusSmokeSnapshot(StatType.FireRate, 5f), "fire rate cap");
+
+            // 최대 탄약이 늘면 최대치와 함께 늘어난 만큼 탄약도 채워진다.
+            var weapon = new Weapon();
+            int baseMax = weapon.GetMaxAmmo(WeaponType.AutoCannon);
+            weapon.SetAmmoForSmoke(WeaponType.AutoCannon, baseMax - 4);
+            weapon.SetStatAmmoCapacityMult(1.5f);
+            int grownMax = weapon.GetMaxAmmo(WeaponType.AutoCannon);
+            if (grownMax != (int)Math.Round(baseMax * 1.5f) || weapon.GetAmmo(WeaponType.AutoCannon) != grownMax - 4)
+            {
+                throw new InvalidOperationException("Smoke check failed for card rework: ammo capacity expected max " +
+                    (int)Math.Round(baseMax * 1.5f) + " / ammo " + ((int)Math.Round(baseMax * 1.5f) - 4) +
+                    ", got " + grownMax + " / " + weapon.GetAmmo(WeaponType.AutoCannon) + ".");
+            }
+
+            // 저장 복원은 늘어난 탄약을 기본 최대치에서 자르지 않는다.
+            var restored = new Weapon();
+            int[] ammo = new int[5];
+            ammo[(int)WeaponType.AutoCannon] = grownMax;
+            restored.RestoreSavedRunState(ammo, null, WeaponType.AMPistol, 1.5f);
+            if (restored.GetAmmo(WeaponType.AutoCannon) != grownMax)
+            {
+                throw new InvalidOperationException("Smoke check failed for card rework: restored ammo was clamped to the base maximum.");
             }
         }
 
